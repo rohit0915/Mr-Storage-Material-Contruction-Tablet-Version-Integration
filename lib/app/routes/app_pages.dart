@@ -7,6 +7,8 @@ import '../../features/dashboard/views/dashboard_view.dart';
 import '../../features/drawings/bindings/drawings_binding.dart';
 import '../../features/drawings/views/drawings_view.dart';
 import '../../features/project_calendar/bindings/project_calendar_binding.dart';
+import '../../features/tasks/bindings/tasks_binding.dart';
+import '../../features/tasks/views/tasks_view.dart';
 import '../../features/project_calendar/views/delivery_details_view.dart';
 import '../../features/project_calendar/views/project_calendar_view.dart';
 import 'app_routes.dart';
@@ -40,6 +42,11 @@ class AppPages {
       name: AppRoutes.drawings,
       page: () => const DrawingsView(),
       binding: DrawingsBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.tasks,
+      page: () => const TasksView(),
+      binding: TasksBinding(),
     ),
   ];
 }

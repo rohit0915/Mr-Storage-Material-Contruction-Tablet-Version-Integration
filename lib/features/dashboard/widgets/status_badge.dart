@@ -40,6 +40,8 @@ class StatusBadge extends StatelessWidget {
           SizedBox(width: size.width * 0.004),
           Text(
             label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
               color: solid ? Colors.white : color,
               fontSize: fontSize,

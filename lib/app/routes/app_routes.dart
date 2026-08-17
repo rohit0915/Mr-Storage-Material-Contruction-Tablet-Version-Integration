@@ -6,4 +6,5 @@ class AppRoutes {
   static const String projectCalendar = '/project-calendar';
   static const String deliveryDetails = '/delivery-details';
   static const String drawings = '/drawings';
+  static const String tasks = '/tasks';
 }

@@ -57,9 +57,9 @@ class ActiveSitesCard extends GetView<DashboardController> {
             child: Row(
               children: [
                 _Header('Project', flex: 3, size: headerSize),
-                _Header('Progress', flex: 3, size: headerSize),
+                _Header('Progress', flex: 2, size: headerSize),
                 _Header('Deadline', flex: 2, size: headerSize),
-                _Header('Delivery Status', flex: 2, size: headerSize),
+                _Header('Delivery Status', flex: 3, size: headerSize),
               ],
             ),
           ),
@@ -95,12 +95,14 @@ class ActiveSitesCard extends GetView<DashboardController> {
                     ),
                   ),
                   Expanded(
-                    flex: 3,
+                    flex: 2,
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
                           '${(site.progress * 100).round()}%',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             fontSize: cellSize,
                             fontWeight: FontWeight.w700,
@@ -124,6 +126,8 @@ class ActiveSitesCard extends GetView<DashboardController> {
                     flex: 2,
                     child: Text(
                       site.deadline,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: cellSize,
                         color: AppColors.textSecondary,
@@ -131,8 +135,9 @@ class ActiveSitesCard extends GetView<DashboardController> {
                     ),
                   ),
                   Expanded(
-                    flex: 2,
-                    child: Align(
+                    flex: 3,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
                       alignment: Alignment.centerLeft,
                       child: StatusBadge(
                         label: site.status,
@@ -163,6 +168,8 @@ class _Header extends StatelessWidget {
       flex: flex,
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: size,
           fontWeight: FontWeight.w600,

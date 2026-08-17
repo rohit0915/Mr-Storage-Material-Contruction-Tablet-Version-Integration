@@ -20,6 +20,9 @@ class AppShellController extends GetxController {
       case 'Drawings & Attachments':
         Get.offNamed(AppRoutes.drawings);
         break;
+      case 'Tasks':
+        Get.offNamed(AppRoutes.tasks);
+        break;
       default:
         Get.snackbar(
           title,
