@@ -15,6 +15,11 @@ class AppAssets {
   static const String iconDocChartPink = 'assets/images/icons/icon_doc_chart_pink.png';
   static const String iconActivityOrange = 'assets/images/icons/icon_activity_orange.png';
   static const String iconStatClock = 'assets/images/icons/icon_stat_clock.png';
+  static const String iconMaterialExcel = 'assets/images/icons/icon_material_excel.png';
+  static const String iconMaterialPdf = 'assets/images/icons/icon_material_pdf.png';
+  static const String iconPasswordSuccess =
+      'assets/images/icons/icon_password_success.png';
+  static const String qrCode = 'assets/images/qr_code.png';
   static const String successCheck = 'assets/images/success_check.png';
   static const String thumbBuilding = 'assets/images/projects/thumb_building.png';
   static const String project1 = 'assets/images/projects/project_1.png';

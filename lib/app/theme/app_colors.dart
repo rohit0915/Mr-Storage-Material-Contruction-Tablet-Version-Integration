@@ -33,6 +33,7 @@ class AppColors {
   static const Color warning = Color(0xFFF59E0B);
   static const Color info = Color(0xFF3B82F6);
   static const Color purple = Color(0xFFAB47BC);
+  static const Color brandPrimary = Color(0xFF7539FF);
   static const Color pink = Color(0xFFFD3995);
   static const Color cyan = Color(0xFF06B6D4);
   static const Color orange = Color(0xFFF97316);

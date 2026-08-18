@@ -9,6 +9,10 @@ import '../../features/drawings/views/drawings_view.dart';
 import '../../features/project_calendar/bindings/project_calendar_binding.dart';
 import '../../features/tasks/bindings/tasks_binding.dart';
 import '../../features/tasks/views/tasks_view.dart';
+import '../../features/label_printing/bindings/label_printing_binding.dart';
+import '../../features/label_printing/views/label_printing_view.dart';
+import '../../features/material_requests/bindings/material_requests_binding.dart';
+import '../../features/material_requests/views/material_requests_view.dart';
 import '../../features/project_calendar/views/delivery_details_view.dart';
 import '../../features/project_calendar/views/project_calendar_view.dart';
 import 'app_routes.dart';
@@ -47,6 +51,16 @@ class AppPages {
       name: AppRoutes.tasks,
       page: () => const TasksView(),
       binding: TasksBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.materialRequests,
+      page: () => const MaterialRequestsView(),
+      binding: MaterialRequestsBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.labelPrinting,
+      page: () => const LabelPrintingView(),
+      binding: LabelPrintingBinding(),
     ),
   ];
 }

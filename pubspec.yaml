@@ -65,6 +65,7 @@ flutter:
     - assets/images/drawer_logo.png
     - assets/images/ellipse_top_left.png
     - assets/images/ellipse_bottom_right.png
+    - assets/images/qr_code.png
     - assets/images/icons/
     - assets/images/success_check.png
     - assets/images/projects/

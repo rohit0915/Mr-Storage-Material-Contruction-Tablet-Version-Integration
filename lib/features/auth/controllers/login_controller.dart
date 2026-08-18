@@ -4,6 +4,13 @@ import 'package:get/get.dart';
 import '../../../app/routes/app_routes.dart';
 import '../services/auth_service.dart';
 
+enum ForgotPasswordStep {
+  email,
+  otp,
+  newPassword,
+  success,
+}
+
 class LoginController extends GetxController {
   LoginController({AuthService? authService})
       : _authService = authService ?? Get.find<AuthService>();
@@ -17,6 +24,16 @@ class LoginController extends GetxController {
   final RxBool rememberMe = true.obs;
   final RxBool obscurePassword = true.obs;
   final RxBool isLoading = false.obs;
+  final RxBool inForgotFlow = false.obs;
+  final Rx<ForgotPasswordStep> forgotStep = ForgotPasswordStep.email.obs;
+
+  final TextEditingController forgotEmailController = TextEditingController();
+  final TextEditingController otp1Controller = TextEditingController();
+  final TextEditingController otp2Controller = TextEditingController();
+  final TextEditingController otp3Controller = TextEditingController();
+  final TextEditingController otp4Controller = TextEditingController();
+  final TextEditingController newPasswordController = TextEditingController();
+  final TextEditingController retypePasswordController = TextEditingController();
 
   void toggleRememberMe(bool? value) {
     rememberMe.value = value ?? false;
@@ -74,18 +91,93 @@ class LoginController extends GetxController {
   }
 
   void forgotPassword() {
-    Get.snackbar(
-      'Forgot password',
-      'Password reset will be available soon.',
-      snackPosition: SnackPosition.BOTTOM,
-      margin: const EdgeInsets.all(16),
-    );
+    inForgotFlow.value = true;
+    forgotStep.value = ForgotPasswordStep.email;
+    forgotEmailController.text = emailController.text.trim();
+  }
+
+  void backToLoginCard() {
+    inForgotFlow.value = false;
+  }
+
+  void continueForgotEmail() {
+    final email = forgotEmailController.text.trim();
+    if (email.isEmpty || !GetUtils.isEmail(email)) {
+      Get.snackbar(
+        'Invalid email',
+        'Please enter a valid email address.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+      return;
+    }
+    forgotStep.value = ForgotPasswordStep.otp;
+  }
+
+  void continueOtp() {
+    final otp = otp1Controller.text +
+        otp2Controller.text +
+        otp3Controller.text +
+        otp4Controller.text;
+    if (otp.length != 4) {
+      Get.snackbar(
+        'Invalid OTP',
+        'Please enter 4 digit OTP.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+      return;
+    }
+    forgotStep.value = ForgotPasswordStep.newPassword;
+  }
+
+  void continueNewPassword() {
+    final pass = newPasswordController.text;
+    final retype = retypePasswordController.text;
+    if (pass.length < 4) {
+      Get.snackbar(
+        'Weak password',
+        'Password must be at least 4 characters.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+      return;
+    }
+    if (pass != retype) {
+      Get.snackbar(
+        'Password mismatch',
+        'New password and retype password must match.',
+        snackPosition: SnackPosition.BOTTOM,
+        margin: const EdgeInsets.all(16),
+      );
+      return;
+    }
+    forgotStep.value = ForgotPasswordStep.success;
+  }
+
+  void finishForgotFlow() {
+    inForgotFlow.value = false;
+    forgotStep.value = ForgotPasswordStep.email;
+    passwordController.clear();
+    newPasswordController.clear();
+    retypePasswordController.clear();
+    otp1Controller.clear();
+    otp2Controller.clear();
+    otp3Controller.clear();
+    otp4Controller.clear();
   }
 
   @override
   void onClose() {
     emailController.dispose();
     passwordController.dispose();
+    forgotEmailController.dispose();
+    otp1Controller.dispose();
+    otp2Controller.dispose();
+    otp3Controller.dispose();
+    otp4Controller.dispose();
+    newPasswordController.dispose();
+    retypePasswordController.dispose();
     super.onClose();
   }
 }

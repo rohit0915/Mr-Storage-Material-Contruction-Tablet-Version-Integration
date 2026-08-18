@@ -23,6 +23,12 @@ class AppShellController extends GetxController {
       case 'Tasks':
         Get.offNamed(AppRoutes.tasks);
         break;
+      case 'Material Request':
+        Get.offNamed(AppRoutes.materialRequests);
+        break;
+      case 'Label Printing':
+        Get.offNamed(AppRoutes.labelPrinting);
+        break;
       default:
         Get.snackbar(
           title,

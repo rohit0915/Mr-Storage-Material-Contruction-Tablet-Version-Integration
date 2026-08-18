@@ -7,10 +7,12 @@ class TaskCalendarDialog extends StatefulWidget {
     super.key,
     this.initialDate,
     this.title = 'Select Date',
+    this.confirmLabel = 'Ok',
   });
 
   final DateTime? initialDate;
   final String title;
+  final String confirmLabel;
 
   @override
   State<TaskCalendarDialog> createState() => _TaskCalendarDialogState();
@@ -158,7 +160,7 @@ class _TaskCalendarDialogState extends State<TaskCalendarDialog> {
                           borderRadius: BorderRadius.circular(8),
                         ),
                       ),
-                      child: const Text('Ok'),
+                      child: Text(widget.confirmLabel),
                     ),
                   ],
                 ),
@@ -226,12 +228,14 @@ Future<DateTime?> pickTaskDate(
   BuildContext context, {
   DateTime? initialDate,
   String title = 'Select Date',
+  String confirmLabel = 'Ok',
 }) {
   return showDialog<DateTime>(
     context: context,
     builder: (_) => TaskCalendarDialog(
       initialDate: initialDate,
       title: title,
+      confirmLabel: confirmLabel,
     ),
   );
 }
