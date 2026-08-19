@@ -9,6 +9,11 @@ import '../../features/drawings/views/drawings_view.dart';
 import '../../features/project_calendar/bindings/project_calendar_binding.dart';
 import '../../features/tasks/bindings/tasks_binding.dart';
 import '../../features/tasks/views/tasks_view.dart';
+import '../../features/bundle_scan/bindings/bundle_scan_binding.dart';
+import '../../features/bundle_scan/views/bundle_scan_detail_view.dart';
+import '../../features/bundle_scan/views/bundle_scan_view.dart';
+import '../../features/delivery_tracking/bindings/delivery_tracking_binding.dart';
+import '../../features/delivery_tracking/views/delivery_tracking_view.dart';
 import '../../features/label_printing/bindings/label_printing_binding.dart';
 import '../../features/label_printing/views/label_printing_view.dart';
 import '../../features/material_requests/bindings/material_requests_binding.dart';
@@ -61,6 +66,21 @@ class AppPages {
       name: AppRoutes.labelPrinting,
       page: () => const LabelPrintingView(),
       binding: LabelPrintingBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.deliveryTracking,
+      page: () => const DeliveryTrackingView(),
+      binding: DeliveryTrackingBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.bundleScan,
+      page: () => const BundleScanView(),
+      binding: BundleScanBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.bundleScanDetail,
+      page: () => const BundleScanDetailView(),
+      binding: BundleScanBinding(),
     ),
   ];
 }

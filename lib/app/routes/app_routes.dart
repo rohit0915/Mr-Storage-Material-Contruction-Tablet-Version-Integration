@@ -9,4 +9,7 @@ class AppRoutes {
   static const String tasks = '/tasks';
   static const String materialRequests = '/material-requests';
   static const String labelPrinting = '/label-printing';
+  static const String deliveryTracking = '/delivery-tracking';
+  static const String bundleScan = '/bundle-scan';
+  static const String bundleScanDetail = '/bundle-scan/detail';
 }
