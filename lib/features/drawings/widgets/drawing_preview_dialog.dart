@@ -19,19 +19,20 @@ class DrawingPreviewDialog extends StatelessWidget {
         horizontal: size.width * 0.05,
         vertical: size.height * 0.035,
       ),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         clipBehavior: Clip.antiAlias,
         child: SizedBox(
-          width: size.width * 0.9,
-          height: size.height * 0.88,
+          width: size.width * 0.88,
+          height: size.height * 0.86,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              // Header Row
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 18, 12, 14),
+                padding: const EdgeInsets.fromLTRB(24, 18, 16, 14),
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -48,12 +49,13 @@ class DrawingPreviewDialog extends StatelessWidget {
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
                             file.projectCode,
                             style: const TextStyle(
                               color: AppColors.textSecondary,
                               fontWeight: FontWeight.w600,
+                              fontSize: 13,
                             ),
                           ),
                         ],
@@ -64,19 +66,19 @@ class DrawingPreviewDialog extends StatelessWidget {
                       child: Row(
                         children: [
                           Expanded(
-                            child: _Meta(
+                            child: _MetaCol(
                               label: 'Location',
                               value: file.location,
                             ),
                           ),
                           Expanded(
-                            child: _Meta(
-                              label: 'Uploaded By',
+                            child: _MetaCol(
+                              label: 'Uploaded By:',
                               value: file.uploadedBy,
                             ),
                           ),
                           Expanded(
-                            child: _Meta(
+                            child: _MetaCol(
                               label: 'Received on',
                               value: file.receivedOn,
                             ),
@@ -86,35 +88,38 @@ class DrawingPreviewDialog extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close),
+                      icon: const Icon(Icons.close, color: Colors.black, size: 22),
                     ),
                   ],
                 ),
               ),
               const Divider(height: 1, color: AppColors.cardBorder),
+
+              // Image / Preview Content Body
               Expanded(
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 12),
+                  padding: const EdgeInsets.all(20),
                   child: file.previewType == DrawingPreviewType.imageGrid
-                      ? _ImageGrid(assets: file.previewAssets)
-                      : SizedBox.expand(
-                          child: InteractiveViewer(
-                            minScale: 0.6,
-                            maxScale: 5,
+                      ? _ImageGrid2x2(assets: file.previewAssets)
+                      : InteractiveViewer(
+                          minScale: 0.6,
+                          maxScale: 5,
+                          child: Center(
                             child: Image.asset(
                               file.previewAssets.first,
                               fit: BoxFit.contain,
                               width: double.infinity,
                               height: double.infinity,
-                              alignment: Alignment.center,
                               filterQuality: FilterQuality.high,
                             ),
                           ),
                         ),
                 ),
               ),
+
+              // Bottom Action Bar (Download & Approved Badge)
               Padding(
-                padding: const EdgeInsets.fromLTRB(24, 4, 24, 20),
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 20),
                 child: Row(
                   children: [
                     ElevatedButton.icon(
@@ -126,36 +131,37 @@ class DrawingPreviewDialog extends StatelessWidget {
                           ),
                         );
                       },
-                      icon: const Icon(Icons.download_rounded, size: 18),
+                      icon: const Icon(Icons.arrow_downward, size: 16),
                       label: const Text('Download'),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8BA3C7),
+                        backgroundColor: const Color(0xFF94A3B8),
                         foregroundColor: Colors.white,
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(
-                          horizontal: 22,
-                          vertical: 14,
+                          horizontal: 24,
+                          vertical: 12,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(20),
                         ),
                       ),
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
+                        horizontal: 20,
                         vertical: 10,
                       ),
                       decoration: BoxDecoration(
-                        color: AppColors.success,
+                        color: const Color(0xFF22C55E),
                         borderRadius: BorderRadius.circular(20),
                       ),
                       child: Text(
-                        file.status,
+                        file.status.isNotEmpty ? file.status : 'Approved',
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w700,
+                          fontSize: 14,
                         ),
                       ),
                     ),
@@ -170,8 +176,8 @@ class DrawingPreviewDialog extends StatelessWidget {
   }
 }
 
-class _Meta extends StatelessWidget {
-  const _Meta({required this.label, required this.value});
+class _MetaCol extends StatelessWidget {
+  const _MetaCol({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -188,12 +194,14 @@ class _Meta extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ),
+        const SizedBox(height: 2),
         Text(
           value,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
           style: const TextStyle(
             fontWeight: FontWeight.w700,
+            fontSize: 13,
             color: AppColors.textPrimary,
           ),
         ),
@@ -202,34 +210,28 @@ class _Meta extends StatelessWidget {
   }
 }
 
-class _ImageGrid extends StatelessWidget {
-  const _ImageGrid({required this.assets});
+class _ImageGrid2x2 extends StatelessWidget {
+  const _ImageGrid2x2({required this.assets});
 
   final List<String> assets;
 
   @override
   Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        const gap = 12.0;
-        final itemW = (constraints.maxWidth - gap) / 2;
-        final itemH = (constraints.maxHeight - gap) / 2;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: assets.take(4).map((asset) {
-            return SizedBox(
-              width: itemW,
-              height: itemH,
-              child: Image.asset(
-                asset,
-                fit: BoxFit.cover,
-                width: itemW,
-                height: itemH,
-                filterQuality: FilterQuality.high,
-              ),
-            );
-          }).toList(),
+    return GridView.builder(
+      itemCount: assets.length.clamp(0, 4),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        childAspectRatio: 1.5,
+      ),
+      itemBuilder: (context, index) {
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(8),
+          child: Image.asset(
+            assets[index],
+            fit: BoxFit.cover,
+          ),
         );
       },
     );

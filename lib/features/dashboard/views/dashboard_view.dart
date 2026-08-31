@@ -39,39 +39,76 @@ class DashboardView extends GetView<DashboardController> {
             SizedBox(height: gap),
             const FilterRow(),
             SizedBox(height: gap),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Expanded(flex: 3, child: DeliveryOverviewCard()),
-                  SizedBox(width: colGap),
-                  const Expanded(flex: 3, child: MaterialRequestCard()),
-                  SizedBox(width: colGap),
-                  const Expanded(flex: 5, child: ActiveSitesCard()),
-                ],
-              ),
-            ),
-            SizedBox(height: gap),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Expanded(child: DeadlinesCard()),
-                  SizedBox(width: colGap),
-                  const Expanded(child: ProjectTimelineCard()),
-                ],
-              ),
-            ),
-            SizedBox(height: gap),
-            IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  const Expanded(flex: 6, child: FreightCarriersCard()),
-                  SizedBox(width: colGap),
-                  const Expanded(flex: 4, child: RecentActivityCard()),
-                ],
-              ),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 900;
+                if (isNarrow) {
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Expanded(child: DeliveryOverviewCard()),
+                          SizedBox(width: colGap),
+                          const Expanded(child: MaterialRequestCard()),
+                        ],
+                      ),
+                      SizedBox(height: gap),
+                      const ActiveSitesCard(),
+                      SizedBox(height: gap),
+                      Row(
+                        children: [
+                          const Expanded(child: DeadlinesCard()),
+                          SizedBox(width: colGap),
+                          const Expanded(child: ProjectTimelineCard()),
+                        ],
+                      ),
+                      SizedBox(height: gap),
+                      const FreightCarriersCard(),
+                      SizedBox(height: gap),
+                      const RecentActivityCard(),
+                    ],
+                  );
+                }
+
+                return Column(
+                  children: [
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Expanded(flex: 3, child: DeliveryOverviewCard()),
+                          SizedBox(width: colGap),
+                          const Expanded(flex: 3, child: MaterialRequestCard()),
+                          SizedBox(width: colGap),
+                          const Expanded(flex: 5, child: ActiveSitesCard()),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: gap),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Expanded(child: DeadlinesCard()),
+                          SizedBox(width: colGap),
+                          const Expanded(child: ProjectTimelineCard()),
+                        ],
+                      ),
+                    ),
+                    SizedBox(height: gap),
+                    IntrinsicHeight(
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          const Expanded(flex: 6, child: FreightCarriersCard()),
+                          SizedBox(width: colGap),
+                          const Expanded(flex: 4, child: RecentActivityCard()),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ],
         ),

@@ -33,7 +33,11 @@ class AppScaffold extends StatelessWidget {
     }
     final shell = Get.find<AppShellController>();
     if (shell.selectedMenu.value != menuTitle) {
-      shell.selectedMenu.value = menuTitle;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (shell.selectedMenu.value != menuTitle) {
+          shell.selectedMenu.value = menuTitle;
+        }
+      });
     }
 
     return AnnotatedRegion<SystemUiOverlayStyle>(

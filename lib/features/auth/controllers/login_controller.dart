@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/routes/app_routes.dart';
+import '../../../app/utils/app_logger.dart';
+import '../../../app/utils/app_toast.dart';
 import '../services/auth_service.dart';
 
 enum ForgotPasswordStep {
@@ -68,21 +70,22 @@ class LoginController extends GetxController {
 
     isLoading.value = true;
     try {
-      final success = await _authService.login(
+      AppLogger.i('Triggering login action in LoginController', tag: 'AUTH');
+      final errorMsg = await _authService.login(
         email: emailController.text.trim(),
-        password: passwordController.text,
+        password: passwordController.text.trim(),
       );
 
-      if (success) {
+      if (errorMsg == null) {
+        AppToast.showSuccess(
+          title: 'Login Successful',
+          description: 'Welcome back!',
+        );
         Get.offAllNamed(AppRoutes.dashboard);
       } else {
-        Get.snackbar(
-          'Login failed',
-          'Invalid email or password',
-          snackPosition: SnackPosition.BOTTOM,
-          backgroundColor: Colors.redAccent,
-          colorText: Colors.white,
-          margin: const EdgeInsets.all(16),
+        AppToast.showError(
+          title: 'Login Failed',
+          description: errorMsg,
         );
       }
     } finally {
@@ -103,11 +106,9 @@ class LoginController extends GetxController {
   void continueForgotEmail() {
     final email = forgotEmailController.text.trim();
     if (email.isEmpty || !GetUtils.isEmail(email)) {
-      Get.snackbar(
-        'Invalid email',
-        'Please enter a valid email address.',
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
+      AppToast.showError(
+        title: 'Invalid Email',
+        description: 'Please enter a valid email address.',
       );
       return;
     }
@@ -120,11 +121,9 @@ class LoginController extends GetxController {
         otp3Controller.text +
         otp4Controller.text;
     if (otp.length != 4) {
-      Get.snackbar(
-        'Invalid OTP',
-        'Please enter 4 digit OTP.',
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
+      AppToast.showError(
+        title: 'Invalid OTP',
+        description: 'Please enter 4 digit OTP.',
       );
       return;
     }
@@ -135,20 +134,16 @@ class LoginController extends GetxController {
     final pass = newPasswordController.text;
     final retype = retypePasswordController.text;
     if (pass.length < 4) {
-      Get.snackbar(
-        'Weak password',
-        'Password must be at least 4 characters.',
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
+      AppToast.showError(
+        title: 'Weak Password',
+        description: 'Password must be at least 4 characters.',
       );
       return;
     }
     if (pass != retype) {
-      Get.snackbar(
-        'Password mismatch',
-        'New password and retype password must match.',
-        snackPosition: SnackPosition.BOTTOM,
-        margin: const EdgeInsets.all(16),
+      AppToast.showError(
+        title: 'Password Mismatch',
+        description: 'New password and retype password must match.',
       );
       return;
     }

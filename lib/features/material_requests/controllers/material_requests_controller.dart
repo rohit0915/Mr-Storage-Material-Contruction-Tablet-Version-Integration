@@ -1,120 +1,29 @@
-import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/utils/app_logger.dart';
+import '../../../app/utils/app_toast.dart';
 import '../models/material_request_models.dart';
+import '../services/material_requests_service.dart';
 
 class MaterialRequestsController extends GetxController {
-  // Filter dropdown values
-  final projects = const <String>[
-    'All Projects',
-    'Downtown Office Complex',
-    'Residential Tower A',
-    'ABC Construction Site A',
-    'Riverside Office Complex',
-    'XYZ Building Complex',
-    'Duplex Villa',
-  ];
+  MaterialRequestsController({MaterialRequestsService? service})
+      : _service = service ?? Get.put(MaterialRequestsService());
 
-  final departments = const <String>[
-    'All Departments',
-    'Construction',
-    'Site Engineer',
-    'Sales Plant',
-  ];
+  final MaterialRequestsService _service;
 
-  final requestedByList = const <String>[
-    'All',
-    'John Smith',
-    'Sarah Wilson',
-    'Robert Chen',
-    'Michael Jordan',
-    'James Cooper',
-    'Kim',
-  ];
-
+  final projects = <String>['All Projects'].obs;
+  final departments = <String>['All Departments'].obs;
+  final requestedByList = <String>['All'].obs;
   final priorityList = const <String>['Low', 'Medium', 'High'];
+  final statusList = const <String>['All Status', 'Pending', 'Approved', 'Rejected'];
 
-  final statusList = const <String>[
-    'All Status',
-    'Pending',
-    'Approved',
-    'Rejected',
-  ];
+  final requests = <MaterialRequestBoardItem>[].obs;
+  final isLoading = false.obs;
 
-  // Main data (mock)
-  final requests = <MaterialRequestBoardItem>[
-    MaterialRequestBoardItem(
-      id: 'MR-2025-0031',
-      project: 'Downtown Office Complex',
-      site: 'Construction Site A',
-      department: 'Construction',
-      requestedBy: 'John Smith',
-      requestDate: DateTime(2025, 5, 19, 16, 30),
-      requiredBy: DateTime(2025, 5, 23),
-      requestedItemsCount: 8,
-      itemsPreview: 'Steel, Cements, Rocks...',
-      status: MaterialRequestStatus.pending,
-      priority: 'High',
-      statusColor: const Color(0xFFFFC107),
-      priorityColor: const Color(0xFFBE185D),
-      items: const [
-        MaterialRequestItemRow(name: 'Steel Beams', unit: 'kg', quantity: 5000, remarks: 'For Ground Floor'),
-        MaterialRequestItemRow(name: 'Cement 50 kg', unit: 'Bags', quantity: 300, remarks: 'Ordinary Portland'),
-        MaterialRequestItemRow(name: 'Rebar 12 mm', unit: 'kg', quantity: 3000, remarks: 'Fe 500'),
-        MaterialRequestItemRow(name: 'Bricks (Red)', unit: 'Nos', quantity: 10000, remarks: 'Standard Quality'),
-        MaterialRequestItemRow(name: 'Sand', unit: 'CFT', quantity: 500, remarks: 'River Sand'),
-        MaterialRequestItemRow(name: 'Gravel', unit: 'CFT', quantity: 400, remarks: '-'),
-        MaterialRequestItemRow(name: 'Plywood Sheets', unit: 'Sheets', quantity: 120, remarks: 'Shuttering'),
-        MaterialRequestItemRow(name: 'Binding Wire', unit: 'kg', quantity: 200, remarks: 'GI Wire'),
-      ],
-    ),
-    MaterialRequestBoardItem(
-      id: 'MR-2025-0032',
-      project: 'Residential Tower A',
-      site: 'Residential Site B',
-      department: 'Site Engineer',
-      requestedBy: 'Sarah Wilson',
-      requestDate: DateTime(2025, 5, 18, 10, 10),
-      requiredBy: DateTime(2025, 5, 22),
-      requestedItemsCount: 6,
-      itemsPreview: 'Cement, Sand, Bricks...',
-      status: MaterialRequestStatus.approved,
-      priority: 'Medium',
-      statusColor: const Color(0xFF22C55E),
-      priorityColor: const Color(0xFF2563EB),
-      items: const [
-        MaterialRequestItemRow(
-          name: 'Cement 50 kg',
-          unit: 'bags',
-          quantity: 220,
-          remarks: 'For foundation',
-        ),
-      ],
-    ),
-    MaterialRequestBoardItem(
-      id: 'MR-2025-0033',
-      project: 'ABC Construction Site A',
-      site: 'ABC Construction Site A',
-      department: 'Construction',
-      requestedBy: 'Robert Chen',
-      requestDate: DateTime(2025, 5, 17, 12, 0),
-      requiredBy: DateTime(2025, 5, 23),
-      requestedItemsCount: 10,
-      itemsPreview: 'Steel, Rebar, Gravel...',
-      status: MaterialRequestStatus.rejected,
-      priority: 'Low',
-      statusColor: const Color(0xFFEF4444),
-      priorityColor: const Color(0xFF8B5CF6),
-      items: const [
-        MaterialRequestItemRow(
-          name: 'Bricks (Red)',
-          unit: 'nos',
-          quantity: 10000,
-          remarks: 'Standard quality',
-        ),
-      ],
-    ),
-  ].obs;
+  final totalRequestsStat = 0.obs;
+  final pendingStat = 0.obs;
+  final approvedStat = 0.obs;
+  final rejectedStat = 0.obs;
 
   final selectedProject = 'All Projects'.obs;
   final selectedDepartment = 'All Departments'.obs;
@@ -125,7 +34,7 @@ class MaterialRequestsController extends GetxController {
   final dateTo = Rxn<DateTime>();
 
   // Pagination
-  final pageIndex = 0.obs; // 0-based
+  final pageIndex = 0.obs;
   final pageSize = 10;
 
   final filteredRequests = <MaterialRequestBoardItem>[].obs;
@@ -133,7 +42,66 @@ class MaterialRequestsController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    _recomputeFiltered();
+    fetchRequests();
+  }
+
+  Future<void> fetchRequests() async {
+    isLoading.value = true;
+    try {
+      final res = await _service.getMaterialRequests(
+        leadId: selectedProject.value,
+        department: selectedDepartment.value,
+        status: selectedStatus.value,
+        requestedBy: selectedRequestedBy.value,
+        dateFrom: dateFrom.value?.toIso8601String(),
+        dateTo: dateTo.value?.toIso8601String(),
+      );
+
+      if (res != null) {
+        if (res['stats'] is Map) {
+          final st = res['stats'] as Map;
+          totalRequestsStat.value = (st['totalRequests'] as num?)?.toInt() ?? (st['total'] as num?)?.toInt() ?? 0;
+          pendingStat.value = (st['pending'] as num?)?.toInt() ?? 0;
+          approvedStat.value = (st['approved'] as num?)?.toInt() ?? 0;
+          rejectedStat.value = (st['rejected'] as num?)?.toInt() ?? 0;
+        }
+
+        if (res['materialRequests'] is List) {
+          final list = res['materialRequests'] as List;
+          final parsed = <MaterialRequestBoardItem>[];
+          final pOpts = <String>{'All Projects'};
+          final dOpts = <String>{'All Departments'};
+          final rOpts = <String>{'All'};
+
+          for (final item in list) {
+            if (item is Map) {
+              final boardItem = MaterialRequestBoardItem.fromJson(Map<String, dynamic>.from(item));
+              parsed.add(boardItem);
+
+              if (boardItem.project.isNotEmpty && boardItem.project != 'No Project') {
+                pOpts.add(boardItem.project);
+              }
+              if (boardItem.department.isNotEmpty) {
+                dOpts.add(boardItem.department);
+              }
+              if (boardItem.requestedBy.isNotEmpty && boardItem.requestedBy != 'Unassigned') {
+                rOpts.add(boardItem.requestedBy);
+              }
+            }
+          }
+
+          projects.assignAll(pOpts.toList());
+          departments.assignAll(dOpts.toList());
+          requestedByList.assignAll(rOpts.toList());
+          requests.assignAll(parsed);
+        }
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchRequests Error', error: e, stackTrace: stackTrace, tag: 'MAT_REQ_CTRL');
+    } finally {
+      isLoading.value = false;
+      _recomputeFiltered();
+    }
   }
 
   void resetPagination() {
@@ -156,7 +124,7 @@ class MaterialRequestsController extends GetxController {
     if (to != null) dateTo.value = to;
 
     resetPagination();
-    _recomputeFiltered();
+    fetchRequests();
   }
 
   List<MaterialRequestBoardItem> get pageRequests {
@@ -181,19 +149,39 @@ class MaterialRequestsController extends GetxController {
     dateFrom.value = null;
     dateTo.value = null;
     resetPagination();
-    _recomputeFiltered();
+    fetchRequests();
   }
 
   Future<void> openDetails(MaterialRequestBoardItem item) async {
-    // details dialog is defined in the widget file
     return;
   }
 
   Future<bool> addRequest(MaterialRequestBoardItem request) async {
-    requests.add(request);
-    resetPagination();
-    _recomputeFiltered();
-    return true;
+    final payload = {
+      'siteLocation': request.site,
+      'department': request.department,
+      'priority': request.priority.toLowerCase(),
+      'requiredBy': request.requiredBy.toIso8601String().split('T')[0],
+      'requestedItems': request.items
+          .map((i) => {
+                'name': i.name,
+                'quantity': i.quantity,
+                'unit': i.unit,
+                'notes': i.remarks,
+              })
+          .toList(),
+    };
+
+    final success = await _service.createMaterialRequest(payload);
+    if (success) {
+      AppToast.showSuccess(title: 'Success', description: 'Material Request submitted successfully!');
+      resetPagination();
+      fetchRequests();
+      return true;
+    } else {
+      AppToast.showError(title: 'Error', description: 'Failed to submit Material Request.');
+      return false;
+    }
   }
 
   void nextPage() {
@@ -235,7 +223,6 @@ class MaterialRequestsController extends GetxController {
   }
 }
 
-/// Local date formatting so we don't add intl dependency to this feature.
 class MaterialRequestControllerDateFormatter {
   String shortDate(DateTime date) {
     const months = [

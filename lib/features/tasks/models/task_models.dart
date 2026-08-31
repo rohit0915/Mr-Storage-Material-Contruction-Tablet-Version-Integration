@@ -25,6 +25,54 @@ class TaskBoardItem {
   final TaskColumn column;
   final bool completed;
 
+  factory TaskBoardItem.fromJson(Map<String, dynamic> json) {
+    String pName = 'No Project';
+    if (json['leadId'] is Map) {
+      pName = json['leadId']['projectName']?.toString() ?? json['leadId']['jobId']?.toString() ?? 'No Project';
+    } else if (json['project'] != null) {
+      pName = json['project'].toString();
+    }
+
+    String assigneeName = 'Unassigned';
+    if (json['assignedTo'] is Map) {
+      assigneeName = json['assignedTo']['name']?.toString() ?? 'Unassigned';
+    } else if (json['assignedTo'] != null) {
+      assigneeName = json['assignedTo'].toString();
+    }
+
+    TaskColumn col = TaskColumn.todo;
+    final statusStr = (json['status'] ?? '').toString().toLowerCase();
+    if (statusStr == 'in_progress' || statusStr == 'inprogress') {
+      col = TaskColumn.inProgress;
+    } else if (statusStr == 'done' || statusStr == 'completed') {
+      col = TaskColumn.done;
+    }
+
+    DateTime dDate = DateTime.now();
+    if (json['dueDate'] != null) {
+      try {
+        dDate = DateTime.parse(json['dueDate'].toString());
+      } catch (_) {}
+    }
+
+    final prioRaw = json['priority']?.toString() ?? 'medium';
+    final prioStr = prioRaw.isNotEmpty
+        ? (prioRaw[0].toUpperCase() + prioRaw.substring(1).toLowerCase())
+        : 'Medium';
+
+    return TaskBoardItem(
+      id: json['_id'] ?? json['id'] ?? '',
+      title: json['title'] ?? 'Task',
+      project: pName,
+      description: json['description'] ?? '',
+      assignee: assigneeName,
+      dueDate: dDate,
+      priority: prioStr,
+      column: col,
+      completed: col == TaskColumn.done,
+    );
+  }
+
   TaskBoardItem copyWith({
     String? id,
     String? title,

@@ -48,39 +48,54 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
                 ),
               ),
             ),
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: size.width * 0.012,
-                vertical: size.height * 0.010,
-              ),
-              color: AppColors.tableHeader,
-              child: Row(
-                children: [
-                  _HeadCell(flex: 2, text: 'Request ID', size: cellFont),
-                  _HeadCell(flex: 3, text: 'Project / Site', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Requested Items', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Request Date', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Required By', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Status', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Priority', size: cellFont),
-                  _HeadCell(flex: 1, text: 'Actions', size: cellFont),
-                ],
-              ),
-            ),
-            ...rows.map((r) => _DataRow(item: r, cellFont: cellFont)),
-            if (rows.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'No material requests found.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: cellFont,
-                    fontWeight: FontWeight.w600,
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final minTableWidth = constraints.maxWidth.clamp(820.0, 2000.0);
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: minTableWidth,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: size.width * 0.012,
+                            vertical: size.height * 0.010,
+                          ),
+                          color: AppColors.tableHeader,
+                          child: Row(
+                            children: [
+                              _HeadCell(flex: 2, text: 'Request ID', size: cellFont),
+                              _HeadCell(flex: 3, text: 'Project / Site', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Requested Items', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Request Date', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Required By', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Status', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Priority', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Actions', size: cellFont),
+                            ],
+                          ),
+                        ),
+                        ...rows.map((r) => _DataRow(item: r, cellFont: cellFont)),
+                        if (rows.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              'No material requests found.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: cellFont,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                ),
-              ),
+                );
+              },
+            ),
             const Divider(height: 1, color: AppColors.cardBorder),
             _PaginationFooter(
               currentPage: currentPage,
@@ -214,25 +229,26 @@ class _DataRow extends StatelessWidget {
             child: _PriorityLabel(priority: item.priority),
           ),
           _DataCell(
-            flex: 1,
-            child: OutlinedButton(
-              onPressed: () => showDialog<void>(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => MaterialRequestDetailsDialog(item: item),
-              ),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.textPrimary,
-                backgroundColor: const Color(0xFFF9FAFB),
-                side: const BorderSide(color: AppColors.cardBorder),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-              ),
-              child: Text(
-                'View',
-                style: TextStyle(fontWeight: FontWeight.w600, fontSize: cellFont),
+            flex: 2,
+            child: Align(
+              alignment: Alignment.centerLeft,
+              child: OutlinedButton(
+                onPressed: () => showDialog<void>(
+                  context: context,
+                  barrierDismissible: false,
+                  builder: (_) => MaterialRequestDetailsDialog(item: item),
+                ),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.textPrimary,
+                  backgroundColor: const Color(0xFFF9FAFB),
+                  side: const BorderSide(color: AppColors.cardBorder),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+                child: Text(
+                  'View',
+                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: cellFont),
+                ),
               ),
             ),
           ),
@@ -493,18 +509,21 @@ class _StatusLabel extends StatelessWidget {
         ),
     };
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w700,
-          fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: color,
+            fontWeight: FontWeight.w700,
+            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0),
+          ),
         ),
       ),
     );

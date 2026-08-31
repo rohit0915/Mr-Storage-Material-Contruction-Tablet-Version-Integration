@@ -11,14 +11,37 @@ class CalendarTabBody extends GetView<ProjectCalendarController> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final colGap = (size.width * 0.014).clamp(14.0, 20.0);
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        const CalendarMonthGrid(),
-        SizedBox(height: size.height * 0.016),
-        const DeliveryCardsSection(),
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final isNarrow = constraints.maxWidth < 850;
+        if (isNarrow) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const CalendarMonthGrid(),
+              SizedBox(height: colGap),
+              const DeliveryCardsSection(),
+            ],
+          );
+        }
+
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Expanded(
+              flex: 65,
+              child: CalendarMonthGrid(),
+            ),
+            SizedBox(width: colGap),
+            const Expanded(
+              flex: 35,
+              child: DeliveryCardsSection(),
+            ),
+          ],
+        );
+      },
     );
   }
 }

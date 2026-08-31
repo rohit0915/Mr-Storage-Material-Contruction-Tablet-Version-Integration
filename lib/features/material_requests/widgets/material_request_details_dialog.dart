@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
-import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
 import '../models/material_request_models.dart';
 
@@ -13,31 +12,31 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final width = (size.width * 0.62).clamp(640.0, 820.0);
-    final labelSize = (size.width * 0.009).clamp(11.0, 12.0);
-    final valueSize = (size.width * 0.010).clamp(12.0, 14.0);
-    final dateFmt = DateFormat('MMM d, yyyy');
+    final width = (size.width * 0.62).clamp(640.0, 800.0);
+    final dateFmt = DateFormat('MMM d,yyyy');
     final timeFmt = DateFormat('hh:mm a');
 
     return Dialog(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 20),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: SizedBox(
         width: width,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header Bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 18, 16, 14),
+              child: Row(
                 children: [
                   Expanded(
                     child: Text(
                       'Material Request Details',
                       style: TextStyle(
-                        fontSize: (size.width * 0.014).clamp(16.0, 18.0),
+                        fontSize: (size.width * 0.016).clamp(18.0, 22.0),
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                       ),
@@ -45,252 +44,309 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: AppColors.textSecondary),
+                    icon: const Icon(Icons.close, color: Colors.black, size: 22),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
-              _StatusBadge(status: item.status),
-              const SizedBox(height: 16),
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
+            ),
+            const Divider(height: 1, color: AppColors.cardBorder),
+
+            // Scrollable Content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // Top Yellow Status Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF9C3),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'Pending',
+                        style: TextStyle(
+                          color: Color(0xFFD97706),
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 18),
+
+                    // Key-Value Metadata Grid
+                    Row(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          item.id,
-                          style: TextStyle(
-                            fontWeight: FontWeight.w800,
-                            fontSize: valueSize + 2,
-                            color: AppColors.textPrimary,
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Request ID',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.id,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 18,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Project / Site',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                item.project,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              Text(
+                                item.site,
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Requested By',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          item.requestedBy,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          item.requestedByRole,
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        const Text(
+                                          'Request Date',
+                                          style: TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          dateFmt.format(item.requestDate),
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 14,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                        Text(
+                                          timeFmt.format(item.requestDate),
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                         ),
-                        const SizedBox(height: 14),
-                        _InfoBlock(
-                          label: 'Project / Site',
-                          lines: [item.project, item.site],
-                          labelSize: labelSize,
-                          valueSize: valueSize,
-                        ),
-                        const SizedBox(height: 12),
-                        _InfoBlock(
-                          label: 'Requested By',
-                          lines: [item.requestedBy, item.requestedByRole],
-                          labelSize: labelSize,
-                          valueSize: valueSize,
+                        SizedBox(width: size.width * 0.04),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Priority',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFFEE2E2),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Text(
+                                  item.priority,
+                                  style: const TextStyle(
+                                    color: Color(0xFFEF4444),
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Status',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              const Text(
+                                'Pending',
+                                style: TextStyle(
+                                  color: Color(0xFFD97706),
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              const Text(
+                                'Required By',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                dateFmt.format(item.requiredBy),
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                  SizedBox(width: size.width * 0.04),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        _InfoBlock(
-                          label: 'Priority',
-                          labelSize: labelSize,
-                          child: _PriorityPill(priority: item.priority),
+                    const SizedBox(height: 22),
+
+                    // Requested Items (8)
+                    Text(
+                      'Requested Items (${item.items.length})',
+                      style: const TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _ItemsTable(items: item.items),
+                    const SizedBox(height: 20),
+
+                    // Request Notes
+                    const Text(
+                      'Request Notes',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      item.requestNotes,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // Attachment (2)
+                    const Text(
+                      'Attachment (2)',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 15,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: const [
+                        Expanded(
+                          child: _AttachmentTile(
+                            name: 'Material_List_xlsx',
+                            size: '12KB',
+                            isExcel: true,
+                          ),
                         ),
-                        const SizedBox(height: 12),
-                        _InfoBlock(
-                          label: 'Status',
-                          labelSize: labelSize,
-                          child: _StatusBadge(status: item.status, compact: true),
-                        ),
-                        const SizedBox(height: 12),
-                        _InfoBlock(
-                          label: 'Request Date',
-                          lines: [
-                            dateFmt.format(item.requestDate),
-                            timeFmt.format(item.requestDate),
-                          ],
-                          labelSize: labelSize,
-                          valueSize: valueSize,
-                        ),
-                        const SizedBox(height: 12),
-                        _InfoBlock(
-                          label: 'Required By',
-                          lines: [dateFmt.format(item.requiredBy)],
-                          labelSize: labelSize,
-                          valueSize: valueSize,
+                        SizedBox(width: 14),
+                        Expanded(
+                          child: _AttachmentTile(
+                            name: 'Site_Drawing.Pdf',
+                            size: '2.4 MB',
+                            isExcel: false,
+                          ),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 20),
-              Text(
-                'Requested Items (${item.items.length})',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: valueSize,
-                  color: AppColors.textPrimary,
+                    const SizedBox(height: 24),
+
+                    // Bottom Cancel Request Button
+                    Center(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: const Color(0xFFEF4444),
+                          side: const BorderSide(color: Color(0xFFEF4444)),
+                          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        ),
+                        child: const Text(
+                          'Cancel Request',
+                          style: TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-              const SizedBox(height: 10),
-              _ItemsTable(items: item.items),
-              const SizedBox(height: 18),
-              Text(
-                'Request Notes',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: valueSize,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                item.requestNotes,
-                style: TextStyle(
-                  fontSize: labelSize + 1,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 18),
-              Text(
-                'Attachment (2)',
-                style: TextStyle(
-                  fontWeight: FontWeight.w800,
-                  fontSize: valueSize,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const _AttachmentTile(
-                name: 'Material_List.xlsx',
-                size: '12KB',
-                iconAsset: AppAssets.iconMaterialExcel,
-              ),
-              const SizedBox(height: 8),
-              const _AttachmentTile(
-                name: 'Site_Drawing.Pdf',
-                size: '2.4 MB',
-                iconAsset: AppAssets.iconMaterialPdf,
-              ),
-              const SizedBox(height: 22),
-              Center(
-                child: OutlinedButton(
-                  onPressed: () => Navigator.of(context).pop(),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.danger,
-                    side: const BorderSide(color: AppColors.danger),
-                    padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  ),
-                  child: const Text(
-                    'Cancel Request',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
-      ),
-    );
-  }
-}
-
-class _InfoBlock extends StatelessWidget {
-  const _InfoBlock({
-    required this.label,
-    this.lines,
-    this.child,
-    required this.labelSize,
-    this.valueSize,
-  });
-
-  final String label;
-  final List<String>? lines;
-  final Widget? child;
-  final double labelSize;
-  final double? valueSize;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontWeight: FontWeight.w600,
-            fontSize: labelSize,
-          ),
-        ),
-        const SizedBox(height: 4),
-        if (child != null)
-          child!
-        else if (lines != null)
-          ...lines!.asMap().entries.map((e) {
-            final isTitle = e.key == 0;
-            return Text(
-              e.value,
-              style: TextStyle(
-                fontWeight: isTitle ? FontWeight.w800 : FontWeight.w500,
-                fontSize: isTitle ? (valueSize ?? labelSize) : labelSize,
-                color: isTitle ? AppColors.textPrimary : AppColors.textSecondary,
-              ),
-            );
-          }),
-      ],
-    );
-  }
-}
-
-class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status, this.compact = false});
-
-  final MaterialRequestStatus status;
-  final bool compact;
-
-  @override
-  Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      MaterialRequestStatus.pending => ('Pending', const Color(0xFFD97706)),
-      MaterialRequestStatus.approved => ('Approved', const Color(0xFF16A34A)),
-      MaterialRequestStatus.rejected => ('Rejected', const Color(0xFFDC2626)),
-    };
-
-    return Text(
-      label,
-      style: TextStyle(
-        color: color,
-        fontWeight: FontWeight.w800,
-        fontSize: compact ? 13 : 15,
-      ),
-    );
-  }
-}
-
-class _PriorityPill extends StatelessWidget {
-  const _PriorityPill({required this.priority});
-
-  final String priority;
-
-  @override
-  Widget build(BuildContext context) {
-    final color = priority == 'High'
-        ? const Color(0xFFBE185D)
-        : priority == 'Medium'
-            ? const Color(0xFFD97706)
-            : const Color(0xFF2563EB);
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Text(
-        priority,
-        style: TextStyle(color: color, fontWeight: FontWeight.w800, fontSize: 12),
       ),
     );
   }
@@ -303,11 +359,9 @@ class _ItemsTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cellFont = (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0);
-
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(10),
         border: Border.all(color: AppColors.cardBorder),
       ),
       child: Column(
@@ -316,15 +370,15 @@ class _ItemsTable extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             decoration: const BoxDecoration(
               color: AppColors.tableHeader,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(12)),
+              borderRadius: BorderRadius.vertical(top: Radius.circular(10)),
             ),
             child: Row(
-              children: [
-                _Head('#', cellFont),
-                _Head('Item Description', cellFont, flex: 3),
-                _Head('Unit', cellFont),
-                _Head('Requested Qty', cellFont, flex: 2),
-                _Head('Remarks', cellFont, flex: 2),
+              children: const [
+                Expanded(flex: 1, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
+                Expanded(flex: 4, child: Text('Item Description', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
+                Expanded(flex: 2, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
+                Expanded(flex: 2, child: Text('Requested Qty', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
+                Expanded(flex: 3, child: Text('Remarks', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
               ],
             ),
           ),
@@ -337,11 +391,11 @@ class _ItemsTable extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  _Cell('${i + 1}', cellFont),
-                  _Cell(it.name, cellFont, flex: 3),
-                  _Cell(it.unit, cellFont),
-                  _Cell(_fmtQty(it.quantity), cellFont, flex: 2),
-                  _Cell(it.remarks, cellFont, flex: 2),
+                  Expanded(flex: 1, child: Text('${i + 1}', style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
+                  Expanded(flex: 4, child: Text(it.name, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500))),
+                  Expanded(flex: 2, child: Text(it.unit, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
+                  Expanded(flex: 2, child: Text(_fmtQty(it.quantity), style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
+                  Expanded(flex: 3, child: Text(it.remarks, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
                 ],
               ),
             );
@@ -363,67 +417,21 @@ class _ItemsTable extends StatelessWidget {
   }
 }
 
-class _Head extends StatelessWidget {
-  const _Head(this.text, this.size, {this.flex = 1});
-  final String text;
-  final double size;
-  final int flex;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
-          fontSize: size,
-        ),
-      ),
-    );
-  }
-}
-
-class _Cell extends StatelessWidget {
-  const _Cell(this.text, this.size, {this.flex = 1});
-  final String text;
-  final double size;
-  final int flex;
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      flex: flex,
-      child: Text(
-        text,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-        style: TextStyle(
-          color: AppColors.textPrimary,
-          fontWeight: FontWeight.w600,
-          fontSize: size,
-        ),
-      ),
-    );
-  }
-}
-
 class _AttachmentTile extends StatelessWidget {
   const _AttachmentTile({
     required this.name,
     required this.size,
-    required this.iconAsset,
+    required this.isExcel,
   });
 
   final String name;
   final String size;
-  final String iconAsset;
+  final bool isExcel;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         border: Border.all(color: AppColors.cardBorder),
         borderRadius: BorderRadius.circular(10),
@@ -431,27 +439,31 @@ class _AttachmentTile extends StatelessWidget {
       child: Row(
         children: [
           Container(
-            width: 36,
-            height: 36,
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AppColors.cardBorder),
-              borderRadius: BorderRadius.circular(8),
+              color: isExcel ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: Padding(
-              padding: const EdgeInsets.all(7),
-              child: Image.asset(iconAsset, fit: BoxFit.contain),
+            child: Icon(
+              isExcel ? Icons.table_chart_outlined : Icons.picture_as_pdf_outlined,
+              color: isExcel ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+              size: 18,
             ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 10),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 12,
                     color: AppColors.textPrimary,
                   ),
                 ),
@@ -459,7 +471,7 @@ class _AttachmentTile extends StatelessWidget {
                   size,
                   style: const TextStyle(
                     color: AppColors.textSecondary,
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
                 ),
               ],
@@ -467,7 +479,7 @@ class _AttachmentTile extends StatelessWidget {
           ),
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.download_outlined, color: AppColors.textSecondary),
+            icon: const Icon(Icons.arrow_downward_rounded, size: 16, color: AppColors.textSecondary),
           ),
         ],
       ),

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/project_calendar_controller.dart';
 import '../models/project_calendar_models.dart';
 
-class ProjectTabBody extends GetView<ProjectCalendarController> {
+class ProjectTabBody extends StatelessWidget {
   const ProjectTabBody({super.key});
 
   @override
@@ -14,20 +15,44 @@ class ProjectTabBody extends GetView<ProjectCalendarController> {
     final size = MediaQuery.sizeOf(context);
     final gap = (size.width * 0.01).clamp(10.0, 14.0);
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final cardWidth = (constraints.maxWidth - (gap * 2)) / 3;
-        return Wrap(
-          spacing: gap,
-          runSpacing: gap,
-          children: controller.projectCards
-              .map(
-                (p) => SizedBox(
-                  width: cardWidth,
-                  child: _ProjectCard(item: p),
-                ),
-              )
-              .toList(),
+    return GetBuilder<ProjectCalendarController>(
+      id: AppGetIds.projectCards,
+      builder: (controller) {
+        final list = controller.projectCards;
+        if (controller.isLoadingProjects) {
+          return const SizedBox(
+            height: 200,
+            child: Center(child: CircularProgressIndicator()),
+          );
+        }
+        if (list.isEmpty) {
+          return const SizedBox(
+            height: 200,
+            child: Center(
+              child: Text(
+                'No projects found',
+                style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+              ),
+            ),
+          );
+        }
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final cols = constraints.maxWidth < 850 ? 2 : 3;
+            final cardWidth = (constraints.maxWidth - (gap * (cols - 1))) / cols;
+            return Wrap(
+              spacing: gap,
+              runSpacing: gap,
+              children: list
+                  .map(
+                    (p) => SizedBox(
+                      width: cardWidth,
+                      child: _ProjectCard(item: p),
+                    ),
+                  )
+                  .toList(),
+            );
+          },
         );
       },
     );
@@ -55,12 +80,12 @@ class _ProjectCard extends StatelessWidget {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.accentBlue, width: 1.5),
+            border: Border.all(color: AppColors.cardBorder, width: 1.2),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                color: Colors.black.withValues(alpha: 0.04),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
             ],
           ),
@@ -138,11 +163,14 @@ class _ProjectCard extends StatelessWidget {
                       width: double.infinity,
                       child: ElevatedButton.icon(
                         onPressed: () => Get.toNamed(
-                          AppRoutes.deliveryDetails,
+                          AppRoutes.projectDetails,
                           arguments: {
-                            'id': item.projectId,
+                            'id': item.realLeadId.isNotEmpty ? item.realLeadId : item.projectId,
                             'title': item.title,
                             'location': item.location,
+                            'buildingType': item.buildingType,
+                            'jobId': item.projectId,
+                            'status': item.status,
                             'fromProject': true,
                           },
                         ),
@@ -222,18 +250,32 @@ class _Pill extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-        ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(
+              color: color,
+              shape: BoxShape.circle,
+            ),
+          ),
+          const SizedBox(width: 4),
+          Text(
+            text,
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
+            ),
+          ),
+        ],
       ),
     );
   }

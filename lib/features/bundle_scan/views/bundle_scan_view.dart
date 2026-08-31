@@ -67,7 +67,7 @@ class BundleScanView extends GetView<BundleScanController> {
                   ),
                 ),
                 SizedBox(width: size.width * 0.007),
-                ElevatedButton.icon(
+                ElevatedButton(
                   onPressed: () => BundleScanQrDialog.show(
                     context,
                     onScanned: (bundleId) => Get.toNamed(
@@ -75,12 +75,8 @@ class BundleScanView extends GetView<BundleScanController> {
                       arguments: controller.pageBundles.firstOrNull,
                     ),
                   ),
-                  icon: const Icon(Icons.qr_code_scanner_rounded, size: 14),
-                  label: Text('Scan QR Code',
-                      style: TextStyle(
-                          fontSize: btnSize, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
+                    backgroundColor: const Color(0xFF7C3AED), // Purple matching Image 1
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.symmetric(
@@ -89,9 +85,12 @@ class BundleScanView extends GetView<BundleScanController> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                   ),
+                  child: Text('Scan QR Code',
+                      style: TextStyle(
+                          fontSize: btnSize, fontWeight: FontWeight.w700)),
                 ),
                 SizedBox(width: size.width * 0.007),
-                ElevatedButton.icon(
+                ElevatedButton(
                   onPressed: () => BundleScanQrDialog.show(
                     context,
                     onScanned: (bundleId) => Get.toNamed(
@@ -99,12 +98,8 @@ class BundleScanView extends GetView<BundleScanController> {
                       arguments: controller.pageBundles.firstOrNull,
                     ),
                   ),
-                  icon: const Icon(Icons.edit_outlined, size: 14),
-                  label: Text('Manual Entry',
-                      style: TextStyle(
-                          fontSize: btnSize, fontWeight: FontWeight.w700)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandPrimary,
+                    backgroundColor: const Color(0xFF7C3AED), // Purple matching Image 1
                     foregroundColor: Colors.white,
                     elevation: 0,
                     padding: EdgeInsets.symmetric(
@@ -113,6 +108,9 @@ class BundleScanView extends GetView<BundleScanController> {
                     shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8)),
                   ),
+                  child: Text('Manual Entry',
+                      style: TextStyle(
+                          fontSize: btnSize, fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -120,17 +118,17 @@ class BundleScanView extends GetView<BundleScanController> {
             // Summary cards
             Row(children: [
               _SummaryCard(
-                label: 'Bundles Scanned',
+                label: 'Bundles Scaned',
                 value: '${controller.bundlesScanned}',
                 subtitle: '↑ 5.62% from last month',
                 subtitleColor: AppColors.success,
-                dotColor: AppColors.brandPrimary,
+                dotColor: const Color(0xFF7C3AED),
               ),
               SizedBox(width: size.width * 0.010),
               _SummaryCard(
                 label: 'Bundles Remaining',
                 value: '${controller.bundlesRemaining}',
-                subtitle: '↓ 1.4% from last month',
+                subtitle: '↑ 11.4% from last month',
                 subtitleColor: AppColors.success,
                 dotColor: const Color(0xFF22C55E),
               ),
@@ -138,9 +136,9 @@ class BundleScanView extends GetView<BundleScanController> {
               _SummaryCard(
                 label: 'Bundles Loaded',
                 value: '${controller.bundlesLoaded}',
-                subtitle: '↑ 0.52% from last month',
+                subtitle: '↑ 8.52% from last month',
                 subtitleColor: AppColors.success,
-                dotColor: const Color(0xFFF59E0B),
+                dotColor: const Color(0xFFEAB308),
               ),
             ]),
             SizedBox(height: gap),
@@ -229,14 +227,25 @@ class BundleScanView extends GetView<BundleScanController> {
                           top: Radius.circular(12)),
                     ),
                     child: Row(children: [
-                      const SizedBox(width: 32),
+                      SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: Checkbox(
+                          value: false,
+                          onChanged: null,
+                          activeColor: AppColors.primaryBlue,
+                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          visualDensity: VisualDensity.compact,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
                       headCell('Project / Site', 4, subSize),
                       headCell('Bundle ID', 2, subSize),
                       headCell('Parts', 2, subSize),
-                      headCell('Total Weight', 2, subSize),
+                      headCell('Total Weight ⇅', 2, subSize),
                       headCell('Time', 2, subSize),
                       headCell('Status', 2, subSize),
-                      headCell('Action', 2, subSize),
+                      headCell('Action', 2, subSize, align: TextAlign.end),
                     ]),
                   ),
                   ...rows.map((item) => _BundleRow(
@@ -287,11 +296,11 @@ class _SummaryCard extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final labelSize = (size.width * 0.009).clamp(10.0, 12.0);
     final valueSize = (size.width * 0.018).clamp(22.0, 28.0);
+    final circleSize = (size.width * 0.038).clamp(38.0, 44.0);
 
     return Expanded(
       child: Container(
-        padding: EdgeInsets.symmetric(
-            horizontal: size.width * 0.014, vertical: size.height * 0.016),
+        clipBehavior: Clip.antiAlias,
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
@@ -299,50 +308,141 @@ class _SummaryCard extends StatelessWidget {
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
-        child: Row(children: [
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(label,
-                  style: TextStyle(
-                      fontSize: labelSize,
-                      color: AppColors.textSecondary,
-                      fontWeight: FontWeight.w600)),
-              const SizedBox(height: 6),
-              Text(value,
-                  style: TextStyle(
-                      fontSize: valueSize,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary)),
-              const SizedBox(height: 4),
-              Text(subtitle,
-                  style: TextStyle(
-                      fontSize: labelSize - 1,
-                      color: subtitleColor,
-                      fontWeight: FontWeight.w500)),
-            ]),
-          ),
-          CircleAvatar(
-            radius: 22,
-            backgroundColor: dotColor,
-            child: const Icon(Icons.qr_code_rounded,
-                color: Colors.white, size: 22),
-          ),
-        ]),
+        child: Stack(
+          children: [
+            Positioned.fill(
+              child: CustomPaint(
+                painter: _CardWavePainter(color: dotColor),
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width * 0.014,
+                vertical: size.height * 0.016,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          label,
+                          style: TextStyle(
+                            fontSize: labelSize,
+                            color: AppColors.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: valueSize,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          subtitle,
+                          style: TextStyle(
+                            fontSize: labelSize - 1,
+                            color: subtitleColor,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    width: circleSize,
+                    height: circleSize,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: dotColor,
+                      shape: BoxShape.circle,
+                      boxShadow: [
+                        BoxShadow(
+                          color: dotColor.withValues(alpha: 0.3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: Icon(
+                      Icons.qr_code_rounded,
+                      color: Colors.white,
+                      size: circleSize * 0.55,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 }
 
+class _CardWavePainter extends CustomPainter {
+  const _CardWavePainter({required this.color});
+  final Color color;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint1 = Paint()
+      ..color = color.withValues(alpha: 0.08)
+      ..style = PaintingStyle.fill;
+
+    final path1 = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width * 0.3, size.height)
+      ..cubicTo(
+        size.width * 0.5, size.height * 0.95,
+        size.width * 0.7, size.height * 0.6,
+        size.width, size.height * 0.68,
+      )
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    canvas.drawPath(path1, paint1);
+
+    final paint2 = Paint()
+      ..color = color.withValues(alpha: 0.05)
+      ..style = PaintingStyle.fill;
+
+    final path2 = Path()
+      ..moveTo(0, size.height)
+      ..lineTo(size.width * 0.5, size.height)
+      ..cubicTo(
+        size.width * 0.7, size.height * 0.8,
+        size.width * 0.85, size.height * 0.4,
+        size.width, size.height * 0.45,
+      )
+      ..lineTo(size.width, size.height)
+      ..close();
+
+    canvas.drawPath(path2, paint2);
+  }
+
+  @override
+  bool shouldRepaint(covariant _CardWavePainter oldDelegate) =>
+      oldDelegate.color != color;
+}
+
 // ─── Table helpers ─────────────────────────────────────────────────────────────
 
-Widget headCell(String text, int flex, double size) => Expanded(
+Widget headCell(String text, int flex, double size, {TextAlign align = TextAlign.start}) => Expanded(
     flex: flex,
     child: Text(text,
+        textAlign: align,
         style: TextStyle(
             fontSize: size,
             fontWeight: FontWeight.w700,
@@ -371,7 +471,8 @@ class _BundleRowState extends State<_BundleRow> {
               Border(bottom: BorderSide(color: AppColors.cardBorder))),
       child: Row(children: [
         SizedBox(
-          width: 32,
+          width: 20,
+          height: 20,
           child: Checkbox(
             value: _checked,
             onChanged: (v) => setState(() => _checked = v ?? false),
@@ -380,6 +481,7 @@ class _BundleRowState extends State<_BundleRow> {
             visualDensity: VisualDensity.compact,
           ),
         ),
+        const SizedBox(width: 16),
         Expanded(
           flex: 4,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -417,23 +519,26 @@ class _BundleRowState extends State<_BundleRow> {
         Expanded(flex: 2, child: _StatusBadge(widget.item.status)),
         Expanded(
           flex: 2,
-          child: ElevatedButton(
-            onPressed: widget.onView,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primaryBlue,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              minimumSize: Size.zero,
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6)),
+          child: Align(
+            alignment: Alignment.centerRight,
+            child: ElevatedButton(
+              onPressed: widget.onView,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(6)),
+              ),
+              child: Text('View',
+                  style: TextStyle(
+                      fontSize: widget.fontSize,
+                      fontWeight: FontWeight.w700)),
             ),
-            child: Text('View',
-                style: TextStyle(
-                    fontSize: widget.fontSize,
-                    fontWeight: FontWeight.w700)),
           ),
         ),
       ]),
@@ -447,17 +552,20 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, bg, fg) = switch (status) {
-      BundleScanStatus.staging => ('Staging S', const Color(0xFFFEF3C7), const Color(0xFFF59E0B)),
-      BundleScanStatus.ready => ('Ready R', const Color(0xFFDCFCE7), AppColors.success),
-      BundleScanStatus.pending => ('Pending', const Color(0xFFEFF6FF), AppColors.primaryBlue),
+      BundleScanStatus.staging => ('Staging ⌛', const Color(0xFFFEF3C7), const Color(0xFF92400E)),
+      BundleScanStatus.ready => ('Ready ⊙', const Color(0xFFDCFCE7), const Color(0xFF166534)),
+      BundleScanStatus.pending => ('Planning ⌛', const Color(0xFFFEF3C7), const Color(0xFF92400E)),
     };
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-      decoration: BoxDecoration(
-          color: bg, borderRadius: BorderRadius.circular(20)),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10, fontWeight: FontWeight.w700, color: fg)),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+            color: bg, borderRadius: BorderRadius.circular(20)),
+        child: Text(label,
+            style: TextStyle(
+                fontSize: 11, fontWeight: FontWeight.w700, color: fg)),
+      ),
     );
   }
 }

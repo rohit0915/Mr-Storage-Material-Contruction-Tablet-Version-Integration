@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
@@ -8,7 +9,7 @@ import 'section_card.dart';
 import 'stat_icon_box.dart';
 import 'status_badge.dart';
 
-class FreightCarriersCard extends GetView<DashboardController> {
+class FreightCarriersCard extends StatelessWidget {
   const FreightCarriersCard({super.key});
 
   @override
@@ -79,63 +80,87 @@ class FreightCarriersCard extends GetView<DashboardController> {
             ),
           ),
           SizedBox(height: gap),
-          ...controller.carriers.map((row) {
-            return Container(
-              padding: EdgeInsets.symmetric(vertical: gap * 0.8),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.cardBorder),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
+          GetBuilder<DashboardController>(
+            id: AppGetIds.freightCarriers,
+            builder: (controller) {
+              final list = controller.carriers;
+              if (list.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
                     child: Text(
-                      row.carrier,
-                      style: TextStyle(
-                        fontSize: cellSize,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
-                      ),
+                      'No freight carriers data available',
+                      style: TextStyle(fontSize: cellSize, color: AppColors.textSecondary),
                     ),
                   ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(row.loadsToday, style: TextStyle(fontSize: cellSize)),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(row.onTime, style: TextStyle(fontSize: cellSize)),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Text(row.delayed, style: TextStyle(fontSize: cellSize)),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Align(
-                      alignment: Alignment.centerLeft,
-                      child: StatusBadge(
-                        label: row.priority,
-                        color: row.priorityColor,
+                );
+              }
+
+              return Column(
+                children: [
+                  ...list.map((row) {
+                    return Container(
+                      padding: EdgeInsets.symmetric(vertical: gap * 0.8),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(color: AppColors.cardBorder),
+                        ),
                       ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              row.carrier,
+                              style: TextStyle(
+                                fontSize: cellSize,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(row.loadsToday, style: TextStyle(fontSize: cellSize)),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(row.onTime, style: TextStyle(fontSize: cellSize)),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(row.delayed, style: TextStyle(fontSize: cellSize)),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: StatusBadge(
+                                label: row.priority,
+                                color: row.priorityColor,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                  if (controller.freightSummaries.isNotEmpty) ...[
+                    SizedBox(height: DashboardGap.section(context)),
+                    Row(
+                      children: [
+                        for (var i = 0; i < controller.freightSummaries.length; i++) ...[
+                          if (i > 0) SizedBox(width: DashboardGap.page(context)),
+                          Expanded(
+                            child: _SummaryTile(item: controller.freightSummaries[i]),
+                          ),
+                        ],
+                      ],
                     ),
-                  ),
+                  ],
                 ],
-              ),
-            );
-          }),
-          SizedBox(height: DashboardGap.section(context)),
-          Row(
-            children: [
-              for (var i = 0; i < controller.freightSummaries.length; i++) ...[
-                if (i > 0) SizedBox(width: DashboardGap.page(context)),
-                Expanded(
-                  child: _SummaryTile(item: controller.freightSummaries[i]),
-                ),
-              ],
-            ],
+              );
+            },
           ),
         ],
       ),
@@ -156,9 +181,11 @@ class _Col extends StatelessWidget {
       flex: flex,
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: size,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppColors.textSecondary,
         ),
       ),
@@ -176,39 +203,43 @@ class _SummaryTile extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final valueSize = (size.width * 0.012).clamp(13.0, 16.0);
     final labelSize = (size.width * 0.008).clamp(9.0, 11.0);
-    final iconSize = (size.width * 0.028).clamp(32.0, 38.0);
+    final iconSize = (size.width * 0.024).clamp(28.0, 34.0);
 
-    // Figma freight stat card: icon on top, value + label below (gap 8)
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: EdgeInsets.all((size.width * 0.008).clamp(10.0, 14.0)),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppColors.tableHeader,
         borderRadius: BorderRadius.circular(DashboardGap.radius),
-        border: Border.all(color: AppColors.cardBorder),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      child: Row(
         children: [
           StatIconBox(color: item.iconBg, size: iconSize),
-          const SizedBox(height: 8),
-          Text(
-            item.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: valueSize,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            item.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: labelSize,
-              color: AppColors.textSecondary,
+          SizedBox(width: size.width * 0.006),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  item.value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: valueSize,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                Text(
+                  item.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: labelSize,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
         ],

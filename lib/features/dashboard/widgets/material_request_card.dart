@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
 import 'donut_chart.dart';
 import 'section_card.dart';
 
-class MaterialRequestCard extends GetView<DashboardController> {
+class MaterialRequestCard extends StatelessWidget {
   const MaterialRequestCard({super.key});
 
   @override
@@ -43,15 +44,28 @@ class MaterialRequestCard extends GetView<DashboardController> {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          Center(
-            child: DonutChart(
-              slices: controller.materialSlices,
-              centerTitle: 'Pending Approval',
-              centerValue: '14',
-            ),
+          GetBuilder<DashboardController>(
+            id: AppGetIds.materialOverview,
+            builder: (controller) {
+              final pendingCount = controller.materialSlices
+                  .fold<double>(0, (sum, item) => sum + item.percent)
+                  .round();
+
+              return Column(
+                children: [
+                  Center(
+                    child: DonutChart(
+                      slices: controller.materialSlices,
+                      centerTitle: 'Pending Approval',
+                      centerValue: '$pendingCount',
+                    ),
+                  ),
+                  SizedBox(height: DashboardGap.section(context)),
+                  ChartLegend(slices: controller.materialSlices),
+                ],
+              );
+            },
           ),
-          SizedBox(height: DashboardGap.section(context)),
-          ChartLegend(slices: controller.materialSlices),
         ],
       ),
     );

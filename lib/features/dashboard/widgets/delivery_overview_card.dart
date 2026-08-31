@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
 import 'donut_chart.dart';
 import 'section_card.dart';
 
-class DeliveryOverviewCard extends GetView<DashboardController> {
+class DeliveryOverviewCard extends StatelessWidget {
   const DeliveryOverviewCard({super.key});
 
   @override
@@ -43,15 +44,28 @@ class DeliveryOverviewCard extends GetView<DashboardController> {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          Center(
-            child: DonutChart(
-              slices: controller.deliverySlices,
-              centerTitle: "Today's Deliveries",
-              centerValue: '28',
-            ),
+          GetBuilder<DashboardController>(
+            id: AppGetIds.deliveryOverview,
+            builder: (controller) {
+              final totalCount = controller.deliverySlices
+                  .fold<double>(0, (sum, item) => sum + item.percent)
+                  .round();
+
+              return Column(
+                children: [
+                  Center(
+                    child: DonutChart(
+                      slices: controller.deliverySlices,
+                      centerTitle: "Today's Deliveries",
+                      centerValue: '$totalCount',
+                    ),
+                  ),
+                  SizedBox(height: DashboardGap.section(context)),
+                  ChartLegend(slices: controller.deliverySlices),
+                ],
+              );
+            },
           ),
-          SizedBox(height: DashboardGap.section(context)),
-          ChartLegend(slices: controller.deliverySlices),
         ],
       ),
     );

@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
+import 'package:toastification/toastification.dart';
+
 import 'app/routes/app_pages.dart';
+import 'app/services/api_client.dart';
 import 'app/shell/app_shell_controller.dart';
 import 'app/theme/app_colors.dart';
 import 'features/auth/services/auth_service.dart';
@@ -13,6 +16,8 @@ Future<void> main() async {
   await SystemChrome.setPreferredOrientations([
     DeviceOrientation.landscapeLeft,
     DeviceOrientation.landscapeRight,
+    DeviceOrientation.portraitUp,
+    DeviceOrientation.portraitDown,
   ]);
 
   SystemChrome.setSystemUIOverlayStyle(
@@ -23,6 +28,10 @@ Future<void> main() async {
       systemNavigationBarColor: Colors.white,
     ),
   );
+
+  final apiClient = ApiClient();
+  await apiClient.init();
+  Get.put(apiClient, permanent: true);
 
   Get.put(AuthService(), permanent: true);
   Get.put(AppShellController(), permanent: true);
@@ -35,20 +44,22 @@ class SteelBuildingApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GetMaterialApp(
-      title: 'Steel Building Depot',
-      debugShowCheckedModeBanner: false,
-      theme: ThemeData(
-        useMaterial3: true,
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: AppColors.primary,
-          primary: AppColors.primary,
+    return ToastificationWrapper(
+      child: GetMaterialApp(
+        title: 'Steel Building Depot',
+        debugShowCheckedModeBanner: false,
+        theme: ThemeData(
+          useMaterial3: true,
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: AppColors.primary,
+            primary: AppColors.primary,
+          ),
+          fontFamily: 'Roboto',
+          scaffoldBackgroundColor: AppColors.dashboardBg,
         ),
-        fontFamily: 'Roboto',
-        scaffoldBackgroundColor: AppColors.dashboardBg,
+        initialRoute: AppPages.initial,
+        getPages: AppPages.routes,
       ),
-      initialRoute: AppPages.initial,
-      getPages: AppPages.routes,
     );
   }
 }

@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/project_calendar_controller.dart';
+import '../services/project_calendar_service.dart';
 
 class AddDeliveryDialog extends StatefulWidget {
   const AddDeliveryDialog({super.key});
@@ -36,7 +37,71 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
     if (picked != null) setState(() => _date = picked);
   }
 
-  void _onOk() => Navigator.of(context).pop(true);
+  bool _isSubmitting = false;
+
+  Future<void> _onOk() async {
+    if (_isSubmitting) return;
+
+    final controller = Get.find<ProjectCalendarController>();
+    String leadId = '';
+
+    if (_project != null && _project!.isNotEmpty) {
+      final match = controller.projects.firstWhereOrNull((p) => '${p.name} (${p.code})' == _project);
+      if (match != null && match.id.isNotEmpty) {
+        leadId = match.id;
+      }
+    }
+
+    if (leadId.isEmpty && controller.projects.length > 1) {
+      leadId = controller.projects[1].id;
+    }
+
+    if (leadId.isEmpty) {
+      Get.snackbar(
+        'Validation Error',
+        'Please select a valid project.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.badgeRed,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    setState(() => _isSubmitting = true);
+
+    try {
+      final calendarService = Get.find<ProjectCalendarService>();
+      final success = await calendarService.createDelivery(
+        leadId: leadId,
+        title: _titleCtrl.text.trim().isNotEmpty ? _titleCtrl.text.trim() : 'Project outbound freight',
+        location: _section ?? 'Yard-A',
+        date: _date,
+        description: _descCtrl.text.trim(),
+      );
+
+      if (success) {
+        if (mounted) Navigator.of(context).pop(true);
+      } else {
+        Get.snackbar(
+          'Error',
+          'Failed to add delivery. Please try again.',
+          snackPosition: SnackPosition.BOTTOM,
+          backgroundColor: AppColors.badgeRed,
+          colorText: Colors.white,
+        );
+      }
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Error adding delivery: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: AppColors.badgeRed,
+        colorText: Colors.white,
+      );
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -138,7 +203,7 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
                 SizedBox(
                   height: 48,
                   child: ElevatedButton(
-                    onPressed: _onOk,
+                    onPressed: _isSubmitting ? null : _onOk,
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
                       foregroundColor: Colors.white,
@@ -147,11 +212,16 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    child: const Text(
-                      'Ok',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                          )
+                        : const Text(
+                            'Ok',
+                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                          ),
                   ),
                 ),
                 const SizedBox(height: 10),

@@ -1,9 +1,9 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
-import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_log_dialog.dart';
 import '../controllers/login_controller.dart';
 import 'auth_text_field.dart';
 import 'remember_me_row.dart';
@@ -158,6 +158,19 @@ class _LoginForm extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(height: size.height * 0.008),
+          TextButton.icon(
+            onPressed: () => AppLogDialog.show(context),
+            icon: const Icon(Icons.bug_report_outlined, size: 16, color: AppColors.textSecondary),
+            label: const Text(
+              'View & Copy Debug Logs',
+              style: TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -193,50 +206,67 @@ class _ForgotEmailStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final titleSize = (size.width * 0.018).clamp(20.0, 24.0);
+    final descSize = (size.width * 0.010).clamp(11.0, 13.0);
+    final buttonHeight = (size.height * 0.048).clamp(44.0, 50.0);
+
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _BackLink(onTap: controller.backToLoginCard),
-        const SizedBox(height: 10),
+        Row(
+          children: [
+            _BackLink(onTap: controller.backToLoginCard),
+          ],
+        ),
+        SizedBox(height: size.height * 0.006),
         Text(
           'Forgot Password',
           style: TextStyle(
-            fontSize: (size.width * 0.017).clamp(22.0, 26.0),
-            fontWeight: FontWeight.w800,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: size.height * 0.008),
         Text(
-          'Enter your registered email address. We\'ll send you a code\nto reset your password.',
+          'Enter your registered email address to receive a verification code.',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: (size.width * 0.009).clamp(11.0, 13.0),
+            fontSize: descSize,
+            fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         AuthTextField(
           label: 'Email Address',
-          hint: 'demo@gmail.com',
+          hint: 'Enter your email address',
           controller: controller.forgotEmailController,
           prefixIcon: Icons.email_outlined,
           keyboardType: TextInputType.emailAddress,
           validator: controller.validateEmail,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         SizedBox(
           width: double.infinity,
-          height: 46,
+          height: buttonHeight,
           child: ElevatedButton(
             onPressed: controller.continueForgotEmail,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.loginButton,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Send OTP', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Send Code',
+              style: TextStyle(
+                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],
@@ -252,68 +282,80 @@ class _OtpStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final titleSize = (size.width * 0.018).clamp(20.0, 24.0);
+    final descSize = (size.width * 0.010).clamp(11.0, 13.0);
+    final buttonHeight = (size.height * 0.048).clamp(44.0, 50.0);
     const gap = 10.0;
 
     Widget otpBox(TextEditingController ctrl, {VoidCallback? onFilled}) {
-      return TextField(
-        controller: ctrl,
-        maxLength: 1,
-        textAlign: TextAlign.center,
-        keyboardType: TextInputType.number,
-        inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-        style: TextStyle(
-          fontSize: (size.width * 0.014).clamp(16.0, 20.0),
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+      return SizedBox(
+        height: 52,
+        child: TextField(
+          controller: ctrl,
+          maxLength: 1,
+          textAlign: TextAlign.center,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          style: TextStyle(
+            fontSize: (size.width * 0.014).clamp(16.0, 20.0),
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+          decoration: InputDecoration(
+            counterText: '',
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+            filled: true,
+            fillColor: AppColors.inputFill,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.cardBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.cardBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
+            ),
+          ),
+          onChanged: (v) {
+            if (v.length == 1) {
+              onFilled?.call();
+            }
+          },
         ),
-        decoration: InputDecoration(
-          counterText: '',
-          isDense: true,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14),
-          border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.cardBorder),
-          ),
-          enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.cardBorder),
-          ),
-          focusedBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide: const BorderSide(color: AppColors.primaryBlue),
-          ),
-        ),
-        onChanged: (v) {
-          if (v.length == 1) {
-            onFilled?.call();
-          }
-        },
       );
     }
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _BackLink(onTap: controller.backToLoginCard),
-        const SizedBox(height: 10),
+        Row(
+          children: [
+            _BackLink(onTap: controller.backToLoginCard),
+          ],
+        ),
+        SizedBox(height: size.height * 0.006),
         Text(
-          'Enter OTP',
+          'Verify Code',
           style: TextStyle(
-            fontSize: (size.width * 0.017).clamp(22.0, 26.0),
-            fontWeight: FontWeight.w800,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: size.height * 0.008),
         Text(
-          'We have shared a code to your registered email address\n${controller.forgotEmailController.text.trim()}',
+          'We sent a 4-digit verification code to\n${controller.forgotEmailController.text.trim()}',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: (size.width * 0.009).clamp(11.0, 13.0),
+            fontSize: descSize,
+            fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         Row(
           children: [
             Expanded(
@@ -340,19 +382,27 @@ class _OtpStep extends StatelessWidget {
             Expanded(child: otpBox(controller.otp4Controller)),
           ],
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         SizedBox(
           width: double.infinity,
-          height: 46,
+          height: buttonHeight,
           child: ElevatedButton(
             onPressed: controller.continueOtp,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.loginButton,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Verify', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Verify Code',
+              style: TextStyle(
+                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],
@@ -368,30 +418,38 @@ class _NewPasswordStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final titleSize = (size.width * 0.018).clamp(20.0, 24.0);
+    final descSize = (size.width * 0.010).clamp(11.0, 13.0);
+    final buttonHeight = (size.height * 0.048).clamp(44.0, 50.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _BackLink(onTap: controller.backToLoginCard),
-        const SizedBox(height: 10),
+        Row(
+          children: [
+            _BackLink(onTap: controller.backToLoginCard),
+          ],
+        ),
+        SizedBox(height: size.height * 0.006),
         Text(
-          'Create New Password',
+          'New Password',
           style: TextStyle(
-            fontSize: (size.width * 0.017).clamp(22.0, 26.0),
-            fontWeight: FontWeight.w800,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 6),
+        SizedBox(height: size.height * 0.008),
         Text(
-          'Set your new password below.',
+          'Please enter and confirm your new password.',
+          textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: (size.width * 0.009).clamp(11.0, 13.0),
+            fontSize: descSize,
+            fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         AuthTextField(
           label: 'New Password',
           hint: 'Enter new password',
@@ -399,27 +457,35 @@ class _NewPasswordStep extends StatelessWidget {
           prefixIcon: Icons.lock_outline,
           obscureText: true,
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: size.height * 0.014),
         AuthTextField(
-          label: 'Retype Password',
-          hint: 'Retype new password',
+          label: 'Confirm Password',
+          hint: 'Re-enter new password',
           controller: controller.retypePasswordController,
           prefixIcon: Icons.lock_outline,
           obscureText: true,
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         SizedBox(
           width: double.infinity,
-          height: 46,
+          height: buttonHeight,
           child: ElevatedButton(
             onPressed: controller.continueNewPassword,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.loginButton,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Update Password', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Reset Password',
+              style: TextStyle(
+                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],
@@ -435,48 +501,67 @@ class _ForgotSuccessStep extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final titleSize = (size.width * 0.018).clamp(20.0, 24.0);
+    final descSize = (size.width * 0.010).clamp(11.0, 13.0);
+    final buttonHeight = (size.height * 0.048).clamp(44.0, 50.0);
 
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Image.asset(
-          AppAssets.iconPasswordSuccess,
-          width: 74,
-          height: 74,
-          fit: BoxFit.contain,
+        Container(
+          width: 64,
+          height: 64,
+          decoration: const BoxDecoration(
+            color: AppColors.softGreenBg,
+            shape: BoxShape.circle,
+          ),
+          child: const Icon(
+            Icons.check_circle_rounded,
+            color: AppColors.badgeGreen,
+            size: 38,
+          ),
         ),
-        const SizedBox(height: 12),
+        SizedBox(height: size.height * 0.014),
         Text(
-          'Password Updated\nSuccessfully',
+          'Password Reset Done',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: (size.width * 0.016).clamp(20.0, 24.0),
-            fontWeight: FontWeight.w800,
+            fontSize: titleSize,
+            fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
-        const SizedBox(height: 8),
+        SizedBox(height: size.height * 0.008),
         Text(
-          'Your password has been updated successfully',
+          'Your password has been updated successfully. You can now login with your new password.',
           textAlign: TextAlign.center,
           style: TextStyle(
-            fontSize: (size.width * 0.009).clamp(11.0, 13.0),
+            fontSize: descSize,
+            fontWeight: FontWeight.w400,
             color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 16),
+        SizedBox(height: size.height * 0.02),
         SizedBox(
           width: double.infinity,
-          height: 46,
+          height: buttonHeight,
           child: ElevatedButton(
             onPressed: controller.finishForgotFlow,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.loginButton,
               foregroundColor: Colors.white,
               elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
-            child: const Text('Back to Login', style: TextStyle(fontWeight: FontWeight.w700)),
+            child: Text(
+              'Back to Login',
+              style: TextStyle(
+                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],
@@ -494,19 +579,23 @@ class _BackLink extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 2),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
         child: Row(
           mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.arrow_back_ios_new_rounded,
-                size: 14, color: AppColors.textSecondary),
-            SizedBox(width: 6),
+          children: const [
+            Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 14,
+              color: AppColors.textSecondary,
+            ),
+            SizedBox(width: 4),
             Text(
-              'Back',
+              'Back to Sign In',
               style: TextStyle(
                 color: AppColors.textSecondary,
                 fontWeight: FontWeight.w600,
+                fontSize: 12,
               ),
             ),
           ],

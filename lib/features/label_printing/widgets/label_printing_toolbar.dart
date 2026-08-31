@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_toast.dart';
 import '../controllers/label_printing_controller.dart';
 
 class LabelPrintingToolbar extends GetView<LabelPrintingController> {
@@ -57,11 +58,9 @@ class LabelPrintingToolbar extends GetView<LabelPrintingController> {
         SizedBox(width: size.width * 0.008),
         OutlinedButton.icon(
           onPressed: () {
-            Get.snackbar(
-              'Filter',
-              'Filter options will be available soon.',
-              snackPosition: SnackPosition.BOTTOM,
-              margin: const EdgeInsets.all(16),
+            AppToast.showInfo(
+              title: 'Filter',
+              description: 'Filter options will be available soon.',
             );
           },
           icon: const Icon(Icons.filter_list_rounded, size: 18),

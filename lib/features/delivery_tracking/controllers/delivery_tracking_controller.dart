@@ -1,90 +1,98 @@
 import 'package:get/get.dart';
 
+import '../../../app/utils/app_logger.dart';
 import '../models/delivery_tracking_models.dart';
+import '../services/delivery_tracking_service.dart';
 
 class DeliveryTrackingController extends GetxController {
-  final deliveries = <DeliveryItem>[
-    const DeliveryItem(
-      id: 'DEL-2001',
-      title: 'Primary Frame Steel',
-      location: 'ABC Logistics Warehouse',
-      project: 'Riverside Complex',
-      quantity: '45,000 lbs',
-      stagingArea: 'Yard-A',
-      carrier: 'FastFreight Logistics',
-      driver: 'John Miller',
-      truck: 'TX-4582',
-      phone: '+1 555-812-9921',
-      finalDestination: 'Construction Site A',
-      arrivalAtPlant: 'Mar 24, 10:00 AM',
-      departureFromPlant: 'Mar 24, 02:00 PM',
-      notes: 'Fragile – handle with care',
-      status: DeliveryStatus.inTransit,
-      priority: DeliveryPriority.high,
-      eta: 'ETA 10:45 AM',
-      bundleCount: 4,
-    ),
-    const DeliveryItem(
-      id: 'DEL-2002',
-      title: 'Glass Panels',
-      location: 'Downtown Office Complex',
-      project: 'Downtown Office Complex',
-      quantity: '8,500 lbs',
-      stagingArea: 'Warehouse-2',
-      carrier: 'Regional Freight',
-      driver: 'John Miller',
-      truck: 'TX-4582',
-      phone: '+1 555-812-9921',
-      finalDestination: 'Construction Site B',
-      arrivalAtPlant: 'Mar 24, 08:00 AM',
-      departureFromPlant: 'Mar 24, 11:00 AM',
-      notes: 'Fragile – handle with care',
-      status: DeliveryStatus.staged,
-      priority: DeliveryPriority.medium,
-      eta: 'Arrives 30 minutes',
-      bundleCount: 3,
-    ),
-    const DeliveryItem(
-      id: 'DEL-2003',
-      title: 'Concrete Blocks',
-      location: 'Industrial Park Phase 2',
-      project: 'Industrial Park Phase 2',
-      quantity: '15,000 lbs',
-      stagingArea: 'Yard-B',
-      carrier: 'Local Delivery Services',
-      driver: 'John Miller',
-      truck: 'TX-4582',
-      phone: '+1 555-812-9921',
-      finalDestination: 'Construction Site C',
-      arrivalAtPlant: 'Mar 25, 09:00 AM',
-      departureFromPlant: 'Mar 25, 05:00 PM',
-      notes: 'Standard handling',
-      status: DeliveryStatus.ready,
-      priority: DeliveryPriority.low,
-      eta: 'Scheduled',
-      bundleCount: 2,
-    ),
-  ].obs;
+  DeliveryTrackingController({DeliveryTrackingService? service})
+      : _service = service ?? Get.put(DeliveryTrackingService());
 
-  int get inTransitCount =>
-      deliveries.where((d) => d.status == DeliveryStatus.inTransit).length;
-  int get stagedCount =>
-      deliveries.where((d) => d.status == DeliveryStatus.staged).length;
-  int get readyCount =>
-      deliveries.where((d) => d.status == DeliveryStatus.ready).length;
-  int get totalToday => deliveries.length + 1;
+  final DeliveryTrackingService _service;
 
-  void markReceived(String id) {
-    final idx = deliveries.indexWhere((d) => d.id == id);
-    if (idx >= 0) {
-      deliveries[idx] = deliveries[idx].copyWith(status: DeliveryStatus.delivered);
+  final isLoading = false.obs;
+  final deliveries = <DeliveryItem>[].obs;
+
+  final apiInTransit = 0.obs;
+  final apiStaged = 0.obs;
+  final apiReady = 0.obs;
+  final apiTotalToday = 0.obs;
+
+  int get inTransitCount => apiInTransit.value > 0
+      ? apiInTransit.value
+      : deliveries.where((d) => d.status == DeliveryStatus.inTransit).length;
+
+  int get stagedCount => apiStaged.value > 0
+      ? apiStaged.value
+      : deliveries.where((d) => d.status == DeliveryStatus.staged).length;
+
+  int get readyCount => apiReady.value > 0
+      ? apiReady.value
+      : deliveries.where((d) => d.status == DeliveryStatus.ready).length;
+
+  int get totalToday => apiTotalToday.value > 0
+      ? apiTotalToday.value
+      : deliveries.length;
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchDeliveries();
+  }
+
+  Future<void> fetchDeliveries() async {
+    isLoading.value = true;
+    try {
+      final res = await _service.getDeliveries();
+      if (res != null) {
+        List list = [];
+        if (res is Map) {
+          if (res['deliveries'] is List) {
+            list = res['deliveries'] as List;
+          }
+          if (res['stats'] is Map) {
+            final st = res['stats'] as Map;
+            apiInTransit.value = (st['inTransit'] as int?) ?? 0;
+            apiStaged.value = (st['staged'] as int?) ?? 0;
+            apiReady.value = (st['ready'] as int?) ?? 0;
+            apiTotalToday.value = (st['totalToday'] as int?) ?? 0;
+          }
+        } else if (res is List) {
+          list = res;
+        }
+
+        final parsed = <DeliveryItem>[];
+        for (final item in list) {
+          if (item is Map) {
+            parsed.add(DeliveryItem.fromJson(Map<String, dynamic>.from(item)));
+          }
+        }
+        deliveries.assignAll(parsed);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchDeliveries Error', error: e, stackTrace: stackTrace, tag: 'DELIVERY_CTRL');
+    } finally {
+      isLoading.value = false;
     }
   }
 
-  void markPartialReceived(String id) {
-    final idx = deliveries.indexWhere((d) => d.id == id);
+  Future<void> markReceived(String id) async {
+    final idx = deliveries.indexWhere((d) => d.id == id || d.realMongoId == id);
     if (idx >= 0) {
-      deliveries[idx] = deliveries[idx].copyWith(status: DeliveryStatus.staged);
+      final target = deliveries[idx];
+      deliveries[idx] = target.copyWith(status: DeliveryStatus.delivered);
+      final reqId = target.realMongoId.isNotEmpty ? target.realMongoId : target.id;
+      await _service.markReceived(reqId);
+    }
+  }
+
+  Future<void> markPartialReceived(String id) async {
+    final idx = deliveries.indexWhere((d) => d.id == id || d.realMongoId == id);
+    if (idx >= 0) {
+      final target = deliveries[idx];
+      deliveries[idx] = target.copyWith(status: DeliveryStatus.staged);
+      final reqId = target.realMongoId.isNotEmpty ? target.realMongoId : target.id;
+      await _service.markPartial(reqId, 'Partial received');
     }
   }
 }

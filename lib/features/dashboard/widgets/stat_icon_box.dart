@@ -7,10 +7,12 @@ class StatIconBox extends StatelessWidget {
   const StatIconBox({
     super.key,
     required this.color,
+    this.icon,
     this.size,
   });
 
   final Color color;
+  final IconData? icon;
   final double? size;
 
   @override
@@ -26,9 +28,8 @@ class StatIconBox extends StatelessWidget {
         borderRadius: BorderRadius.circular(DashboardGap.radius),
       ),
       alignment: Alignment.center,
-      // Same clock + arrow look as shared Stat Icon (white on color)
       child: Icon(
-        Icons.history_rounded,
+        icon ?? Icons.history_rounded,
         color: Colors.white,
         size: box * 0.58,
       ),

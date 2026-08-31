@@ -35,101 +35,128 @@ class TasksView extends GetView<TasksController> {
             SizedBox(height: gap),
             const _SummaryRow(),
             SizedBox(height: gap),
-            Row(
-              children: [
-                Text(
-                  'Task Board',
-                  style: TextStyle(
-                    fontSize: (size.width * 0.014).clamp(15.0, 18.0),
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                ElevatedButton(
-                  onPressed: () => controller.openDailyWorkLog(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.success,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.014,
-                      vertical: size.height * 0.014,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Daily Work Log',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-                SizedBox(width: size.width * 0.008),
-                ElevatedButton(
-                  onPressed: () => controller.openAddTask(context),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.014,
-                      vertical: size.height * 0.014,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Add Task',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            ),
-            SizedBox(height: gap),
-            Obx(() {
-              final taskList = controller.tasks;
-              final todo = taskList
-                  .where((t) => t.column == TaskColumn.todo)
-                  .toList();
-              final inProgress = taskList
-                  .where((t) => t.column == TaskColumn.inProgress)
-                  .toList();
-              final done = taskList
-                  .where((t) => t.column == TaskColumn.done)
-                  .toList();
 
-              const colGap = 12.0;
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+            // Task Board Card Container
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Expanded(
-                    child: _BoardColumn(
-                      title: 'To Do (${todo.length})',
-                      color: const Color(0xFFF3F4F6),
-                      items: todo,
-                    ),
+                  // Board Header Row
+                  Row(
+                    children: [
+                      Text(
+                        'Task Board',
+                        style: TextStyle(
+                          fontSize: (size.width * 0.014).clamp(15.0, 18.0),
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Text(
+                        '(Drag & Drop tasks between columns)',
+                        style: TextStyle(
+                          fontSize: (size.width * 0.009).clamp(10.0, 12.0),
+                          color: AppColors.textSecondary,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                      const Spacer(),
+                      ElevatedButton(
+                        onPressed: () => controller.openDailyWorkLog(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF22C55E),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Daily Work Log',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      ElevatedButton(
+                        onPressed: () => controller.openAddTask(context),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
+                        child: const Text(
+                          'Add Task',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: colGap),
-                  Expanded(
-                    child: _BoardColumn(
-                      title: 'In Progress (${inProgress.length})',
-                      color: const Color(0xFFE8F1FF),
-                      items: inProgress,
-                    ),
-                  ),
-                  const SizedBox(width: colGap),
-                  Expanded(
-                    child: _BoardColumn(
-                      title: 'Done (${done.length})',
-                      color: const Color(0xFFE8F8EF),
-                      items: done,
-                    ),
-                  ),
+                  SizedBox(height: gap),
+
+                  // Kanban 3 Columns with Drag & Drop
+                  Obx(() {
+                    final taskList = controller.tasks;
+                    final todo = taskList
+                        .where((t) => t.column == TaskColumn.todo)
+                        .toList();
+                    final inProgress = taskList
+                        .where((t) => t.column == TaskColumn.inProgress)
+                        .toList();
+                    final done = taskList
+                        .where((t) => t.column == TaskColumn.done)
+                        .toList();
+
+                    const colGap = 16.0;
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: _BoardColumn(
+                            title: 'To Do (${todo.length})',
+                            color: const Color(0xFFF1F5F9),
+                            items: todo,
+                            column: TaskColumn.todo,
+                            onTaskDropped: (item) => controller.moveTask(item, TaskColumn.todo),
+                          ),
+                        ),
+                        const SizedBox(width: colGap),
+                        Expanded(
+                          child: _BoardColumn(
+                            title: 'In Progress (${inProgress.length})',
+                            color: const Color(0xFFEFF6FF),
+                            items: inProgress,
+                            column: TaskColumn.inProgress,
+                            onTaskDropped: (item) => controller.moveTask(item, TaskColumn.inProgress),
+                          ),
+                        ),
+                        const SizedBox(width: colGap),
+                        Expanded(
+                          child: _BoardColumn(
+                            title: 'Done (${done.length})',
+                            color: const Color(0xFFF0FDF4),
+                            items: done,
+                            column: TaskColumn.done,
+                            onTaskDropped: (item) => controller.moveTask(item, TaskColumn.done),
+                          ),
+                        ),
+                      ],
+                    );
+                  }),
                 ],
-              );
-            }),
+              ),
+            ),
           ],
         ),
       ),
@@ -137,7 +164,7 @@ class TasksView extends GetView<TasksController> {
   }
 }
 
-class _SummaryRow extends StatelessWidget {
+class _SummaryRow extends GetView<TasksController> {
   const _SummaryRow();
 
   @override
@@ -145,44 +172,46 @@ class _SummaryRow extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final gap = (size.width * 0.01).clamp(10.0, 14.0);
 
-    return Row(
-      children: [
-        Expanded(
-          child: _SummaryCard(
-            label: 'Total Tasks',
-            value: '56',
-            color: AppColors.primaryBlue,
-            icon: Icons.folder_outlined,
+    return Obx(
+      () => Row(
+        children: [
+          Expanded(
+            child: _SummaryCard(
+              label: 'Total Tasks',
+              value: '${controller.totalTasksCount.value}',
+              color: const Color(0xFF1E5BB4),
+              icon: Icons.folder_outlined,
+            ),
           ),
-        ),
-        SizedBox(width: gap),
-        const Expanded(
-          child: _SummaryCard(
-            label: 'Completed',
-            value: '29',
-            color: AppColors.success,
-            icon: Icons.check_box_outlined,
+          SizedBox(width: gap),
+          Expanded(
+            child: _SummaryCard(
+              label: 'Completed',
+              value: '${controller.completedCountStat.value}',
+              color: const Color(0xFF34C759),
+              icon: Icons.check_rounded,
+            ),
           ),
-        ),
-        SizedBox(width: gap),
-        const Expanded(
-          child: _SummaryCard(
-            label: 'In Progress',
-            value: '13',
-            color: AppColors.chartYellow,
-            icon: Icons.access_time,
+          SizedBox(width: gap),
+          Expanded(
+            child: _SummaryCard(
+              label: 'In Progress',
+              value: '${controller.inProgressCountStat.value}',
+              color: const Color(0xFFEAB308),
+              icon: Icons.access_time_rounded,
+            ),
           ),
-        ),
-        SizedBox(width: gap),
-        const Expanded(
-          child: _SummaryCard(
-            label: 'Overdue',
-            value: '3',
-            color: AppColors.danger,
-            icon: Icons.verified_user_outlined,
+          SizedBox(width: gap),
+          Expanded(
+            child: _SummaryCard(
+              label: 'Overdue',
+              value: '${controller.overdueCountStat.value}',
+              color: const Color(0xFFFF6B4A),
+              icon: Icons.shield_outlined,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -206,12 +235,12 @@ class _SummaryCard extends StatelessWidget {
 
     return Container(
       padding: EdgeInsets.symmetric(
-        horizontal: size.width * 0.012,
-        vertical: size.height * 0.018,
+        horizontal: size.width * 0.014,
+        vertical: size.height * 0.016,
       ),
       decoration: BoxDecoration(
         color: color,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
         children: [
@@ -224,21 +253,31 @@ class _SummaryCard extends StatelessWidget {
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.9),
                     fontWeight: FontWeight.w600,
-                    fontSize: (size.width * 0.011).clamp(12.0, 14.0),
+                    fontSize: (size.width * 0.010).clamp(11.0, 13.0),
                   ),
                 ),
+                const SizedBox(height: 4),
                 Text(
                   value,
                   style: TextStyle(
                     color: Colors.white,
                     fontWeight: FontWeight.w800,
-                    fontSize: (size.width * 0.022).clamp(24.0, 32.0),
+                    fontSize: (size.width * 0.022).clamp(24.0, 30.0),
                   ),
                 ),
               ],
             ),
           ),
-          Icon(icon, color: Colors.white, size: 32),
+          Container(
+            width: 38,
+            height: 38,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.85),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: color, size: 22),
+          ),
         ],
       ),
     );
@@ -250,39 +289,98 @@ class _BoardColumn extends StatelessWidget {
     required this.title,
     required this.color,
     required this.items,
+    required this.column,
+    required this.onTaskDropped,
   });
 
   final String title;
   final Color color;
   final List<TaskBoardItem> items;
+  final TaskColumn column;
+  final ValueChanged<TaskBoardItem> onTaskDropped;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+    return DragTarget<TaskBoardItem>(
+      onWillAcceptWithDetails: (details) => details.data.column != column,
+      onAcceptWithDetails: (details) => onTaskDropped(details.data),
+      builder: (context, candidateData, rejectedData) {
+        final isHovered = candidateData.isNotEmpty;
+        return AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: isHovered ? color.withValues(alpha: 0.85) : color,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isHovered ? AppColors.primaryBlue : Colors.transparent,
+              width: 2,
             ),
           ),
-          const SizedBox(height: 10),
-          ...items.map(
-            (t) => Padding(
-              padding: const EdgeInsets.only(bottom: 10),
-              child: _TaskCard(item: t),
-            ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Row(
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 13,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                  const Spacer(),
+                  const Icon(Icons.drag_indicator_rounded, size: 16, color: AppColors.textSecondary),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...items.map(
+                (t) => Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Draggable<TaskBoardItem>(
+                    data: t,
+                    feedback: Material(
+                      elevation: 8,
+                      borderRadius: BorderRadius.circular(12),
+                      color: Colors.transparent,
+                      child: SizedBox(
+                        width: 280,
+                        child: _TaskCard(item: t),
+                      ),
+                    ),
+                    childWhenDragging: Opacity(
+                      opacity: 0.35,
+                      child: _TaskCard(item: t),
+                    ),
+                    child: _TaskCard(item: t),
+                  ),
+                ),
+              ),
+              if (items.isEmpty)
+                Container(
+                  height: 90,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: AppColors.cardBorder,
+                      style: BorderStyle.solid,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    'Drop tasks here',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary.withValues(alpha: 0.7),
+                    ),
+                  ),
+                ),
+            ],
           ),
-        ],
-      ),
+        );
+      },
     );
   }
 }
@@ -295,15 +393,22 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('yyyy-MM-dd').format(item.dueDate);
-    final isMediumPriority = item.title.contains('Plumbing');
+    final isPlumbing = item.title.contains('Plumbing');
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 6,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -317,45 +422,45 @@ class _TaskCard extends StatelessWidget {
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(
-                    fontWeight: FontWeight.w800,
+                    fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ),
               const SizedBox(width: 8),
               if (item.completed)
-                const Icon(Icons.check_circle, color: AppColors.success, size: 22)
+                const Icon(Icons.check_rounded, color: AppColors.badgeGreen, size: 20)
               else
                 _PriorityBadge(
                   priority: item.priority,
-                  isMedium: isMediumPriority,
+                  isYellow: isPlumbing,
                 ),
             ],
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Text(
             item.project,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
               color: AppColors.textSecondary,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontWeight: FontWeight.w500,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
             item.description,
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(
-              color: AppColors.textPrimary,
+              color: AppColors.textSecondary,
               height: 1.3,
-              fontSize: 12,
+              fontSize: 11,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 14),
           Row(
             children: [
               Expanded(
@@ -363,32 +468,21 @@ class _TaskCard extends StatelessWidget {
                   item.completed ? 'Completed' : 'Due $dateLabel',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: item.completed
-                        ? AppColors.success
-                        : AppColors.textSecondary,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.w500,
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
                   ),
                 ),
               ),
-              const SizedBox(width: 8),
-              const CircleAvatar(
-                radius: 10,
-                backgroundColor: AppColors.primaryBlue,
-                child: Icon(Icons.person, size: 12, color: Colors.white),
-              ),
-              const SizedBox(width: 6),
-              Flexible(
-                child: Text(
-                  item.assignee,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: AppColors.textPrimary,
-                  ),
+              Text(
+                item.assignee,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontWeight: FontWeight.w600,
+                  fontSize: 11,
+                  color: AppColors.textPrimary,
                 ),
               ),
             ],
@@ -402,28 +496,26 @@ class _TaskCard extends StatelessWidget {
 class _PriorityBadge extends StatelessWidget {
   const _PriorityBadge({
     required this.priority,
-    required this.isMedium,
+    required this.isYellow,
   });
 
   final String priority;
-  final bool isMedium;
+  final bool isYellow;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
       decoration: BoxDecoration(
-        color: isMedium
-            ? AppColors.chartYellow.withValues(alpha: 0.25)
-            : const Color(0xFFFCE7F3),
-        borderRadius: BorderRadius.circular(20),
+        color: isYellow ? const Color(0xFFFEF9C3) : const Color(0xFFFEE2E2),
+        borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
         priority,
         style: TextStyle(
-          fontWeight: FontWeight.w700,
-          fontSize: 11,
-          color: isMedium ? const Color(0xFF92400E) : const Color(0xFFBE185D),
+          fontWeight: FontWeight.w600,
+          fontSize: 10,
+          color: isYellow ? const Color(0xFFD97706) : const Color(0xFFEF4444),
         ),
       ),
     );

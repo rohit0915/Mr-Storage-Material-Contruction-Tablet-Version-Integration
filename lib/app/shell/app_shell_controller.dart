@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../routes/app_routes.dart';
+import '../utils/app_toast.dart';
 
 class AppShellController extends GetxController {
   final searchController = TextEditingController();
@@ -35,12 +36,20 @@ class AppShellController extends GetxController {
       case 'Bundle Scan':
         Get.offNamed(AppRoutes.bundleScan);
         break;
+      case 'Packing List':
+        Get.offNamed(AppRoutes.packingList);
+        break;
+      case 'Dispatch Verification':
+        Get.offNamed(AppRoutes.dispatchVerification);
+        break;
+      case 'Chat / Messaging':
+        Get.offNamed(AppRoutes.chat);
+        break;
+
       default:
-        Get.snackbar(
-          title,
-          'This screen will be available soon.',
-          snackPosition: SnackPosition.BOTTOM,
-          margin: const EdgeInsets.all(16),
+        AppToast.showInfo(
+          title: title,
+          description: 'This screen will be available soon.',
         );
     }
   }

@@ -37,4 +37,24 @@ class AppColors {
   static const Color pink = Color(0xFFFD3995);
   static const Color cyan = Color(0xFF06B6D4);
   static const Color orange = Color(0xFFF97316);
+
+  // Soft backgrounds & Figma exact accents
+  static const Color softBlueBg = Color(0xFFEFF5FF);
+  static const Color softTealBg = Color(0xFFE6F7F5);
+  static const Color softYellowBg = Color(0xFFFFFBEB);
+  static const Color softGreenBg = Color(0xFFECFDF5);
+  static const Color softOrangeBg = Color(0xFFFFF7ED);
+  static const Color softPurpleBg = Color(0xFFF3E8FF);
+  static const Color softPinkBg = Color(0xFFFDF2F8);
+
+  static const Color badgeGreen = Color(0xFF16A34A);
+  static const Color badgeRed = Color(0xFFDC2626);
+  static const Color badgeOrange = Color(0xFFD97706);
+  static const Color badgePink = Color(0xFFE11D48);
+
+  static const Color donutTeal = Color(0xFF0F4C5C);
+  static const Color donutGold = Color(0xFFF4A261);
+  static const Color donutPink = Color(0xFFE76F51);
+  static const Color donutPurple = Color(0xFF7209B7);
 }
+

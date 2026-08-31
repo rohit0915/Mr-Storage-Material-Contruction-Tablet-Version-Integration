@@ -1,13 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
 import 'section_card.dart';
 import 'status_badge.dart';
 
-class ActiveSitesCard extends GetView<DashboardController> {
+class ActiveSitesCard extends StatelessWidget {
   const ActiveSitesCard({super.key});
 
   @override
@@ -64,91 +65,110 @@ class ActiveSitesCard extends GetView<DashboardController> {
             ),
           ),
           SizedBox(height: gap),
-          ...controller.sites.map((site) {
-            return Padding(
-              padding: EdgeInsets.only(bottom: gap),
-              child: Row(
-                children: [
-                  Expanded(
-                    flex: 3,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          site.project,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: cellSize,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.chartTeal,
-                          ),
-                        ),
-                        Text(
-                          site.location,
-                          style: TextStyle(
-                            fontSize: cellSize - 1,
-                            color: AppColors.textSecondary,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          '${(site.progress * 100).round()}%',
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: cellSize,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        SizedBox(height: size.height * 0.004),
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(4),
-                          child: LinearProgressIndicator(
-                            value: site.progress,
-                            minHeight: 6,
-                            backgroundColor: AppColors.chartTealSoft,
-                            valueColor: AlwaysStoppedAnimation(site.barColor),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Expanded(
-                    flex: 2,
+          GetBuilder<DashboardController>(
+            id: AppGetIds.activeSites,
+            builder: (controller) {
+              final list = controller.sites;
+              if (list.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
                     child: Text(
-                      site.deadline,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: cellSize,
-                        color: AppColors.textSecondary,
-                      ),
+                      'No active sites data available',
+                      style: TextStyle(fontSize: cellSize, color: AppColors.textSecondary),
                     ),
                   ),
-                  Expanded(
-                    flex: 3,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      alignment: Alignment.centerLeft,
-                      child: StatusBadge(
-                        label: site.status,
-                        color: site.statusColor,
-                      ),
+                );
+              }
+
+              return Column(
+                children: list.map((site) {
+                  return Padding(
+                    padding: EdgeInsets.only(bottom: gap),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                site.project,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: cellSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.chartTeal,
+                                ),
+                              ),
+                              Text(
+                                site.location,
+                                style: TextStyle(
+                                  fontSize: cellSize - 1,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${(site.progress * 100).round()}%',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: cellSize,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                              SizedBox(height: size.height * 0.004),
+                              ClipRRect(
+                                borderRadius: BorderRadius.circular(4),
+                                child: LinearProgressIndicator(
+                                  value: site.progress,
+                                  minHeight: 6,
+                                  backgroundColor: AppColors.chartTealSoft,
+                                  valueColor: AlwaysStoppedAnimation(site.barColor),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        Expanded(
+                          flex: 2,
+                          child: Text(
+                            site.deadline,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: cellSize,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 3,
+                          child: Align(
+                            alignment: Alignment.centerLeft,
+                            child: StatusBadge(
+                              label: site.status,
+                              color: site.statusColor,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                  );
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );
@@ -172,7 +192,7 @@ class _Header extends StatelessWidget {
         overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: size,
-          fontWeight: FontWeight.w600,
+          fontWeight: FontWeight.w700,
           color: AppColors.textSecondary,
         ),
       ),

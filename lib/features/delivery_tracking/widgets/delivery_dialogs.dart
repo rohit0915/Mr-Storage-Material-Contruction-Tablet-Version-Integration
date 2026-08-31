@@ -728,11 +728,19 @@ class UpdateSiteContactDialog extends StatefulWidget {
 }
 
 class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
+  final _nameCtrl = TextEditingController();
+  final _titleCtrl = TextEditingController();
+  final _phoneCtrl = TextEditingController();
+  final _emailCtrl = TextEditingController();
   final _hoursCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
 
   @override
   void dispose() {
+    _nameCtrl.dispose();
+    _titleCtrl.dispose();
+    _phoneCtrl.dispose();
+    _emailCtrl.dispose();
     _hoursCtrl.dispose();
     _notesCtrl.dispose();
     super.dispose();
@@ -741,10 +749,8 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final labelSize = (size.width * 0.010).clamp(12.0, 14.0);
-
     return _DialogBase(
-      maxWidth: 540,
+      maxWidth: 580,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
         child: Column(
@@ -760,16 +766,18 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
                       Text(
                         'Update Site Contact',
                         style: TextStyle(
-                          fontSize: (size.width * 0.014).clamp(16.0, 20.0),
+                          fontSize: (size.width * 0.015).clamp(18.0, 22.0),
                           fontWeight: FontWeight.w800,
                           color: AppColors.textPrimary,
                         ),
                       ),
+                      const SizedBox(height: 2),
                       Text(
                         '${widget.item.id} - ${widget.item.location}',
-                        style: TextStyle(
-                            fontSize: labelSize - 2,
-                            color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -777,50 +785,61 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
                 _closeButton(context),
               ],
             ),
-            const SizedBox(height: 20),
-            Text('Available hours',
-                style: TextStyle(
-                    fontSize: labelSize,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textLabel)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _hoursCtrl,
-              style: TextStyle(fontSize: labelSize, color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'e.g., 7:00 AM – 5:00 PM, Mon-Fri',
-                filled: true,
-                fillColor: AppColors.inputFill,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none),
-              ),
+            const SizedBox(height: 18),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fieldLabel('Contact Name'),
+                      _textField(_nameCtrl, 'Enter contact name'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fieldLabel('Contact Title'),
+                      _textField(_titleCtrl, 'Enter job title'),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 16),
-            Text('Additional Notes',
-                style: TextStyle(
-                    fontSize: labelSize,
-                    fontWeight: FontWeight.w600,
-                    color: AppColors.textLabel)),
-            const SizedBox(height: 6),
-            TextField(
-              controller: _notesCtrl,
-              maxLines: 4,
-              style: TextStyle(fontSize: labelSize, color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                hintText: 'Additional notes about this contact...',
-                filled: true,
-                fillColor: AppColors.inputFill,
-                contentPadding: const EdgeInsets.symmetric(
-                    horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    borderSide: BorderSide.none),
-              ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fieldLabel('Phone number'),
+                      _textField(_phoneCtrl, '(555) 123-4567'),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fieldLabel('Email Address'),
+                      _textField(_emailCtrl, 'contact@company.com'),
+                    ],
+                  ),
+                ),
+              ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 14),
+            _fieldLabel('Available hours'),
+            _textField(_hoursCtrl, 'e.g., 7:00 AM - 5:00 PM, Mon-Fri'),
+            const SizedBox(height: 14),
+            _fieldLabel('Additional Notes'),
+            _textField(_notesCtrl, 'Additional notes about this contact...', maxLines: 3),
+            const SizedBox(height: 22),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -829,13 +848,10 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
                   style: OutlinedButton.styleFrom(
                     foregroundColor: AppColors.textPrimary,
                     side: const BorderSide(color: AppColors.cardBorder),
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('Cancel',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
                 ),
                 const SizedBox(width: 12),
                 ElevatedButton(
@@ -845,16 +861,13 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
                     await _showSuccess(context, 'Contact saved!');
                   },
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.brandPrimary,
+                    backgroundColor: AppColors.primaryBlue,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 24, vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10)),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
                   ),
-                  child: const Text('Save Contact',
-                      style: TextStyle(fontWeight: FontWeight.w700)),
+                  child: const Text('Save Contact', style: TextStyle(fontWeight: FontWeight.w700)),
                 ),
               ],
             ),
@@ -863,6 +876,412 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
       ),
     );
   }
+
+  Widget _fieldLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+
+  Widget _textField(TextEditingController ctrl, String hint, {int maxLines = 1}) => TextField(
+        controller: ctrl,
+        maxLines: maxLines,
+        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+          filled: true,
+          fillColor: Colors.white,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.cardBorder),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppColors.cardBorder),
+          ),
+        ),
+      );
+}
+
+// ─── Update Readiness Date ───────────────────────────────────────────────────
+
+class UpdateReadinessDateDialog extends StatefulWidget {
+  const UpdateReadinessDateDialog({super.key, required this.item});
+  final DeliveryItem item;
+
+  static Future<void> show(BuildContext context, DeliveryItem item) =>
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => UpdateReadinessDateDialog(item: item),
+      );
+
+  @override
+  State<UpdateReadinessDateDialog> createState() =>
+      _UpdateReadinessDateDialogState();
+}
+
+class _UpdateReadinessDateDialogState extends State<UpdateReadinessDateDialog> {
+  final _dateCtrl = TextEditingController();
+  final _timeCtrl = TextEditingController();
+  final _detailsCtrl = TextEditingController();
+  String _reason = 'Production Delay';
+
+  @override
+  void dispose() {
+    _dateCtrl.dispose();
+    _timeCtrl.dispose();
+    _detailsCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
+    return _DialogBase(
+      maxWidth: 580,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Update Readiness Date',
+                        style: TextStyle(
+                          fontSize: (size.width * 0.015).clamp(18.0, 22.0),
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.item.id} - ${widget.item.title}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _closeButton(context),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: const Color(0xFFEFF6FF),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFBFDBFE)),
+              ),
+              child: RichText(
+                text: const TextSpan(
+                  text: 'Current Scheduled Departure: ',
+                  style: TextStyle(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryBlue,
+                    fontSize: 13,
+                  ),
+                  children: [
+                    TextSpan(
+                      text: 'Tuesday, March 24, 2026 at 02:00 PM',
+                      style: TextStyle(fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fieldLabel('New Readiness Date'),
+                      TextField(
+                        controller: _dateCtrl,
+                        decoration: _inputDecoration('dd-mm-yyy'),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _fieldLabel('Ready Time'),
+                      TextField(
+                        controller: _timeCtrl,
+                        decoration: _inputDecoration('--:--'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            _fieldLabel('Reason for change'),
+            DropdownButtonFormField<String>(
+              key: ValueKey(_reason),
+              initialValue: _reason,
+              isExpanded: true,
+              decoration: _inputDecoration('Select Reason'),
+              items: const [
+                DropdownMenuItem(value: 'Production Delay', child: Text('Production Delay')),
+                DropdownMenuItem(value: 'Weather Condition', child: Text('Weather Condition')),
+                DropdownMenuItem(value: 'Transport Issue', child: Text('Transport Issue')),
+              ],
+              onChanged: (v) => setState(() => _reason = v!),
+            ),
+            const SizedBox(height: 14),
+            _fieldLabel('Additional details'),
+            TextField(
+              controller: _detailsCtrl,
+              maxLines: 3,
+              decoration: _inputDecoration('Provide details about why the readiness data is changing...'),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    if (!context.mounted) return;
+                    await _showSuccess(context, 'Readiness Date Updated!');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Update', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+
+  InputDecoration _inputDecoration(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+      );
+}
+
+// ─── Update Pickup Instructions ──────────────────────────────────────────────
+
+class UpdatePickupInstructionsDialog extends StatefulWidget {
+  const UpdatePickupInstructionsDialog({super.key, required this.item});
+  final DeliveryItem item;
+
+  static Future<void> show(BuildContext context, DeliveryItem item) =>
+      showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => UpdatePickupInstructionsDialog(item: item),
+      );
+
+  @override
+  State<UpdatePickupInstructionsDialog> createState() =>
+      _UpdatePickupInstructionsDialogState();
+}
+
+class _UpdatePickupInstructionsDialogState
+    extends State<UpdatePickupInstructionsDialog> {
+  final _locationCtrl = TextEditingController(text: 'Yard-A');
+  final _accessCtrl = TextEditingController();
+  final _loadingCtrl = TextEditingController(text: 'Requires forklift for unloading');
+
+  @override
+  void dispose() {
+    _locationCtrl.dispose();
+    _accessCtrl.dispose();
+    _loadingCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
+    return _DialogBase(
+      maxWidth: 580,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Update Pickup Instructions',
+                        style: TextStyle(
+                          fontSize: (size.width * 0.015).clamp(18.0, 22.0),
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${widget.item.id} - ${widget.item.title}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                _closeButton(context),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _fieldLabel('Pickup Location Details *'),
+            TextField(
+              controller: _locationCtrl,
+              decoration: _inputDecoration('Yard-A'),
+            ),
+            const SizedBox(height: 14),
+            _fieldLabel('Access Instructions'),
+            TextField(
+              controller: _accessCtrl,
+              maxLines: 3,
+              decoration: _inputDecoration('Enter gate codes, access routes, parking instructions etc.'),
+            ),
+            const SizedBox(height: 14),
+            _fieldLabel('Loading Requirements'),
+            TextField(
+              controller: _loadingCtrl,
+              decoration: _inputDecoration('Requires forklift for unloading'),
+            ),
+            const SizedBox(height: 22),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                OutlinedButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.textPrimary,
+                    side: const BorderSide(color: AppColors.cardBorder),
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    if (!context.mounted) return;
+                    await _showSuccess(context, 'Instructions Saved!');
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  child: const Text('Save', style: TextStyle(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _fieldLabel(String text) => Padding(
+        padding: const EdgeInsets.only(bottom: 6),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w600,
+            fontSize: 13,
+            color: AppColors.textPrimary,
+          ),
+        ),
+      );
+
+  InputDecoration _inputDecoration(String hint) => InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+      );
 }
 
 // ─── View Details ─────────────────────────────────────────────────────────────
@@ -961,29 +1380,75 @@ class ViewDetailsDialog extends StatelessWidget {
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               decoration: BoxDecoration(
-                color: statusColor.withValues(alpha: 0.1),
+                color: switch (item.status) {
+                  DeliveryStatus.inTransit => const Color(0xFFEFF6FF),
+                  DeliveryStatus.staged => const Color(0xFFF0FDF4),
+                  DeliveryStatus.ready => const Color(0xFFFFF7ED),
+                  DeliveryStatus.delivered => const Color(0xFFF9FAFB),
+                },
                 borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: switch (item.status) {
+                    DeliveryStatus.inTransit => const Color(0xFF2563EB),
+                    DeliveryStatus.staged => const Color(0xFF22C55E),
+                    DeliveryStatus.ready => const Color(0xFFF97316),
+                    DeliveryStatus.delivered => const Color(0xFF9CA3AF),
+                  },
+                  width: 1.5,
+                ),
               ),
               child: Row(children: [
                 Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text('Current Status',
-                      style: TextStyle(
+                  Row(
+                    children: [
+                      Text(
+                        'Current Status',
+                        style: TextStyle(
                           fontSize: labelSize,
-                          color: statusColor.withValues(alpha: 0.8))),
-                  Text(_statusLabel(item.status),
-                      style: TextStyle(
-                          fontSize: (size.width * 0.013).clamp(14.0, 18.0),
-                          fontWeight: FontWeight.w800,
-                          color: statusColor)),
+                          color: statusColor.withValues(alpha: 0.8),
+                        ),
+                      ),
+                      if (item.status == DeliveryStatus.inTransit) ...[
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFEF3C7),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Text(
+                            '🟡 ETA 10:45 AM',
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: Color(0xFFD97706),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    _statusLabel(item.status),
+                    style: TextStyle(
+                      fontSize: (size.width * 0.015).clamp(16.0, 20.0),
+                      fontWeight: FontWeight.w800,
+                      color: statusColor,
+                    ),
+                  ),
                 ]),
                 const Spacer(),
                 Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                   Text('Staging Area', style: TextStyle(fontSize: labelSize, color: AppColors.textSecondary)),
-                  Text(item.stagingArea,
-                      style: TextStyle(
-                          fontSize: valueSize + 1,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.textPrimary)),
+                  Text(
+                    item.stagingArea,
+                    style: TextStyle(
+                      fontSize: valueSize + 2,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ]),
               ]),
             ),

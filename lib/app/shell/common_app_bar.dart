@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../features/auth/services/auth_service.dart';
+import '../routes/app_routes.dart';
 import '../theme/app_colors.dart';
 import 'app_shell_controller.dart';
 
@@ -46,7 +48,7 @@ class CommonAppBar extends GetView<AppShellController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome, John!',
+                'Welcome, ${Get.isRegistered<AuthService>() ? AuthService.to.userName : 'User'}!',
                 style: TextStyle(
                   fontSize: nameSize,
                   fontWeight: FontWeight.w700,
@@ -54,7 +56,7 @@ class CommonAppBar extends GetView<AppShellController> {
                 ),
               ),
               Text(
-                'construction@steelbuilding.depot',
+                Get.isRegistered<AuthService>() ? AuthService.to.userEmail : '',
                 style: TextStyle(
                   fontSize: emailSize,
                   color: AppColors.textSecondary,
@@ -94,13 +96,21 @@ class CommonAppBar extends GetView<AppShellController> {
             ),
           ),
           SizedBox(width: gap),
-          _CircleAction(
-            icon: Icons.notifications_none_rounded,
-            size: iconBox,
-            showBadge: true,
+          InkWell(
+            onTap: () => Get.toNamed(AppRoutes.notifications),
+            borderRadius: BorderRadius.circular(20),
+            child: _CircleAction(
+              icon: Icons.notifications_none_rounded,
+              size: iconBox,
+              showBadge: true,
+            ),
           ),
           SizedBox(width: size.width * 0.006),
-          _CircleAction(icon: Icons.person_outline, size: iconBox),
+          InkWell(
+            onTap: () => Get.toNamed(AppRoutes.profile),
+            borderRadius: BorderRadius.circular(20),
+            child: _CircleAction(icon: Icons.person_outline, size: iconBox),
+          ),
         ],
       ),
     );

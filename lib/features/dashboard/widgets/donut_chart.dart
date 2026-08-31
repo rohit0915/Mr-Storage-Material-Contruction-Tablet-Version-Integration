@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import '../../../app/theme/app_colors.dart';
 import '../models/dashboard_models.dart';
 
-/// Reusable circular / donut progress chart used on the dashboard.
+/// Reusable circular / donut progress chart used on the dashboard with smooth sweep entry animation.
 class DonutChart extends StatelessWidget {
   const DonutChart({
     super.key,
@@ -14,6 +14,7 @@ class DonutChart extends StatelessWidget {
     required this.centerValue,
     this.size,
     this.strokeWidth,
+    this.isSemiGauge = false,
   });
 
   final List<ChartSlice> slices;
@@ -21,6 +22,7 @@ class DonutChart extends StatelessWidget {
   final String centerValue;
   final double? size;
   final double? strokeWidth;
+  final bool isSemiGauge;
 
   @override
   Widget build(BuildContext context) {
@@ -32,16 +34,33 @@ class DonutChart extends StatelessWidget {
 
     return SizedBox(
       width: chartSize,
-      height: chartSize,
+      height: isSemiGauge ? chartSize * 0.75 : chartSize,
       child: Stack(
-        alignment: Alignment.center,
+        alignment: isSemiGauge ? Alignment.bottomCenter : Alignment.center,
         children: [
-          CustomPaint(
-            size: Size.square(chartSize),
-            painter: _DonutPainter(slices: slices, strokeWidth: stroke),
+          TweenAnimationBuilder<double>(
+            key: ValueKey(slices.map((s) => '${s.label}_${s.percent}').join(',')),
+            tween: Tween<double>(begin: 0.0, end: 1.0),
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOutCubic,
+            builder: (context, animValue, child) {
+              return CustomPaint(
+                size: Size(chartSize, isSemiGauge ? chartSize * 0.75 : chartSize),
+                painter: _DonutPainter(
+                  slices: slices,
+                  strokeWidth: stroke,
+                  animationValue: animValue,
+                  isSemiGauge: isSemiGauge,
+                ),
+              );
+            },
           ),
           Padding(
-            padding: EdgeInsets.symmetric(horizontal: chartSize * 0.18),
+            padding: EdgeInsets.only(
+              bottom: isSemiGauge ? chartSize * 0.04 : 0,
+              left: chartSize * 0.1,
+              right: chartSize * 0.1,
+            ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
@@ -102,13 +121,20 @@ class ProgressCircleBar extends StatelessWidget {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          CustomPaint(
-            size: Size.square(chartSize),
-            painter: _ProgressCirclePainter(
-              progress: progress.clamp(0.0, 1.0),
-              color: color,
-              strokeWidth: stroke,
-            ),
+          TweenAnimationBuilder<double>(
+            tween: Tween<double>(begin: 0.0, end: progress.clamp(0.0, 1.0)),
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeOutCubic,
+            builder: (context, animProgress, _) {
+              return CustomPaint(
+                size: Size.square(chartSize),
+                painter: _ProgressCirclePainter(
+                  progress: animProgress,
+                  color: color,
+                  strokeWidth: stroke,
+                ),
+              );
+            },
           ),
           ?child,
         ],
@@ -126,9 +152,14 @@ class ChartLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final fontSize = (size.width * 0.009).clamp(10.0, 12.0);
+    final totalSum = slices.fold<double>(0, (sum, item) => sum + item.percent);
 
     return Column(
       children: slices.map((slice) {
+        final displayValue = totalSum > 0
+            ? '${((slice.percent / totalSum) * 100).round()}%'
+            : '0%';
+
         return Padding(
           padding: EdgeInsets.only(bottom: size.height * 0.008),
           child: Row(
@@ -153,7 +184,7 @@ class ChartLegend extends StatelessWidget {
                 ),
               ),
               Text(
-                '${slice.percent.toStringAsFixed(0)}%',
+                displayValue,
                 style: TextStyle(
                   fontSize: fontSize,
                   color: AppColors.textSecondary,
@@ -169,33 +200,69 @@ class ChartLegend extends StatelessWidget {
 }
 
 class _DonutPainter extends CustomPainter {
-  _DonutPainter({required this.slices, required this.strokeWidth});
+  _DonutPainter({
+    required this.slices,
+    required this.strokeWidth,
+    required this.animationValue,
+    this.isSemiGauge = false,
+  });
 
   final List<ChartSlice> slices;
   final double strokeWidth;
+  final double animationValue;
+  final bool isSemiGauge;
 
   @override
   void paint(Canvas canvas, Size size) {
-    final center = Offset(size.width / 2, size.height / 2);
-    final radius = (size.shortestSide - strokeWidth) / 2;
-    final rect = Rect.fromCircle(center: center, radius: radius);
-    var start = -math.pi / 2;
+    if (slices.isEmpty) return;
 
-    for (final slice in slices) {
-      final sweep = (slice.percent / 100) * 2 * math.pi;
-      final paint = Paint()
-        ..color = slice.color
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = strokeWidth
-        ..strokeCap = StrokeCap.butt;
-      canvas.drawArc(rect, start, sweep, false, paint);
-      start += sweep;
+    final center = isSemiGauge
+        ? Offset(size.width / 2, size.height * 0.7)
+        : Offset(size.width / 2, size.height / 2);
+    final radius = (size.width - strokeWidth) / 2;
+    final rect = Rect.fromCircle(center: center, radius: radius);
+
+    final maxTotalAngle = isSemiGauge ? math.pi : (2 * math.pi);
+    var start = isSemiGauge ? math.pi : (-math.pi / 2);
+
+    final totalSum = slices.fold<double>(0, (sum, item) => sum + item.percent);
+
+    if (totalSum == 0) {
+      // When all values are 0, show equal segments for all categories with smooth animation
+      final baseSegment = maxTotalAngle / slices.length;
+      final sweep = baseSegment * animationValue;
+      for (final slice in slices) {
+        final paint = Paint()
+          ..color = slice.color
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = strokeWidth
+          ..strokeCap = StrokeCap.butt;
+        canvas.drawArc(rect, start, sweep, false, paint);
+        start += baseSegment;
+      }
+    } else {
+      for (final slice in slices) {
+        final targetSweep = (slice.percent / totalSum) * maxTotalAngle;
+        final animatedSweep = targetSweep * animationValue;
+        if (animatedSweep > 0) {
+          final paint = Paint()
+            ..color = slice.color
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = strokeWidth
+            ..strokeCap = StrokeCap.butt;
+          canvas.drawArc(rect, start, animatedSweep, false, paint);
+          start += targetSweep;
+        }
+      }
     }
   }
 
   @override
   bool shouldRepaint(covariant _DonutPainter oldDelegate) =>
-      oldDelegate.slices != slices || oldDelegate.strokeWidth != strokeWidth;
+      oldDelegate.slices != slices ||
+      oldDelegate.strokeWidth != strokeWidth ||
+      oldDelegate.animationValue != animationValue ||
+      oldDelegate.isSemiGauge != isSemiGauge;
 }
 
 class _ProgressCirclePainter extends CustomPainter {

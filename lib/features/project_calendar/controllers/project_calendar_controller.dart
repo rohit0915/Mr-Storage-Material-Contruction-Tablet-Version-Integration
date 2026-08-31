@@ -1,201 +1,256 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../app/constants/app_assets.dart';
-import '../../../app/theme/app_colors.dart';
+import '../../../app/constants/get_builder_ids.dart';
+import '../../../app/utils/app_logger.dart';
 import '../models/project_calendar_models.dart';
+import '../services/project_calendar_service.dart';
 import '../widgets/add_delivery_dialog.dart';
 
 class ProjectCalendarController extends GetxController {
+  ProjectCalendarController({ProjectCalendarService? calendarService})
+      : _calendarService = calendarService ?? Get.put(ProjectCalendarService());
+
+  final ProjectCalendarService _calendarService;
+
   final selectedTab = ProjectCalendarTab.calendar.obs;
-  final focusedMonth = DateTime(2025, 1, 1).obs;
-  final selectedDay = 19.obs;
-  final selectedProjectId = '1'.obs;
+  final focusedMonth = DateTime.now().obs;
+  final selectedDay = DateTime.now().day.obs;
+  final selectedProjectId = ''.obs;
   final dropdownOpen = false.obs;
 
-  final projects = const <CalendarProjectOption>[
-    CalendarProjectOption(
-      id: '1',
-      name: 'ABC Warehouse',
-      code: 'PRJ-2025-0015',
-      imageAsset: AppAssets.thumbBuilding,
-    ),
-    CalendarProjectOption(
-      id: '2',
-      name: 'Riverside Office Complex',
-      code: 'PRJ-2025-0016',
-      imageAsset: AppAssets.thumbBuilding,
-    ),
-    CalendarProjectOption(
-      id: '3',
-      name: 'XYZ Building Complex',
-      code: 'PRJ-2025-0017',
-      imageAsset: AppAssets.thumbBuilding,
-    ),
-    CalendarProjectOption(
-      id: '4',
-      name: 'James Court',
-      code: 'PRJ-2025-0018',
-      imageAsset: AppAssets.thumbBuilding,
-    ),
-    CalendarProjectOption(
-      id: '5',
-      name: 'Dupleix Villa',
-      code: 'PRJ-2025-0019',
-      imageAsset: AppAssets.thumbBuilding,
-    ),
-  ];
+  bool isLoadingProjects = false;
+  bool isLoadingCalendar = false;
+  String errorMessage = '';
 
-  final Map<int, List<CalendarDayEvent>> monthEvents = {
-    5: const [CalendarDayEvent(title: 'Columns D1-D5')],
-    8: const [CalendarDayEvent(title: 'Roof Beams')],
-    12: const [CalendarDayEvent(title: 'Slab G1')],
-    15: const [CalendarDayEvent(title: 'Window Frames')],
-    19: const [
-      CalendarDayEvent(title: 'Facade Panels', color: AppColors.primaryBlue),
-      CalendarDayEvent(title: 'Staircase Structure', color: AppColors.orange),
-      CalendarDayEvent(title: 'Overall Project', color: AppColors.chartPink),
-    ],
-    22: const [CalendarDayEvent(title: 'Column C1-C8')],
-    28: const [CalendarDayEvent(title: 'Ceiling Works')],
-    30: const [CalendarDayEvent(title: 'Paint & Finishes')],
-  };
+  List<CalendarProjectOption> projects = [];
+  Map<int, List<CalendarDayEvent>> monthEvents = {};
+  Map<int, List<DeliveryItem>> dayDeliveriesMap = {};
+  List<ProjectCardItem> projectCards = [];
 
-  final deliveries = const <DeliveryItem>[
-    DeliveryItem(
-      id: 'DEL-2001',
-      title: 'Primary Frame Steel',
-      location: 'ABC Logistics Warehouse',
-      quantity: '45,000 lbs',
-      stagingArea: 'Yard-A',
-      arrival: 'Mar 24, 10:00 AM',
-      departure: 'Mar 24, 02:00 PM',
-    ),
-    DeliveryItem(
-      id: 'DEL-2002',
-      title: 'Secondary Beams',
-      location: 'ABC Logistics Warehouse',
-      quantity: '28,500 lbs',
-      stagingArea: 'Yard-B',
-      arrival: 'Mar 24, 11:30 AM',
-      departure: 'Mar 24, 03:15 PM',
-    ),
-  ];
-
-  final projectCards = const <ProjectCardItem>[
-    ProjectCardItem(
-      title: 'Downtown Office Complex',
-      location: 'Construction Site A',
-      projectId: 'PRO-2025-0031',
-      status: 'Work in Progress',
-      statusColor: AppColors.chartYellow,
-      priority: 'High',
-      priorityColor: AppColors.danger,
-      imageAsset: AppAssets.project1,
-    ),
-    ProjectCardItem(
-      title: 'Riverside Apartments',
-      location: 'Construction Site B',
-      projectId: 'PRO-2025-0032',
-      status: 'Completed',
-      statusColor: AppColors.success,
-      priority: 'Medium',
-      priorityColor: AppColors.chartYellow,
-      imageAsset: AppAssets.project2,
-    ),
-    ProjectCardItem(
-      title: 'Harbor Logistics Hub',
-      location: 'Construction Site C',
-      projectId: 'PRO-2025-0033',
-      status: 'Work in Progress',
-      statusColor: AppColors.chartYellow,
-      priority: 'High',
-      priorityColor: AppColors.danger,
-      imageAsset: AppAssets.project3,
-    ),
-    ProjectCardItem(
-      title: 'Central Mall Expansion',
-      location: 'Construction Site D',
-      projectId: 'PRO-2025-0034',
-      status: 'Canceled',
-      statusColor: AppColors.danger,
-      priority: 'Medium',
-      priorityColor: AppColors.chartYellow,
-      imageAsset: AppAssets.project4,
-    ),
-    ProjectCardItem(
-      title: 'North Gate Warehouse',
-      location: 'Construction Site E',
-      projectId: 'PRO-2025-0035',
-      status: 'Completed',
-      statusColor: AppColors.success,
-      priority: 'High',
-      priorityColor: AppColors.danger,
-      imageAsset: AppAssets.project5,
-    ),
-    ProjectCardItem(
-      title: 'East Bay Facility',
-      location: 'Construction Site F',
-      projectId: 'PRO-2025-0036',
-      status: 'Work in Progress',
-      statusColor: AppColors.chartYellow,
-      priority: 'Medium',
-      priorityColor: AppColors.chartYellow,
-      imageAsset: AppAssets.project6,
-    ),
-  ];
-
-  CalendarProjectOption get selectedProject =>
-      projects.firstWhere((p) => p.id == selectedProjectId.value);
+  CalendarProjectOption? get selectedProject {
+    if (projects.isEmpty) return null;
+    return projects.firstWhere(
+      (p) => p.id == selectedProjectId.value,
+      orElse: () => projects.first,
+    );
+  }
 
   List<CalendarDayEvent> get selectedDayEvents =>
       monthEvents[selectedDay.value] ?? const [];
 
+  List<DeliveryItem> get selectedDayDeliveries =>
+      dayDeliveriesMap[selectedDay.value] ?? const [];
+
+  static const allProjectsOption = CalendarProjectOption(
+    id: '',
+    name: 'All Projects',
+    code: 'ALL',
+    imageAsset: '',
+  );
+
+  @override
+  void onInit() {
+    super.onInit();
+    initData();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    // Refresh calendar data whenever screen is rendered
+    fetchCalendarData();
+  }
+
+  Future<void> initData() async {
+    await fetchProjects();
+    await fetchCalendarData();
+  }
+
+  Future<void> fetchProjects() async {
+    isLoadingProjects = true;
+    update([AppGetIds.projectCards, AppGetIds.projectDropdown]);
+    try {
+      final res = await _calendarService.getProjects();
+      if (res != null) {
+        List itemsList = [];
+        if (res is Map && res['projects'] is List) {
+          itemsList = res['projects'] as List;
+        } else if (res is List) {
+          itemsList = res;
+        }
+
+        final parsedOptions = <CalendarProjectOption>[allProjectsOption];
+        final parsedCards = <ProjectCardItem>[];
+
+        for (final item in itemsList) {
+          if (item is Map) {
+            final mapItem = Map<String, dynamic>.from(item);
+            parsedOptions.add(CalendarProjectOption.fromJson(mapItem));
+            parsedCards.add(ProjectCardItem.fromJson(mapItem));
+          }
+        }
+
+        projects = parsedOptions;
+        projectCards = parsedCards;
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchProjects Error', error: e, stackTrace: stackTrace, tag: 'CALENDAR_CTRL');
+    } finally {
+      isLoadingProjects = false;
+      update([AppGetIds.projectCards, AppGetIds.projectDropdown]);
+    }
+  }
+
+  Future<void> fetchCalendarData() async {
+    isLoadingCalendar = true;
+    update([AppGetIds.calendarEvents]);
+    try {
+      final m = focusedMonth.value.month;
+      final y = focusedMonth.value.year;
+      final leadId = selectedProjectId.value.isNotEmpty ? selectedProjectId.value : null;
+
+      final res = await _calendarService.getProjectCalendar(
+        month: m,
+        year: y,
+        leadId: leadId,
+      );
+
+      if (res != null) {
+        Map<String, dynamic>? calendarMap;
+        if (res is Map) {
+          if (res['calendar'] is Map) {
+            calendarMap = Map<String, dynamic>.from(res['calendar'] as Map);
+          } else {
+            calendarMap = Map<String, dynamic>.from(res);
+          }
+        }
+
+        if (calendarMap != null) {
+          final newEvents = <int, List<CalendarDayEvent>>{};
+          final newDeliveriesMap = <int, List<DeliveryItem>>{};
+
+          calendarMap.forEach((key, val) {
+            int? dayNum;
+            String cleanKey = key;
+            if (cleanKey.contains('T')) {
+              cleanKey = cleanKey.split('T')[0];
+            }
+            if (cleanKey.contains('-')) {
+              final parts = cleanKey.split('-');
+              if (parts.length == 3) {
+                dayNum = int.tryParse(parts[2]);
+              }
+            } else {
+              dayNum = int.tryParse(cleanKey);
+            }
+
+            List itemsList = [];
+            if (val is List) {
+              itemsList = val;
+            } else if (val is Map) {
+              itemsList = [val];
+            }
+
+            if (itemsList.isNotEmpty) {
+              final dayEventList = <CalendarDayEvent>[];
+              final dayDeliveryList = <DeliveryItem>[];
+
+              for (final dItem in itemsList) {
+                if (dItem is Map) {
+                  final dMap = Map<String, dynamic>.from(dItem);
+                  dayEventList.add(CalendarDayEvent.fromJson(dMap));
+                  dayDeliveryList.add(DeliveryItem.fromJson(dMap));
+                }
+              }
+
+              if (dayNum != null && dayNum >= 1 && dayNum <= 31) {
+                if (dayEventList.isNotEmpty) {
+                  newEvents[dayNum] = dayEventList;
+                }
+                if (dayDeliveryList.isNotEmpty) {
+                  newDeliveriesMap[dayNum] = dayDeliveryList;
+                }
+              }
+            }
+          });
+
+          monthEvents = newEvents;
+          dayDeliveriesMap = newDeliveriesMap;
+        }
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e('fetchCalendarData Error', error: e, stackTrace: stackTrace, tag: 'CALENDAR_CTRL');
+    } finally {
+      isLoadingCalendar = false;
+      update([AppGetIds.calendarEvents]);
+    }
+  }
+
   void setTab(ProjectCalendarTab tab) {
     selectedTab.value = tab;
     dropdownOpen.value = false;
+    update([AppGetIds.projectCalendarTab, AppGetIds.projectCards, AppGetIds.projectDropdown]);
   }
 
-  void selectDay(int day) => selectedDay.value = day;
+  void selectDay(int day) {
+    selectedDay.value = day;
+    update([AppGetIds.calendarEvents]);
+  }
 
   void previousMonth() {
     final m = focusedMonth.value;
     focusedMonth.value = DateTime(m.year, m.month - 1, 1);
+    fetchCalendarData();
   }
 
   void nextMonth() {
     final m = focusedMonth.value;
     focusedMonth.value = DateTime(m.year, m.month + 1, 1);
+    fetchCalendarData();
   }
 
   void goToday() {
     final now = DateTime.now();
     focusedMonth.value = DateTime(now.year, now.month, 1);
     selectedDay.value = now.day;
+    fetchCalendarData();
   }
 
   void selectProject(String id) {
     selectedProjectId.value = id;
     dropdownOpen.value = false;
+    update([AppGetIds.projectDropdown]);
+    fetchCalendarData();
   }
 
-  void toggleDropdown() => dropdownOpen.value = !dropdownOpen.value;
+  void toggleDropdown() {
+    dropdownOpen.value = !dropdownOpen.value;
+    update([AppGetIds.projectDropdown]);
+  }
 
-  void closeDropdown() => dropdownOpen.value = false;
+  void closeDropdown() {
+    dropdownOpen.value = false;
+    update([AppGetIds.projectDropdown]);
+  }
 
   Future<void> openAddDelivery(BuildContext context) async {
     dropdownOpen.value = false;
+    update([AppGetIds.projectDropdown]);
     final confirmed = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (_) => const AddDeliveryDialog(),
     );
     if (confirmed == true && context.mounted) {
-      await showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => const DeliverySuccessDialog(),
-      );
+      await fetchCalendarData();
+      if (context.mounted) {
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const DeliverySuccessDialog(),
+        );
+      }
     }
   }
 }

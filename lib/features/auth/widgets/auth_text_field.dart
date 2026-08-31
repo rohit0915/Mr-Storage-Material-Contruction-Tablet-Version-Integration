@@ -27,7 +27,6 @@ class AuthTextField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final fieldHeight = (size.height * 0.048).clamp(42.0, 50.0);
     final fontSize = (size.width * 0.011).clamp(12.0, 14.0);
     final labelSize = (size.width * 0.010).clamp(11.0, 13.0);
 
@@ -43,58 +42,60 @@ class AuthTextField extends StatelessWidget {
           ),
         ),
         SizedBox(height: size.height * 0.008),
-        SizedBox(
-          height: fieldHeight,
-          child: TextFormField(
-            controller: controller,
-            obscureText: obscureText,
-            keyboardType: keyboardType,
-            validator: validator,
-            style: TextStyle(
+        TextFormField(
+          controller: controller,
+          obscureText: obscureText,
+          keyboardType: keyboardType,
+          validator: validator,
+          style: TextStyle(
+            fontSize: fontSize,
+            color: AppColors.textPrimary,
+          ),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(
               fontSize: fontSize,
-              color: AppColors.textPrimary,
+              color: AppColors.textSecondary.withValues(alpha: 0.7),
             ),
-            decoration: InputDecoration(
-              hintText: hint,
-              hintStyle: TextStyle(
-                fontSize: fontSize,
-                color: AppColors.textSecondary,
+            filled: true,
+            fillColor: AppColors.inputFill,
+            prefixIcon: Icon(
+              prefixIcon,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+            suffixIcon: suffixIcon,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 14,
+              vertical: 14,
+            ),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.cardBorder),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: AppColors.cardBorder),
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(
+                color: AppColors.primaryBlue,
+                width: 1.4,
               ),
-              filled: true,
-              fillColor: AppColors.inputFill,
-              prefixIcon: Icon(
-                prefixIcon,
-                size: fontSize + 6,
-                color: AppColors.textSecondary,
-              ),
-              suffixIcon: suffixIcon,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: size.width * 0.012,
-                vertical: size.height * 0.014,
-              ),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide.none,
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.2,
-                ),
-              ),
-              errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.redAccent),
-              ),
-              focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(color: Colors.redAccent),
-              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 1.2),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Colors.redAccent, width: 1.4),
+            ),
+            errorStyle: const TextStyle(
+              fontSize: 11,
+              color: Colors.redAccent,
+              height: 1.3,
             ),
           ),
         ),

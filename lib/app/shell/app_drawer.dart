@@ -19,6 +19,7 @@ class AppDrawer extends GetView<AppShellController> {
     _DrawerItem('Bundle Scan', Icons.qr_code_scanner_rounded),
     _DrawerItem('Packing List', Icons.inventory_2_outlined),
     _DrawerItem('Dispatch Verification', Icons.fact_check_outlined),
+    _DrawerItem('Chat / Messaging', Icons.chat_bubble_outline_rounded),
   ];
 
   @override

@@ -14,6 +14,7 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
     final size = MediaQuery.sizeOf(context);
     final titleSize = (size.width * 0.018).clamp(18.0, 24.0);
     final subSize = (size.width * 0.011).clamp(12.0, 14.0);
+    final btnTextSize = (size.width * 0.011).clamp(12.0, 14.0);
 
     return Obx(() {
       final tab = controller.selectedTab.value;
@@ -22,14 +23,13 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Project & Calendar',
+                      'Projects and Calendar',
                       style: TextStyle(
                         fontSize: titleSize,
                         fontWeight: FontWeight.w800,
@@ -47,6 +47,45 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
                   ],
                 ),
               ),
+              Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _TabSegment(
+                      label: 'Calendar',
+                      selected: tab == ProjectCalendarTab.calendar,
+                      onTap: () => controller.setTab(ProjectCalendarTab.calendar),
+                    ),
+                    _TabSegment(
+                      label: 'Project',
+                      selected: tab == ProjectCalendarTab.project,
+                      onTap: () => controller.setTab(ProjectCalendarTab.project),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: size.height * 0.016),
+          Row(
+            children: [
+              Text(
+                'Project',
+                style: TextStyle(
+                  fontSize: btnTextSize,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+              const SizedBox(width: 12),
+              const ProjectDropdown(),
+              const Spacer(),
               if (tab == ProjectCalendarTab.calendar)
                 ElevatedButton.icon(
                   onPressed: () => controller.openAddDelivery(context),
@@ -54,7 +93,7 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
                   label: Text(
                     'Add Delivery',
                     style: TextStyle(
-                      fontSize: (size.width * 0.011).clamp(12.0, 14.0),
+                      fontSize: btnTextSize,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -73,43 +112,20 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
                 ),
             ],
           ),
-          SizedBox(height: size.height * 0.014),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _TabChip(
-                label: 'Calendar',
-                icon: Icons.calendar_month_outlined,
-                selected: tab == ProjectCalendarTab.calendar,
-                onTap: () => controller.setTab(ProjectCalendarTab.calendar),
-              ),
-              SizedBox(width: size.width * 0.008),
-              _TabChip(
-                label: 'Project',
-                icon: Icons.work_outline_rounded,
-                selected: tab == ProjectCalendarTab.project,
-                onTap: () => controller.setTab(ProjectCalendarTab.project),
-              ),
-              const Spacer(),
-              if (tab == ProjectCalendarTab.calendar) const ProjectDropdown(),
-            ],
-          ),
         ],
       );
     });
   }
 }
 
-class _TabChip extends StatelessWidget {
-  const _TabChip({
+class _TabSegment extends StatelessWidget {
+  const _TabSegment({
     required this.label,
-    required this.icon,
     required this.selected,
     required this.onTap,
   });
 
   final String label;
-  final IconData icon;
   final bool selected;
   final VoidCallback onTap;
 
@@ -120,36 +136,23 @@ class _TabChip extends StatelessWidget {
 
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: EdgeInsets.symmetric(
-          horizontal: size.width * 0.014,
-          vertical: size.height * 0.012,
+          horizontal: size.width * 0.016,
+          vertical: size.height * 0.010,
         ),
         decoration: BoxDecoration(
-          color: selected ? AppColors.primaryBlue : Colors.white,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(
-            color: selected ? AppColors.primaryBlue : AppColors.cardBorder,
-          ),
+          color: selected ? AppColors.primaryBlue : Colors.transparent,
+          borderRadius: BorderRadius.circular(8),
         ),
-        child: Row(
-          children: [
-            Icon(
-              icon,
-              size: 18,
-              color: selected ? Colors.white : AppColors.primaryBlue,
-            ),
-            SizedBox(width: size.width * 0.006),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w600,
-                color: selected ? Colors.white : AppColors.primaryBlue,
-              ),
-            ),
-          ],
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w600,
+            color: selected ? Colors.white : AppColors.textSecondary,
+          ),
         ),
       ),
     );

@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
 import 'section_card.dart';
 
-class RecentActivityCard extends GetView<DashboardController> {
+class RecentActivityCard extends StatelessWidget {
   const RecentActivityCard({super.key});
 
   @override
@@ -58,48 +59,68 @@ class RecentActivityCard extends GetView<DashboardController> {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          ...controller.activities.map((item) {
-            return Container(
-              margin: EdgeInsets.only(bottom: gap),
-              padding: EdgeInsets.only(bottom: gap),
-              decoration: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: AppColors.cardBorder),
-                ),
-              ),
-              child: Row(
-                children: [
-                  Image.asset(
-                    item.iconAsset,
-                    width: iconBox,
-                    height: iconBox,
-                    fit: BoxFit.contain,
-                  ),
-                  SizedBox(width: size.width * 0.008),
-                  Expanded(
+          GetBuilder<DashboardController>(
+            id: AppGetIds.recentActivities,
+            builder: (controller) {
+              final list = controller.activities;
+              if (list.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Center(
                     child: Text(
-                      item.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: itemSize,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+                      'No recent activity',
+                      style: TextStyle(fontSize: itemSize, color: AppColors.textSecondary),
+                    ),
+                  ),
+                );
+              }
+
+              return Column(
+                children: list.map((item) {
+                  return Container(
+                    margin: EdgeInsets.only(bottom: gap),
+                    padding: EdgeInsets.only(bottom: gap),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        bottom: BorderSide(color: AppColors.cardBorder),
                       ),
                     ),
-                  ),
-                  SizedBox(width: size.width * 0.008),
-                  Text(
-                    item.time,
-                    style: TextStyle(
-                      fontSize: itemSize - 1,
-                      color: AppColors.textSecondary,
+                    child: Row(
+                      children: [
+                        Image.asset(
+                          item.iconAsset,
+                          width: iconBox,
+                          height: iconBox,
+                          fit: BoxFit.contain,
+                        ),
+                        SizedBox(width: size.width * 0.008),
+                        Expanded(
+                          child: Text(
+                            item.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: itemSize,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: size.width * 0.008),
+                        Text(
+                          item.time,
+                          style: TextStyle(
+                            fontSize: itemSize - 1,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
                     ),
-                  ),
-                ],
-              ),
-            );
-          }),
+                  );
+                }).toList(),
+              );
+            },
+          ),
         ],
       ),
     );

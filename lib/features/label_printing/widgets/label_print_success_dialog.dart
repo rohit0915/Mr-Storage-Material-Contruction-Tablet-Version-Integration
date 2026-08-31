@@ -58,7 +58,7 @@ class LabelPrintSuccessDialog extends StatelessWidget {
                   child: ElevatedButton(
                     onPressed: () => Get.back<void>(),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandPrimary,
+                      backgroundColor: AppColors.primaryBlue,
                       foregroundColor: Colors.white,
                       elevation: 0,
                       shape: RoundedRectangleBorder(

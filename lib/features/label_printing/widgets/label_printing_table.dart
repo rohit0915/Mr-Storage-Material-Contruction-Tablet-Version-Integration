@@ -39,63 +39,79 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.cardBorder),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withValues(alpha: 0.06),
-              blurRadius: 12,
-              offset: const Offset(0, 4),
+              color: Colors.black.withValues(alpha: 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
             ),
           ],
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Container(
-              padding: EdgeInsets.symmetric(
-                horizontal: size.width * 0.012,
-                vertical: size.height * 0.010,
-              ),
-              color: AppColors.tableHeader,
-              child: Row(
-                children: [
-                  LabelPrintingCheckboxCell(
-                    value: allSelected && rows.isNotEmpty,
-                    onChanged: rows.isEmpty
-                        ? null
-                        : (_) => controller.toggleSelectAllOnPage(),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final minWidth = constraints.maxWidth.clamp(820.0, 2000.0);
+                return SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: SizedBox(
+                    width: minWidth,
+                    child: Column(
+                      children: [
+                        Container(
+                          padding: EdgeInsets.symmetric(
+                            horizontal: size.width * 0.012,
+                            vertical: size.height * 0.012,
+                          ),
+                          color: AppColors.tableHeader,
+                          child: Row(
+                            children: [
+                              LabelPrintingCheckboxCell(
+                                value: allSelected && rows.isNotEmpty,
+                                onChanged: rows.isEmpty
+                                    ? null
+                                    : (_) => controller.toggleSelectAllOnPage(),
+                              ),
+                              _HeadCell(flex: 2, text: 'Bundle ID', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Load ID', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Parts', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Total Weight ⇅', size: cellFont),
+                              _HeadCell(flex: 1, text: 'Length', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Status', size: cellFont),
+                              _HeadCell(flex: 2, text: 'Action', size: cellFont, align: TextAlign.end),
+                            ],
+                          ),
+                        ),
+                        ...rows.map(
+                          (item) => _DataRow(
+                            key: ValueKey('${item.id}-$selectedCount'),
+                            item: item,
+                            cellFont: cellFont,
+                            fmtWeight: _fmtWeight,
+                            onPrint: () => _openPreview(context, item),
+                          ),
+                        ),
+                        if (rows.isEmpty)
+                          Padding(
+                            padding: const EdgeInsets.all(24),
+                            child: Text(
+                              'No bundles found.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: cellFont,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
-                  _HeadCell(flex: 2, text: 'Bundle ID', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Load ID', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Parts', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Total Weight', size: cellFont),
-                  _HeadCell(flex: 1, text: 'Length', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Status', size: cellFont),
-                  _HeadCell(flex: 2, text: 'Action', size: cellFont, align: TextAlign.end),
-                ],
-              ),
+                );
+              },
             ),
-            ...rows.map(
-              (item) => _DataRow(
-                key: ValueKey('${item.id}-$selectedCount'),
-                item: item,
-                cellFont: cellFont,
-                fmtWeight: _fmtWeight,
-                onPrint: () => _openPreview(context, item),
-              ),
-            ),
-            if (rows.isEmpty)
-              Padding(
-                padding: const EdgeInsets.all(24),
-                child: Text(
-                  'No bundles found.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: cellFont,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
             const Divider(height: 1, color: AppColors.cardBorder),
             _PaginationFooter(
               currentPage: currentPage,
@@ -237,24 +253,38 @@ class _StatusBadge extends StatelessWidget {
     final fontSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0);
     final isPrinted = status == LabelPrintStatus.printed;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(
-          isPrinted ? Icons.check_circle_outline : Icons.schedule_rounded,
-          size: fontSize + 4,
-          color: isPrinted ? AppColors.success : AppColors.warning,
+    final (text, textColor, bg, iconData) = isPrinted
+        ? ('Printed', const Color(0xFF166534), const Color(0xFFDCFCE7), Icons.check_circle_outline_rounded)
+        : ('Pending', const Color(0xFF92400E), const Color(0xFFFEF3C7), Icons.hourglass_empty_rounded);
+
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(20),
         ),
-        const SizedBox(width: 4),
-        Text(
-          isPrinted ? 'Printed' : 'Pending',
-          style: TextStyle(
-            color: isPrinted ? AppColors.success : AppColors.warning,
-            fontWeight: FontWeight.w700,
-            fontSize: fontSize,
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              text,
+              style: TextStyle(
+                color: textColor,
+                fontWeight: FontWeight.w700,
+                fontSize: fontSize,
+              ),
+            ),
+            const SizedBox(width: 5),
+            Icon(
+              iconData,
+              size: fontSize + 3,
+              color: textColor,
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
@@ -277,13 +307,13 @@ class _ActionButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: AppColors.primaryBlue,
+          backgroundColor: isReprint ? const Color(0xFF4F46E5) : const Color(0xFF2563EB),
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
         ),
         child: Text(
           isReprint ? 'Reprint' : 'Print',

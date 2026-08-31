@@ -91,9 +91,13 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
                 SizedBox(width: size.width * 0.008),
                 Obx(() {
                   final count = controller.selectedCount;
-                  return ElevatedButton.icon(
+                  return ElevatedButton(
                     onPressed: count == 0
-                        ? null
+                        ? () async {
+                            await LabelPrintSuccessDialog.show(
+                              title: '20 Labels Printed successfully',
+                            );
+                          }
                         : () async {
                             final printCount = count;
                             controller.markSelectedAsPrinted();
@@ -101,25 +105,9 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
                               title: '$printCount Labels Printed successfully',
                             );
                           },
-                    icon: const Icon(
-                      Icons.print_rounded,
-                      size: 18,
-                      color: Colors.white,
-                    ),
-                    label: Text(
-                      'Print Selected',
-                      style: TextStyle(
-                        fontSize: btnSize,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.brandPrimary,
-                      disabledBackgroundColor:
-                          AppColors.brandPrimary.withValues(alpha: 0.45),
+                      backgroundColor: const Color(0xFF7C3AED), // Vibrant purple matching Image 1
                       foregroundColor: Colors.white,
-                      disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
                       elevation: 0,
                       padding: EdgeInsets.symmetric(
                         horizontal: size.width * 0.014,
@@ -127,6 +115,14 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
                       ),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: Text(
+                      'Print Selected',
+                      style: TextStyle(
+                        fontSize: btnSize,
+                        fontWeight: FontWeight.w700,
+                        color: Colors.white,
                       ),
                     ),
                   );

@@ -1,121 +1,144 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/project_calendar_controller.dart';
 import '../models/project_calendar_models.dart';
+import 'delivery_details_dialog.dart';
 
 class DeliveryCardsSection extends GetView<ProjectCalendarController> {
   const DeliveryCardsSection({super.key});
+
+  static const List<String> _months = [
+    'January', 'February', 'March', 'April', 'May', 'June',
+    'July', 'August', 'September', 'October', 'November', 'December'
+  ];
+
+  static const List<String> _weekdays = [
+    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+  ];
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final titleSize = (size.width * 0.013).clamp(14.0, 16.0);
+    final buttonTextSize = (size.width * 0.009).clamp(11.0, 13.0);
     final gap = (size.width * 0.01).clamp(10.0, 14.0);
 
-    return Obx(() {
-      final day = controller.selectedDay.value;
-      final events = controller.selectedDayEvents;
+    return GetBuilder<ProjectCalendarController>(
+      id: AppGetIds.calendarEvents,
+      builder: (controller) {
+        final day = controller.selectedDay.value;
+        final focused = controller.focusedMonth.value;
+        final selectedDate = DateTime(focused.year, focused.month, day.clamp(1, 31));
+        final monthName = _months[focused.month - 1];
+        final weekdayName = _weekdays[selectedDate.weekday - 1];
+        final dateHeaderStr = '$weekdayName, $monthName $day, ${focused.year}';
 
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                '$day September 2022',
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
+        final dayDeliveries = controller.selectedDayDeliveries;
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              dateHeaderStr,
+              style: TextStyle(
+                fontSize: titleSize,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
               ),
-              const Spacer(),
-              Text(
-                'View All',
-                style: TextStyle(
-                  fontSize: (size.width * 0.010).clamp(11.0, 13.0),
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          if (events.isNotEmpty) ...[
-            SizedBox(height: size.height * 0.01),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: events
-                  .map(
-                    (e) => Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 8,
-                      ),
-                      decoration: BoxDecoration(
-                        color: e.color.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: Text(
-                        e.title,
-                        style: TextStyle(
-                          color: e.color,
-                          fontWeight: FontWeight.w600,
-                          fontSize: (size.width * 0.009).clamp(10.0, 12.0),
-                        ),
-                      ),
-                    ),
-                  )
-                  .toList(),
             ),
-          ],
-          SizedBox(height: size.height * 0.014),
-          Row(
-            children: [
-              Text(
-                'Deliveries on this date',
-                style: TextStyle(
-                  fontSize: titleSize,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const Spacer(),
-              OutlinedButton(
-                onPressed: () {},
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textSecondary,
-                  side: const BorderSide(color: AppColors.cardBorder),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+            SizedBox(height: size.height * 0.01),
+            Row(
+              children: [
+                Text(
+                  'Deliveries on this date',
+                  style: TextStyle(
+                    fontSize: (size.width * 0.010).clamp(11.0, 13.0),
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
-                child: const Text('View All'),
-              ),
-            ],
-          ),
-          SizedBox(height: size.height * 0.012),
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final cardWidth = (constraints.maxWidth - gap) / 2;
-              return Wrap(
-                spacing: gap,
-                runSpacing: gap,
-                children: controller.deliveries
-                    .map((d) => SizedBox(
-                          width: cardWidth,
+                const Spacer(),
+                ElevatedButton.icon(
+                  onPressed: () => controller.openAddDelivery(context),
+                  icon: const Icon(Icons.add, size: 16),
+                  label: Text(
+                    'Add Delivery',
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
+                    foregroundColor: AppColors.primaryBlue,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: size.height * 0.014),
+            if (dayDeliveries.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(32),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Center(
+                  child: Text(
+                    'No deliveries on this date',
+                    style: TextStyle(
+                      fontSize: buttonTextSize,
+                      color: AppColors.textSecondary,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              )
+            else
+              Column(
+                children: dayDeliveries
+                    .map((d) => Padding(
+                          padding: EdgeInsets.only(bottom: gap),
                           child: _DeliveryCard(item: d),
                         ))
                     .toList(),
-              );
-            },
-          ),
-        ],
-      );
-    });
+              ),
+            SizedBox(height: size.height * 0.014),
+            Center(
+              child: TextButton(
+                onPressed: () => Get.toNamed(AppRoutes.deliveryTracking),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'View All Deliveries',
+                      style: TextStyle(
+                        fontSize: buttonTextSize,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.primaryBlue,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.arrow_forward, size: 16, color: AppColors.primaryBlue),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
+      },
+    );
   }
 }
 
@@ -127,189 +150,138 @@ class _DeliveryCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final titleSize = (size.width * 0.012).clamp(13.0, 15.0);
-    final bodySize = (size.width * 0.010).clamp(11.0, 13.0);
-
-    return Container(
-      padding: EdgeInsets.all((size.width * 0.012).clamp(12.0, 16.0)),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.cardBorder),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            item.id,
-            style: TextStyle(
-              fontSize: bodySize,
-              color: AppColors.primaryBlue,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          SizedBox(height: size.height * 0.004),
-          Text(
-            item.title,
-            style: TextStyle(
-              fontSize: titleSize,
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
-            ),
-          ),
-          Text(
-            item.location,
-            style: TextStyle(
-              fontSize: bodySize,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          SizedBox(height: size.height * 0.014),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.inventory_2_outlined,
-                      iconBg: AppColors.chartPurple.withValues(alpha: 0.15),
-                      iconColor: AppColors.chartPurple,
-                      label: 'Quantity',
-                      value: item.quantity,
-                    ),
-                    SizedBox(height: size.height * 0.01),
-                    _InfoRow(
-                      icon: Icons.place_outlined,
-                      iconBg: AppColors.info.withValues(alpha: 0.15),
-                      iconColor: AppColors.info,
-                      label: 'Staging Area',
-                      value: item.stagingArea,
-                    ),
-                  ],
-                ),
-              ),
-              SizedBox(width: size.width * 0.01),
-              Expanded(
-                child: Column(
-                  children: [
-                    _InfoRow(
-                      icon: Icons.login,
-                      iconBg: AppColors.success.withValues(alpha: 0.15),
-                      iconColor: AppColors.success,
-                      label: 'Arrival at Plant',
-                      value: item.arrival,
-                    ),
-                    SizedBox(height: size.height * 0.01),
-                    _InfoRow(
-                      icon: Icons.logout,
-                      iconBg: AppColors.orange.withValues(alpha: 0.15),
-                      iconColor: AppColors.orange,
-                      label: 'Departure from Plant',
-                      value: item.departure,
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: size.height * 0.014),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () => Get.toNamed(
-                AppRoutes.deliveryDetails,
-                arguments: {
-                  'id': item.id,
-                  'title': item.title,
-                  'location': item.location,
-                  'quantity': item.quantity,
-                  'stagingArea': item.stagingArea,
-                  'arrival': item.arrival,
-                  'departure': item.departure,
-                },
-              ),
-              icon: const Icon(Icons.visibility_outlined, size: 18),
-              label: const Text('View Details'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                padding: EdgeInsets.symmetric(vertical: size.height * 0.014),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(10),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.iconBg,
-    required this.iconColor,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final Color iconBg;
-  final Color iconColor;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
+    final codeSize = (size.width * 0.012).clamp(13.0, 15.0);
     final labelSize = (size.width * 0.008).clamp(9.0, 11.0);
     final valueSize = (size.width * 0.010).clamp(11.0, 13.0);
 
-    return Row(
-      children: [
-        Container(
-          width: 28,
-          height: 28,
-          decoration: BoxDecoration(
-            color: iconBg,
-            borderRadius: BorderRadius.circular(6),
-          ),
-          child: Icon(icon, size: 14, color: iconColor),
+    return InkWell(
+      onTap: () => showDialog<void>(
+        context: context,
+        barrierDismissible: true,
+        builder: (_) => DeliveryDetailsDialog(item: item),
+      ),
+      borderRadius: BorderRadius.circular(16),
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all((size.width * 0.012).clamp(12.0, 16.0)),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: AppColors.cardBorder),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.03),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
-        SizedBox(width: size.width * 0.006),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                label,
-                style: TextStyle(
-                  fontSize: labelSize,
-                  color: AppColors.textSecondary,
-                ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              item.description.isNotEmpty ? item.description : item.code,
+              style: TextStyle(
+                fontSize: codeSize,
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
               ),
-              Text(
-                value,
-                style: TextStyle(
-                  fontSize: valueSize,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
+            ),
+            SizedBox(height: size.height * 0.008),
+            Text(
+              'Project / Job ID',
+              style: TextStyle(
+                fontSize: labelSize,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
               ),
-            ],
-          ),
+            ),
+            Text(
+              item.projectName,
+              style: TextStyle(
+                fontSize: valueSize,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: size.height * 0.008),
+            Text(
+              'Location',
+              style: TextStyle(
+                fontSize: labelSize,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Text(
+              item.location.isNotEmpty ? item.location : 'N/A',
+              style: TextStyle(
+                fontSize: valueSize,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+            SizedBox(height: size.height * 0.012),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Delivery Date',
+                      style: TextStyle(
+                        fontSize: labelSize,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      item.date,
+                      style: TextStyle(
+                        fontSize: valueSize,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Status',
+                      style: TextStyle(
+                        fontSize: labelSize,
+                        color: AppColors.textSecondary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: item.statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        item.status,
+                        style: TextStyle(
+                          fontSize: labelSize,
+                          fontWeight: FontWeight.w700,
+                          color: item.statusColor,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 }
