@@ -43,12 +43,18 @@ class LabelPreviewDialog extends StatelessWidget {
                       onTap: () => Navigator.of(context).pop(),
                       borderRadius: BorderRadius.circular(8),
                       child: const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 4, horizontal: 2),
+                        padding: EdgeInsets.symmetric(
+                          vertical: 4,
+                          horizontal: 2,
+                        ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Icon(Icons.arrow_back_ios_new_rounded,
-                                size: 14, color: AppColors.textSecondary),
+                            Icon(
+                              Icons.arrow_back_ios_new_rounded,
+                              size: 14,
+                              color: AppColors.textSecondary,
+                            ),
                             SizedBox(width: 6),
                             Text(
                               'Back',
@@ -149,7 +155,10 @@ class LabelPreviewDialog extends StatelessWidget {
                     ),
                     child: const Text(
                       'Print',
-                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),
@@ -170,7 +179,10 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(12.0, 14.0);
+    final fontSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(
+      12.0,
+      14.0,
+    );
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Row(

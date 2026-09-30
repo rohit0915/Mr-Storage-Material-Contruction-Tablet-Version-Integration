@@ -130,8 +130,9 @@ class _LoginForm extends StatelessWidget {
                 onPressed: controller.isLoading.value ? null : controller.login,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.loginButton,
-                  disabledBackgroundColor:
-                      AppColors.loginButton.withValues(alpha: 0.6),
+                  disabledBackgroundColor: AppColors.loginButton.withValues(
+                    alpha: 0.6,
+                  ),
                   foregroundColor: Colors.white,
                   elevation: 0,
                   shape: RoundedRectangleBorder(
@@ -161,7 +162,11 @@ class _LoginForm extends StatelessWidget {
           SizedBox(height: size.height * 0.008),
           TextButton.icon(
             onPressed: () => AppLogDialog.show(context),
-            icon: const Icon(Icons.bug_report_outlined, size: 16, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.bug_report_outlined,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
             label: const Text(
               'View & Copy Debug Logs',
               style: TextStyle(
@@ -189,10 +194,12 @@ class _ForgotPasswordFlow extends StatelessWidget {
       return switch (step) {
         ForgotPasswordStep.email => _ForgotEmailStep(controller: controller),
         ForgotPasswordStep.otp => _OtpStep(controller: controller),
-        ForgotPasswordStep.newPassword =>
-          _NewPasswordStep(controller: controller),
-        ForgotPasswordStep.success =>
-          _ForgotSuccessStep(controller: controller),
+        ForgotPasswordStep.newPassword => _NewPasswordStep(
+          controller: controller,
+        ),
+        ForgotPasswordStep.success => _ForgotSuccessStep(
+          controller: controller,
+        ),
       };
     });
   }
@@ -213,11 +220,7 @@ class _ForgotEmailStep extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            _BackLink(onTap: controller.backToLoginCard),
-          ],
-        ),
+        Row(children: [_BackLink(onTap: controller.backToLoginCard)]),
         SizedBox(height: size.height * 0.006),
         Text(
           'Forgot Password',
@@ -316,7 +319,10 @@ class _OtpStep extends StatelessWidget {
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.4),
+              borderSide: const BorderSide(
+                color: AppColors.primaryBlue,
+                width: 1.4,
+              ),
             ),
           ),
           onChanged: (v) {
@@ -331,11 +337,7 @@ class _OtpStep extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            _BackLink(onTap: controller.backToLoginCard),
-          ],
-        ),
+        Row(children: [_BackLink(onTap: controller.backToLoginCard)]),
         SizedBox(height: size.height * 0.006),
         Text(
           'Verify Code',
@@ -425,11 +427,7 @@ class _NewPasswordStep extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Row(
-          children: [
-            _BackLink(onTap: controller.backToLoginCard),
-          ],
-        ),
+        Row(children: [_BackLink(onTap: controller.backToLoginCard)]),
         SizedBox(height: size.height * 0.006),
         Text(
           'New Password',
@@ -604,4 +602,3 @@ class _BackLink extends StatelessWidget {
     );
   }
 }
-

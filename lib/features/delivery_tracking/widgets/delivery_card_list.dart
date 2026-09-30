@@ -6,19 +6,28 @@ import '../controllers/delivery_tracking_controller.dart';
 import '../models/delivery_tracking_models.dart';
 import 'delivery_dialogs.dart';
 
+import '../../../app/widgets/app_shimmer.dart';
+
 class DeliveryCardList extends GetView<DeliveryTrackingController> {
   const DeliveryCardList({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
-      final items = controller.deliveries;
+      if (controller.isLoading.value) {
+        return const AppShimmerTable(rowCount: 4);
+      }
+      final items = controller.filteredDeliveries;
       if (items.isEmpty) {
-        return const Center(
+        return Center(
           child: Padding(
-            padding: EdgeInsets.all(40),
-            child: Text('No deliveries found.',
-                style: TextStyle(color: AppColors.textSecondary)),
+            padding: const EdgeInsets.all(40),
+            child: Text(
+              controller.isProjectScoped
+                  ? 'No deliveries found for project ${controller.scopedJobId.isNotEmpty ? controller.scopedJobId : controller.scopedProject}.'
+                  : 'No deliveries found.',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
           ),
         );
       }
@@ -92,28 +101,37 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(children: [
-                        Text(
-                          item.title,
-                          style: TextStyle(
+                      Row(
+                        children: [
+                          Text(
+                            item.title,
+                            style: TextStyle(
                               fontSize: titleSize,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary),
-                        ),
-                        const SizedBox(width: 8),
-                        _StatusBadge(status: item.status),
-                        const SizedBox(width: 6),
-                        _PriorityBadge(priority: item.priority),
-                        if (item.bundleCount > 0) ...[
-                          const SizedBox(width: 6),
-                          _EtaBadge(text: '${item.bundleCount} Bundles', color: const Color(0xFF7539FF)),
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          _StatusBadge(status: item.status),
+                          if (item.priority != null) ...[
+                            const SizedBox(width: 6),
+                            _PriorityBadge(priority: item.priority!),
+                          ],
+                          if (item.bundleCount > 0) ...[
+                            const SizedBox(width: 6),
+                            _EtaBadge(
+                              text: '${item.bundleCount} Bundles',
+                              color: const Color(0xFF7539FF),
+                            ),
+                          ],
                         ],
-                      ]),
+                      ),
                       Text(
                         '@ ${item.location}',
                         style: TextStyle(
-                            fontSize: labelSize,
-                            color: AppColors.textSecondary),
+                          fontSize: labelSize,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -121,22 +139,31 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                 Text(
                   'Delivery ID: ${item.id}',
                   style: TextStyle(
-                      fontSize: labelSize,
-                      color: AppColors.textSecondary),
+                    fontSize: labelSize,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 InkWell(
                   onTap: () => ViewDetailsDialog.show(context, item),
-                  child: Row(children: [
-                    Icon(Icons.remove_red_eye_outlined,
-                        size: 14, color: AppColors.link),
-                    const SizedBox(width: 4),
-                    Text('View Details',
+                  child: Row(
+                    children: [
+                      Icon(
+                        Icons.remove_red_eye_outlined,
+                        size: 14,
+                        color: AppColors.link,
+                      ),
+                      const SizedBox(width: 4),
+                      Text(
+                        'View Details',
                         style: TextStyle(
-                            fontSize: labelSize,
-                            color: AppColors.link,
-                            fontWeight: FontWeight.w600)),
-                  ]),
+                          fontSize: labelSize,
+                          color: AppColors.link,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
@@ -157,7 +184,11 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                     title: 'Material Details',
                     rows: [
                       (Icons.scale_outlined, 'Quantity', item.quantity),
-                      (Icons.warehouse_outlined, 'Staging Area', item.stagingArea),
+                      (
+                        Icons.warehouse_outlined,
+                        'Staging Area',
+                        item.stagingArea,
+                      ),
                     ],
                     iconBackgrounds: const {
                       0: Color(0xFFF3E8FF),
@@ -175,8 +206,16 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                   child: _InfoBlock(
                     title: 'Schedule',
                     rows: [
-                      (Icons.calendar_today_outlined, 'Arrival at Plant', item.arrivalAtPlant),
-                      (Icons.calendar_month_outlined, 'Departure from Plant', item.departureFromPlant),
+                      (
+                        Icons.calendar_today_outlined,
+                        'Arrival at Plant',
+                        item.arrivalAtPlant,
+                      ),
+                      (
+                        Icons.calendar_month_outlined,
+                        'Departure from Plant',
+                        item.departureFromPlant,
+                      ),
                     ],
                     iconBackgrounds: const {
                       0: Color(0xFFECFDF3),
@@ -200,56 +239,57 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
               ],
             ),
           ),
-          // Action buttons — row 1: three equal filled buttons
-          Padding(
-            padding: EdgeInsets.fromLTRB(
-              size.width * 0.014,
-              0,
-              size.width * 0.014,
-              size.height * 0.006,
-            ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _ActionBtn(
-                    label: 'Mark as Received',
-                    icon: Icons.check_circle_outline,
-                    color: AppColors.success,
-                    fontSize: btnSize,
-                    onTap: () => MarkReceivedDialog.show(
-                      context,
-                      item,
-                      () => controller.markReceived(item.id),
+          // Action buttons — row 1: three equal filled buttons (only shown when status != delivered, matching web panel)
+          if (item.status != DeliveryStatus.delivered)
+            Padding(
+              padding: EdgeInsets.fromLTRB(
+                size.width * 0.014,
+                0,
+                size.width * 0.014,
+                size.height * 0.006,
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ActionBtn(
+                      label: 'Mark as Received',
+                      icon: Icons.check_circle_outline,
+                      color: const Color(0xFF10B981),
+                      fontSize: btnSize,
+                      onTap: () => MarkReceivedDialog.show(
+                        context,
+                        item,
+                        () => controller.markReceived(item.id),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ActionBtn(
-                    label: 'Scan QR Code',
-                    icon: Icons.qr_code_scanner_rounded,
-                    color: AppColors.orange,
-                    fontSize: btnSize,
-                    onTap: () => ScanQrDialog.show(context, item),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _ActionBtn(
-                    label: 'Mark as Partial Received',
-                    icon: Icons.download_outlined,
-                    color: AppColors.primaryBlue,
-                    fontSize: btnSize,
-                    onTap: () => MarkPartialDialog.show(
-                      context,
-                      item,
-                      () => controller.markPartialReceived(item.id),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ActionBtn(
+                      label: 'Scan QR Code',
+                      icon: Icons.qr_code_scanner_rounded,
+                      color: const Color(0xFFF97316),
+                      fontSize: btnSize,
+                      onTap: () => ScanQrDialog.show(context, item),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _ActionBtn(
+                      label: 'Partial Received',
+                      icon: Icons.download_outlined,
+                      color: const Color(0xFF1D51A4),
+                      fontSize: btnSize,
+                      onTap: () => MarkPartialDialog.show(
+                        context,
+                        item,
+                        () => controller.markPartialReceived(item.id),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
-          ),
           // Action buttons — row 2: Update Site Contact (outlined, left-aligned)
           Padding(
             padding: EdgeInsets.fromLTRB(
@@ -264,7 +304,7 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                   child: _ActionBtn(
                     label: 'Update Site Contact',
                     icon: Icons.person_outline,
-                    color: AppColors.brandPrimary,
+                    color: const Color(0xFF475569),
                     fontSize: btnSize,
                     outlined: true,
                     onTap: () => UpdateSiteContactDialog.show(context, item),
@@ -289,7 +329,10 @@ class _StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final (label, color) = switch (status) {
-      DeliveryStatus.inTransit => ('In Transit to Plant', const Color(0xFF2563EB)),
+      DeliveryStatus.inTransit => (
+        'In Transit to Plant',
+        const Color(0xFF2563EB),
+      ),
       DeliveryStatus.staged => ('Staged at Plant', const Color(0xFF22C55E)),
       DeliveryStatus.ready => ('Ready', const Color(0xFFF97316)),
       DeliveryStatus.delivered => ('Delivered', const Color(0xFF6B7280)),
@@ -300,11 +343,14 @@ class _StatusBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: color)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }
@@ -325,11 +371,14 @@ class _PriorityBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Text(label,
-          style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w700,
-              color: color)),
+      child: Text(
+        label,
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: color,
+        ),
+      ),
     );
   }
 }
@@ -346,15 +395,21 @@ class _EtaBadge extends StatelessWidget {
         color: color.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
       ),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        Icon(Icons.access_time_rounded, size: 10, color: color),
-        const SizedBox(width: 4),
-        Text(text,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.access_time_rounded, size: 10, color: color),
+          const SizedBox(width: 4),
+          Text(
+            text,
             style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: color)),
-      ]),
+              fontSize: 10,
+              fontWeight: FontWeight.w700,
+              color: color,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -379,11 +434,14 @@ class _InfoBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title,
-            style: TextStyle(
-                fontSize: labelSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+        Text(
+          title,
+          style: TextStyle(
+            fontSize: labelSize,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
         const SizedBox(height: 8),
         ...rows.asMap().entries.map((entry) {
           final idx = entry.key;
@@ -392,35 +450,43 @@ class _InfoBlock extends StatelessWidget {
           final iconColor = iconColors[idx] ?? AppColors.textSecondary;
           return Padding(
             padding: const EdgeInsets.only(bottom: 6),
-            child: Row(children: [
-              Container(
-                width: 22,
-                height: 22,
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: bgColor,
-                  borderRadius: BorderRadius.circular(6),
+            child: Row(
+              children: [
+                Container(
+                  width: 22,
+                  height: 22,
+                  padding: const EdgeInsets.all(4),
+                  decoration: BoxDecoration(
+                    color: bgColor,
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Icon(r.$1, size: 12, color: iconColor),
                 ),
-                child: Icon(r.$1, size: 12, color: iconColor),
-              ),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(r.$2,
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        r.$2,
                         style: TextStyle(
-                            fontSize: labelSize - 1,
-                            color: AppColors.textSecondary)),
-                    Text(r.$3,
+                          fontSize: labelSize - 1,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                      Text(
+                        r.$3,
                         style: TextStyle(
-                            fontSize: labelSize,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary)),
-                  ],
+                          fontSize: labelSize,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ]),
+              ],
+            ),
           );
         }),
       ],
@@ -438,11 +504,14 @@ class _NotesBox extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Notes',
-            style: TextStyle(
-                fontSize: labelSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+        Text(
+          'Notes',
+          style: TextStyle(
+            fontSize: labelSize,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
         const SizedBox(height: 8),
         Container(
           padding: const EdgeInsets.all(10),
@@ -453,8 +522,10 @@ class _NotesBox extends StatelessWidget {
           ),
           child: Text(
             notes,
-            style:
-                TextStyle(fontSize: labelSize - 1, color: const Color(0xFF92400E)),
+            style: TextStyle(
+              fontSize: labelSize - 1,
+              color: const Color(0xFF92400E),
+            ),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,
           ),
@@ -474,11 +545,14 @@ class _CarrierRouteBlock extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('Carrier & Route',
-            style: TextStyle(
-                fontSize: labelSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary)),
+        Text(
+          'Carrier & Route',
+          style: TextStyle(
+            fontSize: labelSize,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
         const SizedBox(height: 8),
         Row(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,16 +659,19 @@ class _InfoRow extends StatelessWidget {
                 Text(
                   label,
                   style: TextStyle(
-                      fontSize: labelSize - 1, color: AppColors.textSecondary),
+                    fontSize: labelSize - 1,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 Text(
                   value,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                      fontSize: labelSize,
-                      fontWeight: FontWeight.w700,
-                      color: AppColors.textPrimary),
+                    fontSize: labelSize,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -628,11 +705,14 @@ class _ActionBtn extends StatelessWidget {
       return OutlinedButton.icon(
         onPressed: onTap,
         icon: Icon(icon, size: 14, color: color),
-        label: Text(label,
-            style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: color)),
+        label: Text(
+          label,
+          style: TextStyle(
+            fontSize: fontSize,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
         style: OutlinedButton.styleFrom(
           foregroundColor: color,
           side: BorderSide(color: color.withValues(alpha: 0.5)),
@@ -646,12 +726,15 @@ class _ActionBtn extends StatelessWidget {
     return ElevatedButton.icon(
       onPressed: onTap,
       icon: Icon(icon, size: 14, color: Colors.white),
-      label: Text(label,
-          style: TextStyle(
-              fontSize: fontSize,
-              fontWeight: FontWeight.w700,
-              color: Colors.white)),
-        style: ElevatedButton.styleFrom(
+      label: Text(
+        label,
+        style: TextStyle(
+          fontSize: fontSize,
+          fontWeight: FontWeight.w700,
+          color: Colors.white,
+        ),
+      ),
+      style: ElevatedButton.styleFrom(
         backgroundColor: color,
         foregroundColor: Colors.white,
         elevation: 0,

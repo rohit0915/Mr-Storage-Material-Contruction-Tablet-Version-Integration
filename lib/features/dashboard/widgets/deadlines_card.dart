@@ -54,7 +54,10 @@ class DeadlinesCard extends StatelessWidget {
                   child: Center(
                     child: Text(
                       'No upcoming deadlines',
-                      style: TextStyle(fontSize: itemSize, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: itemSize,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 );

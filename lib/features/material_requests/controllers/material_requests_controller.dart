@@ -7,15 +7,26 @@ import '../services/material_requests_service.dart';
 
 class MaterialRequestsController extends GetxController {
   MaterialRequestsController({MaterialRequestsService? service})
-      : _service = service ?? Get.put(MaterialRequestsService());
+    : _service = service ?? Get.put(MaterialRequestsService());
 
   final MaterialRequestsService _service;
 
   final projects = <String>['All Projects'].obs;
-  final departments = <String>['All Departments'].obs;
+  final departments = <String>[
+    'All Departments',
+    'Construction',
+    'Plant',
+    'Yard',
+    'Warehouse',
+  ].obs;
   final requestedByList = <String>['All'].obs;
   final priorityList = const <String>['Low', 'Medium', 'High'];
-  final statusList = const <String>['All Status', 'Pending', 'Approved', 'Rejected'];
+  final statusList = const <String>[
+    'All Status',
+    'Pending',
+    'Approved',
+    'Rejected',
+  ];
 
   final requests = <MaterialRequestBoardItem>[].obs;
   final isLoading = false.obs;
@@ -29,6 +40,8 @@ class MaterialRequestsController extends GetxController {
   final selectedDepartment = 'All Departments'.obs;
   final selectedRequestedBy = 'All'.obs;
   final selectedStatus = 'All Status'.obs;
+  final Map<String, String> _projectIdsByName = {};
+  final Map<String, String> _requesterIdsByName = {};
 
   final dateFrom = Rxn<DateTime>();
   final dateTo = Rxn<DateTime>();
@@ -36,31 +49,56 @@ class MaterialRequestsController extends GetxController {
   // Pagination
   final pageIndex = 0.obs;
   final pageSize = 10;
+  final serverTotal = 0.obs;
 
   final filteredRequests = <MaterialRequestBoardItem>[].obs;
 
   @override
   void onInit() {
     super.onInit();
-    fetchRequests();
+    _initialLoad();
+  }
+
+  Future<void> _initialLoad() async {
+    final projectRows = await _service.getProjects();
+    final names = <String>['All Projects'];
+    for (final row in projectRows) {
+      final name = (row['projectName'] ?? row['jobId'] ?? '').toString();
+      final id = (row['_id'] ?? row['leadId'] ?? '').toString();
+      if (name.isNotEmpty && id.isNotEmpty) {
+        _projectIdsByName[name] = id;
+        names.add(name);
+      }
+    }
+    projects.assignAll(names.toSet());
+    await fetchRequests();
   }
 
   Future<void> fetchRequests() async {
     isLoading.value = true;
     try {
       final res = await _service.getMaterialRequests(
-        leadId: selectedProject.value,
+        page: pageIndex.value + 1,
+        limit: pageSize,
+        project:
+            _projectIdsByName[selectedProject.value] ?? selectedProject.value,
         department: selectedDepartment.value,
         status: selectedStatus.value,
-        requestedBy: selectedRequestedBy.value,
+        requestedBy:
+            _requesterIdsByName[selectedRequestedBy.value] ??
+            selectedRequestedBy.value,
         dateFrom: dateFrom.value?.toIso8601String(),
         dateTo: dateTo.value?.toIso8601String(),
       );
 
       if (res != null) {
+        serverTotal.value = (res['total'] as num?)?.toInt() ?? 0;
         if (res['stats'] is Map) {
           final st = res['stats'] as Map;
-          totalRequestsStat.value = (st['totalRequests'] as num?)?.toInt() ?? (st['total'] as num?)?.toInt() ?? 0;
+          totalRequestsStat.value =
+              (st['totalRequests'] as num?)?.toInt() ??
+              (st['total'] as num?)?.toInt() ??
+              0;
           pendingStat.value = (st['pending'] as num?)?.toInt() ?? 0;
           approvedStat.value = (st['approved'] as num?)?.toInt() ?? 0;
           rejectedStat.value = (st['rejected'] as num?)?.toInt() ?? 0;
@@ -69,35 +107,50 @@ class MaterialRequestsController extends GetxController {
         if (res['materialRequests'] is List) {
           final list = res['materialRequests'] as List;
           final parsed = <MaterialRequestBoardItem>[];
-          final pOpts = <String>{'All Projects'};
-          final dOpts = <String>{'All Departments'};
+          final dOpts = <String>{
+            'All Departments',
+            'Construction',
+            'Plant',
+            'Yard',
+            'Warehouse',
+          };
           final rOpts = <String>{'All'};
 
           for (final item in list) {
             if (item is Map) {
-              final boardItem = MaterialRequestBoardItem.fromJson(Map<String, dynamic>.from(item));
+              final boardItem = MaterialRequestBoardItem.fromJson(
+                Map<String, dynamic>.from(item),
+              );
               parsed.add(boardItem);
 
-              if (boardItem.project.isNotEmpty && boardItem.project != 'No Project') {
-                pOpts.add(boardItem.project);
-              }
               if (boardItem.department.isNotEmpty) {
                 dOpts.add(boardItem.department);
               }
-              if (boardItem.requestedBy.isNotEmpty && boardItem.requestedBy != 'Unassigned') {
+              if (boardItem.requestedBy.isNotEmpty &&
+                  boardItem.requestedBy != 'Unassigned') {
                 rOpts.add(boardItem.requestedBy);
+                if (boardItem.requestedById.isNotEmpty) {
+                  _requesterIdsByName[boardItem.requestedBy] =
+                      boardItem.requestedById;
+                }
               }
             }
           }
 
-          projects.assignAll(pOpts.toList());
           departments.assignAll(dOpts.toList());
           requestedByList.assignAll(rOpts.toList());
           requests.assignAll(parsed);
+        } else {
+          requests.clear();
         }
       }
     } catch (e, stackTrace) {
-      AppLogger.e('fetchRequests Error', error: e, stackTrace: stackTrace, tag: 'MAT_REQ_CTRL');
+      AppLogger.e(
+        'fetchRequests Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'MAT_REQ_CTRL',
+      );
     } finally {
       isLoading.value = false;
       _recomputeFiltered();
@@ -128,13 +181,12 @@ class MaterialRequestsController extends GetxController {
   }
 
   List<MaterialRequestBoardItem> get pageRequests {
-    final start = pageIndex.value * pageSize;
-    return filteredRequests.skip(start).take(pageSize).toList();
+    return filteredRequests.toList();
   }
 
   int get totalPages {
-    if (filteredRequests.isEmpty) return 1;
-    return ((filteredRequests.length) / pageSize).ceil();
+    if (serverTotal.value == 0) return 1;
+    return (serverTotal.value / pageSize).ceil();
   }
 
   String get dateRangeLabel {
@@ -152,71 +204,176 @@ class MaterialRequestsController extends GetxController {
     fetchRequests();
   }
 
-  Future<void> openDetails(MaterialRequestBoardItem item) async {
-    return;
+  Future<MaterialRequestBoardItem> loadDetails(
+    MaterialRequestBoardItem item,
+  ) async {
+    final detail = await _service.getMaterialRequestDetail(item.id);
+    return detail == null ? item : MaterialRequestBoardItem.fromJson(detail);
   }
 
+  Future<bool> updateStatus(
+    String requestId,
+    String status, {
+    String notes = '',
+  }) async {
+    final success = await _service.updateMaterialRequestStatus(
+      requestId,
+      status,
+      notes,
+    );
+    if (success) await fetchRequests();
+    return success;
+  }
+
+  Future<bool> sendQuotation(String requestId, Map<String, dynamic> payload) =>
+      _service.sendQuotation(requestId, payload);
+
+  Future<bool> markItemDelivered({
+    required String requestId,
+    required String itemId,
+    required String deliveryId,
+    required String deliveryReference,
+  }) => _service.markItemDelivered(
+    requestId: requestId,
+    itemId: itemId,
+    deliveryId: deliveryId,
+    deliveryReference: deliveryReference,
+  );
+
   Future<bool> addRequest(MaterialRequestBoardItem request) async {
+    final leadId = _projectIdsByName[request.project] ?? '';
+    if (leadId.isEmpty) {
+      AppToast.showError(
+        title: 'Project Required',
+        description: 'Select a live project before submitting.',
+      );
+      return false;
+    }
     final payload = {
+      'leadId': leadId,
       'siteLocation': request.site,
       'department': request.department,
       'priority': request.priority.toLowerCase(),
-      'requiredBy': request.requiredBy.toIso8601String().split('T')[0],
+      if (request.requiredBy != null)
+        'requiredBy': request.requiredBy!.toIso8601String().split('T')[0],
       'requestedItems': request.items
-          .map((i) => {
-                'name': i.name,
-                'quantity': i.quantity,
-                'unit': i.unit,
-                'notes': i.remarks,
-              })
+          .map(
+            (i) => {
+              'name': i.name,
+              'quantity': i.quantity,
+              'unit': i.unit,
+              'notes': i.remarks,
+            },
+          )
           .toList(),
     };
 
     final success = await _service.createMaterialRequest(payload);
     if (success) {
-      AppToast.showSuccess(title: 'Success', description: 'Material Request submitted successfully!');
+      AppToast.showSuccess(
+        title: 'Success',
+        description: 'Material Request submitted successfully!',
+      );
       resetPagination();
       fetchRequests();
       return true;
     } else {
-      AppToast.showError(title: 'Error', description: 'Failed to submit Material Request.');
+      AppToast.showError(
+        title: 'Error',
+        description: 'Failed to submit Material Request.',
+      );
       return false;
+    }
+  }
+
+  Future<bool> cancelRequest(
+    String requestId, {
+    String reason = 'Cancelled by user',
+  }) async {
+    isLoading.value = true;
+    try {
+      final success = await _service.updateMaterialRequestStatus(
+        requestId,
+        'Cancelled',
+        reason,
+      );
+      if (success) {
+        AppToast.showSuccess(
+          title: 'Request Cancelled',
+          description: 'Material Request #$requestId has been cancelled.',
+        );
+        await fetchRequests();
+        return true;
+      } else {
+        AppToast.showError(
+          title: 'Action Failed',
+          description: 'Could not cancel Material Request. Please try again.',
+        );
+        return false;
+      }
+    } catch (e) {
+      AppToast.showError(
+        title: 'Error',
+        description: 'Failed to cancel request: $e',
+      );
+      return false;
+    } finally {
+      isLoading.value = false;
     }
   }
 
   void nextPage() {
     if (pageIndex.value < totalPages - 1) {
       pageIndex.value++;
+      fetchRequests();
     }
   }
 
   void prevPage() {
     if (pageIndex.value > 0) {
       pageIndex.value--;
+      fetchRequests();
     }
+  }
+
+  void goToPage(int index) {
+    if (index < 0 || index >= totalPages || index == pageIndex.value) return;
+    pageIndex.value = index;
+    fetchRequests();
   }
 
   void _recomputeFiltered() {
     final list = requests.where((r) {
       final matchesProject =
-          selectedProject.value == 'All Projects' || r.project == selectedProject.value;
-      final matchesDept = selectedDepartment.value == 'All Departments' ||
+          selectedProject.value == 'All Projects' ||
+          r.project == selectedProject.value;
+      final matchesDept =
+          selectedDepartment.value == 'All Departments' ||
           r.department == selectedDepartment.value;
-      final matchesBy = selectedRequestedBy.value == 'All' ||
+      final matchesBy =
+          selectedRequestedBy.value == 'All' ||
           r.requestedBy == selectedRequestedBy.value;
-      final matchesStatus = selectedStatus.value == 'All Status' ||
-          (selectedStatus.value == 'Pending' && r.status == MaterialRequestStatus.pending) ||
-          (selectedStatus.value == 'Approved' && r.status == MaterialRequestStatus.approved) ||
-          (selectedStatus.value == 'Rejected' && r.status == MaterialRequestStatus.rejected);
+      final matchesStatus =
+          selectedStatus.value == 'All Status' ||
+          (selectedStatus.value == 'Pending' &&
+              r.status == MaterialRequestStatus.pending) ||
+          (selectedStatus.value == 'Approved' &&
+              r.status == MaterialRequestStatus.approved) ||
+          (selectedStatus.value == 'Rejected' &&
+              r.status == MaterialRequestStatus.rejected);
 
       final f = dateFrom.value;
       final t = dateTo.value;
       final matchesDate = (f == null || t == null)
           ? true
           : r.requestDate.isAfter(f.subtract(const Duration(days: 1))) &&
-              r.requestDate.isBefore(t.add(const Duration(days: 1)));
+                r.requestDate.isBefore(t.add(const Duration(days: 1)));
 
-      return matchesProject && matchesDept && matchesBy && matchesStatus && matchesDate;
+      return matchesProject &&
+          matchesDept &&
+          matchesBy &&
+          matchesStatus &&
+          matchesDate;
     }).toList();
 
     filteredRequests.value = list;
@@ -242,4 +399,3 @@ class MaterialRequestControllerDateFormatter {
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
   }
 }
-

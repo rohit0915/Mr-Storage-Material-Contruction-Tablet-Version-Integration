@@ -57,7 +57,8 @@ class ChatView extends GetView<ChatController> {
 
             // ─── Right Info Panel (Drawer) ─────────────────────────────────
             Obx(() {
-              if (!controller.isInfoPanelOpen.value) return const SizedBox.shrink();
+              if (!controller.isInfoPanelOpen.value)
+                return const SizedBox.shrink();
               return Row(
                 children: [
                   const VerticalDivider(width: 1, color: AppColors.cardBorder),
@@ -146,14 +147,27 @@ class _LeftSidebar extends StatelessWidget {
             height: 38,
             child: TextField(
               controller: controller.searchController,
-              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textPrimary,
+              ),
               decoration: InputDecoration(
                 hintText: 'Search chats...',
-                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.search, size: 16, color: AppColors.textSecondary),
+                hintStyle: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+                prefixIcon: const Icon(
+                  Icons.search,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
                 filled: true,
                 fillColor: const Color(0xFFF8FAFC),
-                contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                contentPadding: const EdgeInsets.symmetric(
+                  vertical: 0,
+                  horizontal: 12,
+                ),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
                   borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -249,9 +263,12 @@ class _LeftSidebar extends StatelessWidget {
                 itemBuilder: (context, index) {
                   final dept = controller.departments[index];
                   return Obx(() {
-                    final selected = controller.selectedDepartmentId.value == dept.id;
+                    final selected =
+                        controller.selectedDepartmentId.value == dept.id;
                     return Container(
-                      color: selected ? const Color(0xFFEFF6FF) : Colors.transparent,
+                      color: selected
+                          ? const Color(0xFFEFF6FF)
+                          : Colors.transparent,
                       child: ListTile(
                         onTap: () => controller.selectDepartment(dept.id),
                         leading: Container(
@@ -261,13 +278,19 @@ class _LeftSidebar extends StatelessWidget {
                             color: dept.iconColor.withValues(alpha: 0.12),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: Icon(dept.icon, size: 20, color: dept.iconColor),
+                          child: Icon(
+                            dept.icon,
+                            size: 20,
+                            color: dept.iconColor,
+                          ),
                         ),
                         title: Text(
                           dept.title,
                           style: TextStyle(
                             fontSize: 13,
-                            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                            fontWeight: selected
+                                ? FontWeight.w800
+                                : FontWeight.w600,
                             color: AppColors.textPrimary,
                           ),
                         ),
@@ -303,9 +326,12 @@ class _LeftSidebar extends StatelessWidget {
               itemBuilder: (context, index) {
                 final contact = controller.contacts[index];
                 return Obx(() {
-                  final selected = controller.selectedContactId.value == contact.id;
+                  final selected =
+                      controller.selectedContactId.value == contact.id;
                   return Container(
-                    color: selected ? const Color(0xFFEFF6FF) : Colors.transparent,
+                    color: selected
+                        ? const Color(0xFFEFF6FF)
+                        : Colors.transparent,
                     child: ListTile(
                       onTap: () => controller.selectContact(contact.id),
                       leading: CircleAvatar(
@@ -323,7 +349,9 @@ class _LeftSidebar extends StatelessWidget {
                         contact.name,
                         style: TextStyle(
                           fontSize: 13,
-                          fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                          fontWeight: selected
+                              ? FontWeight.w800
+                              : FontWeight.w600,
                           color: AppColors.textPrimary,
                         ),
                       ),
@@ -341,7 +369,11 @@ class _LeftSidebar extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: TextButton.icon(
             onPressed: () {},
-            icon: const Icon(Icons.add, size: 16, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.add,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
             label: const Text(
               'New Chat',
               style: TextStyle(
@@ -439,15 +471,27 @@ class _CenterChatPanel extends StatelessWidget {
               const Spacer(),
               IconButton(
                 onPressed: () {},
-                icon: const Icon(Icons.phone_outlined, size: 20, color: AppColors.textSecondary),
+                icon: const Icon(
+                  Icons.phone_outlined,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               ),
               IconButton(
                 onPressed: () {},
-                icon: const Icon(Icons.videocam_outlined, size: 22, color: AppColors.textSecondary),
+                icon: const Icon(
+                  Icons.videocam_outlined,
+                  size: 22,
+                  color: AppColors.textSecondary,
+                ),
               ),
               IconButton(
                 onPressed: controller.toggleInfoPanel,
-                icon: const Icon(Icons.info_outline_rounded, size: 20, color: AppColors.textSecondary),
+                icon: const Icon(
+                  Icons.info_outline_rounded,
+                  size: 20,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ],
           ),
@@ -456,6 +500,20 @@ class _CenterChatPanel extends StatelessWidget {
         // Messages List
         Expanded(
           child: Obx(() {
+            if (controller.isLoadingMessages.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (controller.messages.isEmpty) {
+              return const Center(
+                child: Text(
+                  'No messages yet. Send a message to start the conversation!',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 13,
+                  ),
+                ),
+              );
+            }
             return ListView.builder(
               padding: const EdgeInsets.all(20),
               itemCount: controller.messages.length,
@@ -473,42 +531,104 @@ class _CenterChatPanel extends StatelessWidget {
           decoration: const BoxDecoration(
             border: Border(top: BorderSide(color: AppColors.cardBorder)),
           ),
-          child: Row(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: TextField(
-                  controller: controller.messageController,
-                  onSubmitted: (_) => controller.sendMessage(),
-                  style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
-                  decoration: InputDecoration(
-                    hintText: 'Type your message...',
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
-                    filled: true,
-                    fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
+              Obx(() {
+                if (!controller.isTeamTyping.value)
+                  return const SizedBox.shrink();
+                final name = controller.typingUserName.value.isNotEmpty
+                    ? controller.typingUserName.value
+                    : 'Someone';
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8, left: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const SizedBox(
+                        width: 12,
+                        height: 12,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 1.5,
+                          color: AppColors.primaryBlue,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$name is typing...',
+                        style: const TextStyle(
+                          fontSize: 11,
+                          fontStyle: FontStyle.italic,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: controller.messageController,
+                      onSubmitted: (_) => controller.sendMessage(),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textPrimary,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'Type your message...',
+                        hintStyle: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                        ),
+                        filled: true,
+                        fillColor: Colors.white,
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 12,
+                        ),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: AppColors.cardBorder,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: const BorderSide(
+                            color: AppColors.cardBorder,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              ElevatedButton.icon(
-                onPressed: controller.sendMessage,
-                icon: const Icon(Icons.send_rounded, size: 16),
-                label: const Text('Send', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: controller.sendMessage,
+                    icon: const Icon(Icons.send_rounded, size: 16),
+                    label: const Text(
+                      'Send',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryBlue,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -561,7 +681,10 @@ class _ChatMessageBubble extends StatelessWidget {
                       children: [
                         Text(
                           msg.message,
-                          style: const TextStyle(fontSize: 13, color: Colors.white),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: Colors.white,
+                          ),
                         ),
                         const SizedBox(height: 6),
                         Text(
@@ -583,7 +706,11 @@ class _ChatMessageBubble extends StatelessWidget {
               backgroundColor: const Color(0xFF991B1B),
               child: Text(
                 msg.senderName[0],
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ],
@@ -599,12 +726,22 @@ class _ChatMessageBubble extends StatelessWidget {
         children: [
           CircleAvatar(
             radius: 16,
-            backgroundColor: msg.isAi ? const Color(0xFFFEF3C7) : const Color(0xFFE2E8F0),
+            backgroundColor: msg.isAi
+                ? const Color(0xFFFEF3C7)
+                : const Color(0xFFE2E8F0),
             child: msg.isAi
-                ? const Icon(Icons.smart_toy_outlined, size: 18, color: Color(0xFFD97706))
+                ? const Icon(
+                    Icons.smart_toy_outlined,
+                    size: 18,
+                    color: Color(0xFFD97706),
+                  )
                 : Text(
                     msg.senderName[0],
-                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 12, fontWeight: FontWeight.w700),
+                    style: const TextStyle(
+                      color: AppColors.textPrimary,
+                      fontSize: 12,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
           ),
           const SizedBox(width: 10),
@@ -636,12 +773,18 @@ class _ChatMessageBubble extends StatelessWidget {
                     children: [
                       Text(
                         msg.message,
-                        style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 6),
                       Text(
                         msg.timestamp,
-                        style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                        style: const TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ],
                   ),
@@ -716,10 +859,16 @@ class _EmptyChatState extends StatelessWidget {
                   style: const TextStyle(fontSize: 13),
                   decoration: InputDecoration(
                     hintText: 'Type your message...',
-                    hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    hintStyle: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                     filled: true,
                     fillColor: Colors.white,
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(10),
                       borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -735,14 +884,24 @@ class _EmptyChatState extends StatelessWidget {
               ElevatedButton.icon(
                 onPressed: null,
                 icon: const Icon(Icons.send_rounded, size: 16),
-                label: const Text('Send', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+                label: const Text(
+                  'Send',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                ),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppColors.primaryBlue,
-                  disabledBackgroundColor: AppColors.primaryBlue.withValues(alpha: 0.6),
+                  disabledBackgroundColor: AppColors.primaryBlue.withValues(
+                    alpha: 0.6,
+                  ),
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 14,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
               ),
             ],
@@ -774,7 +933,11 @@ class _RightInfoPanel extends StatelessWidget {
                 children: [
                   IconButton(
                     onPressed: controller.toggleInfoPanel,
-                    icon: const Icon(Icons.close, size: 20, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.close,
+                      size: 20,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(
@@ -784,7 +947,11 @@ class _RightInfoPanel extends StatelessWidget {
                       color: AppColors.primaryBlue.withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.campaign_rounded, size: 20, color: AppColors.primaryBlue),
+                    child: const Icon(
+                      Icons.campaign_rounded,
+                      size: 20,
+                      color: AppColors.primaryBlue,
+                    ),
                   ),
                   const SizedBox(width: 10),
                   const Expanded(
@@ -823,18 +990,29 @@ class _RightInfoPanel extends StatelessWidget {
                   return OutlinedButton.icon(
                     onPressed: () => controller.isMuted.value = !muted,
                     icon: Icon(
-                      muted ? Icons.notifications_off_outlined : Icons.notifications_none_rounded,
+                      muted
+                          ? Icons.notifications_off_outlined
+                          : Icons.notifications_none_rounded,
                       size: 16,
                       color: AppColors.textSecondary,
                     ),
                     label: Text(
                       muted ? 'Unmute' : 'Mute',
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                     style: OutlinedButton.styleFrom(
                       side: const BorderSide(color: AppColors.cardBorder),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   );
                 }),
@@ -852,21 +1030,28 @@ class _RightInfoPanel extends StatelessWidget {
                 children: [
                   Expanded(
                     child: InkWell(
-                      onTap: () => controller.activeInfoTab.value = InfoPanelTab.members,
+                      onTap: () =>
+                          controller.activeInfoTab.value = InfoPanelTab.members,
                       child: Column(
                         children: [
                           Text(
                             'Members',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: tab == InfoPanelTab.members ? FontWeight.w700 : FontWeight.w500,
-                              color: tab == InfoPanelTab.members ? AppColors.primaryBlue : AppColors.textSecondary,
+                              fontWeight: tab == InfoPanelTab.members
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: tab == InfoPanelTab.members
+                                  ? AppColors.primaryBlue
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Container(
                             height: 2,
-                            color: tab == InfoPanelTab.members ? AppColors.primaryBlue : Colors.transparent,
+                            color: tab == InfoPanelTab.members
+                                ? AppColors.primaryBlue
+                                : Colors.transparent,
                           ),
                         ],
                       ),
@@ -874,21 +1059,28 @@ class _RightInfoPanel extends StatelessWidget {
                   ),
                   Expanded(
                     child: InkWell(
-                      onTap: () => controller.activeInfoTab.value = InfoPanelTab.files,
+                      onTap: () =>
+                          controller.activeInfoTab.value = InfoPanelTab.files,
                       child: Column(
                         children: [
                           Text(
                             'Files',
                             style: TextStyle(
                               fontSize: 13,
-                              fontWeight: tab == InfoPanelTab.files ? FontWeight.w700 : FontWeight.w500,
-                              color: tab == InfoPanelTab.files ? AppColors.primaryBlue : AppColors.textSecondary,
+                              fontWeight: tab == InfoPanelTab.files
+                                  ? FontWeight.w700
+                                  : FontWeight.w500,
+                              color: tab == InfoPanelTab.files
+                                  ? AppColors.primaryBlue
+                                  : AppColors.textSecondary,
                             ),
                           ),
                           const SizedBox(height: 8),
                           Container(
                             height: 2,
-                            color: tab == InfoPanelTab.files ? AppColors.primaryBlue : Colors.transparent,
+                            color: tab == InfoPanelTab.files
+                                ? AppColors.primaryBlue
+                                : Colors.transparent,
                           ),
                         ],
                       ),
@@ -919,7 +1111,11 @@ class _RightInfoPanel extends StatelessWidget {
                             backgroundColor: const Color(0xFFE2E8F0),
                             child: Text(
                               m.name[0],
-                              style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textPrimary),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: AppColors.textPrimary,
+                              ),
                             ),
                           ),
                           const SizedBox(width: 10),
@@ -929,25 +1125,39 @@ class _RightInfoPanel extends StatelessWidget {
                               children: [
                                 Text(
                                   m.name,
-                                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.textPrimary,
+                                  ),
                                 ),
                                 Text(
                                   m.role,
-                                  style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
+                                  style: const TextStyle(
+                                    fontSize: 11,
+                                    color: AppColors.textSecondary,
+                                  ),
                                 ),
                               ],
                             ),
                           ),
                           if (m.isAdmin)
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 3,
+                              ),
                               decoration: BoxDecoration(
                                 color: const Color(0xFFEFF6FF),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: const Text(
                                 'Admin',
-                                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primaryBlue),
+                                style: TextStyle(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.primaryBlue,
+                                ),
                               ),
                             ),
                         ],
@@ -957,10 +1167,18 @@ class _RightInfoPanel extends StatelessWidget {
                   const SizedBox(height: 12),
                   TextButton.icon(
                     onPressed: () {},
-                    icon: const Icon(Icons.person_add_alt_1_outlined, size: 16, color: AppColors.textSecondary),
+                    icon: const Icon(
+                      Icons.person_add_alt_1_outlined,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                     label: const Text(
                       'Add member',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 ],
@@ -986,7 +1204,11 @@ class _RightInfoPanel extends StatelessWidget {
                             color: const Color(0xFFEFF6FF),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Icon(Icons.article_outlined, size: 18, color: AppColors.primaryBlue),
+                          child: const Icon(
+                            Icons.article_outlined,
+                            size: 18,
+                            color: AppColors.primaryBlue,
+                          ),
                         ),
                         const SizedBox(width: 10),
                         Expanded(
@@ -995,18 +1217,29 @@ class _RightInfoPanel extends StatelessWidget {
                             children: [
                               Text(
                                 f.fileName,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
                               Text(
                                 f.author,
-                                style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+                                style: const TextStyle(
+                                  fontSize: 10,
+                                  color: AppColors.textSecondary,
+                                ),
                               ),
                             ],
                           ),
                         ),
                         IconButton(
                           onPressed: () {},
-                          icon: const Icon(Icons.download_rounded, size: 18, color: AppColors.textSecondary),
+                          icon: const Icon(
+                            Icons.download_rounded,
+                            size: 18,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),

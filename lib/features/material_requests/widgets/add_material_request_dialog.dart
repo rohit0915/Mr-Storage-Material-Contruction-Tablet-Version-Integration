@@ -12,7 +12,8 @@ class AddMaterialRequestDialog extends StatefulWidget {
   const AddMaterialRequestDialog({super.key});
 
   @override
-  State<AddMaterialRequestDialog> createState() => _AddMaterialRequestDialogState();
+  State<AddMaterialRequestDialog> createState() =>
+      _AddMaterialRequestDialogState();
 }
 
 class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
@@ -20,10 +21,18 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
   final _qtyCtrl = TextEditingController();
 
   final _requestedDate = DateTime.now();
-  String _project = 'Downtown Office Complex';
+  late String _project;
   String _site = 'Site A';
   String _priority = 'High';
   DateTime? _requiredBy;
+
+  @override
+  void initState() {
+    super.initState();
+    final projects = Get.find<MaterialRequestsController>().projects;
+    _project =
+        projects.firstWhereOrNull((name) => name != 'All Projects') ?? '';
+  }
 
   @override
   void dispose() {
@@ -51,7 +60,8 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
 
     final controller = Get.find<MaterialRequestsController>();
     final now = DateTime.now();
-    final id = 'MR-${now.year}-${(now.millisecondsSinceEpoch % 100000).toString().padLeft(5, '0')}';
+    final id =
+        'MR-${now.year}-${(now.millisecondsSinceEpoch % 100000).toString().padLeft(5, '0')}';
 
     final newReq = MaterialRequestBoardItem(
       id: id,
@@ -69,8 +79,8 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
       priorityColor: _priority == 'High'
           ? const Color(0xFFBE185D)
           : _priority == 'Medium'
-              ? const Color(0xFFD97706)
-              : const Color(0xFF2563EB),
+          ? const Color(0xFFD97706)
+          : const Color(0xFF2563EB),
       items: [
         MaterialRequestItemRow(
           name: name,
@@ -88,9 +98,8 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
     await showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const TaskSuccessDialog(
-        title: 'Request Added Successfully',
-      ),
+      builder: (_) =>
+          const TaskSuccessDialog(title: 'Request Added Successfully'),
     );
   }
 
@@ -140,7 +149,9 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                         _dateTapField(
                           value: _requiredBy == null
                               ? 'dd - mm - yyyy'
-                              : DateFormat('dd - MM - yyyy').format(_requiredBy!),
+                              : DateFormat(
+                                  'dd - MM - yyyy',
+                                ).format(_requiredBy!),
                           onTap: _pickRequiredBy,
                         ),
                       ],
@@ -155,11 +166,9 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                         const SizedBox(height: 6),
                         _dropdown(
                           value: _project,
-                          items: const [
-                            'Downtown Office Complex',
-                            'Residential Tower A',
-                            'ABC Construction Site A',
-                          ],
+                          items: Get.find<MaterialRequestsController>().projects
+                              .where((name) => name != 'All Projects')
+                              .toList(),
                           onChanged: (v) => setState(() => _project = v),
                         ),
                       ],
@@ -244,10 +253,18 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                       foregroundColor: AppColors.textPrimary,
                       backgroundColor: const Color(0xFFF3F4F6),
                       side: BorderSide.none,
-                      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 28,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: const Text(
+                      'Cancel',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -256,10 +273,18 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                       backgroundColor: AppColors.primaryBlue,
                       foregroundColor: Colors.white,
                       elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('Create', style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: const Text(
+                      'Create',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                 ],
               ),
@@ -271,13 +296,13 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
   }
 
   Widget _label(String text, double size) => Text(
-        text,
-        style: TextStyle(
-          fontWeight: FontWeight.w700,
-          color: AppColors.textPrimary,
-          fontSize: size,
-        ),
-      );
+    text,
+    style: TextStyle(
+      fontWeight: FontWeight.w700,
+      color: AppColors.textPrimary,
+      fontSize: size,
+    ),
+  );
 
   Widget _readOnlyField(String value) {
     return Container(
@@ -321,7 +346,11 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                 ),
               ),
             ),
-            const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.textSecondary),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
           ],
         ),
       ),
@@ -338,7 +367,10 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
       initialValue: value,
       isExpanded: true,
       decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -349,7 +381,12 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
         ),
       ),
       items: items
-          .map((e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis)))
+          .map(
+            (e) => DropdownMenuItem(
+              value: e,
+              child: Text(e, overflow: TextOverflow.ellipsis),
+            ),
+          )
           .toList(),
       onChanged: (v) {
         if (v == null) return;
@@ -369,7 +406,10 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: const TextStyle(color: AppColors.textSecondary),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 14,
+          vertical: 14,
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(10),
           borderSide: const BorderSide(color: AppColors.cardBorder),

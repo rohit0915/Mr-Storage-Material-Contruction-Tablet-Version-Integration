@@ -90,7 +90,10 @@ class FreightCarriersCard extends StatelessWidget {
                   child: Center(
                     child: Text(
                       'No freight carriers data available',
-                      style: TextStyle(fontSize: cellSize, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: cellSize,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 );
@@ -121,15 +124,24 @@ class FreightCarriersCard extends StatelessWidget {
                           ),
                           Expanded(
                             flex: 2,
-                            child: Text(row.loadsToday, style: TextStyle(fontSize: cellSize)),
+                            child: Text(
+                              row.loadsToday,
+                              style: TextStyle(fontSize: cellSize),
+                            ),
                           ),
                           Expanded(
                             flex: 2,
-                            child: Text(row.onTime, style: TextStyle(fontSize: cellSize)),
+                            child: Text(
+                              row.onTime,
+                              style: TextStyle(fontSize: cellSize),
+                            ),
                           ),
                           Expanded(
                             flex: 2,
-                            child: Text(row.delayed, style: TextStyle(fontSize: cellSize)),
+                            child: Text(
+                              row.delayed,
+                              style: TextStyle(fontSize: cellSize),
+                            ),
                           ),
                           Expanded(
                             flex: 2,
@@ -149,10 +161,17 @@ class FreightCarriersCard extends StatelessWidget {
                     SizedBox(height: DashboardGap.section(context)),
                     Row(
                       children: [
-                        for (var i = 0; i < controller.freightSummaries.length; i++) ...[
-                          if (i > 0) SizedBox(width: DashboardGap.page(context)),
+                        for (
+                          var i = 0;
+                          i < controller.freightSummaries.length;
+                          i++
+                        ) ...[
+                          if (i > 0)
+                            SizedBox(width: DashboardGap.page(context)),
                           Expanded(
-                            child: _SummaryTile(item: controller.freightSummaries[i]),
+                            child: _SummaryTile(
+                              item: controller.freightSummaries[i],
+                            ),
                           ),
                         ],
                       ],

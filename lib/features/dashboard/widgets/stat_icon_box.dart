@@ -4,12 +4,7 @@ import '../models/dashboard_models.dart';
 
 /// Figma-style colored square with white clock/history icon.
 class StatIconBox extends StatelessWidget {
-  const StatIconBox({
-    super.key,
-    required this.color,
-    this.icon,
-    this.size,
-  });
+  const StatIconBox({super.key, required this.color, this.icon, this.size});
 
   final Color color;
   final IconData? icon;

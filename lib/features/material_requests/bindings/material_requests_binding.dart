@@ -8,4 +8,3 @@ class MaterialRequestsBinding extends Bindings {
     Get.lazyPut<MaterialRequestsController>(() => MaterialRequestsController());
   }
 }
-

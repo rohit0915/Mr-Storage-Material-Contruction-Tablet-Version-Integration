@@ -61,7 +61,10 @@ class ProfileView extends GetView<ProfileController> {
                     backgroundColor: AppColors.primaryBlue,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -75,8 +78,14 @@ class ProfileView extends GetView<ProfileController> {
             LayoutBuilder(
               builder: (context, constraints) {
                 final isLandscape = constraints.maxWidth > 700;
-                final leftCard = _BasicInfoCard(controller: controller, fontSize: subSize);
-                final rightCard = _SecuritySettingsCard(controller: controller, fontSize: subSize);
+                final leftCard = _BasicInfoCard(
+                  controller: controller,
+                  fontSize: subSize,
+                );
+                final rightCard = _SecuritySettingsCard(
+                  controller: controller,
+                  fontSize: subSize,
+                );
 
                 if (isLandscape) {
                   return Row(
@@ -90,11 +99,7 @@ class ProfileView extends GetView<ProfileController> {
                 }
 
                 return Column(
-                  children: [
-                    leftCard,
-                    const SizedBox(height: 20),
-                    rightCard,
-                  ],
+                  children: [leftCard, const SizedBox(height: 20), rightCard],
                 );
               },
             ),
@@ -143,7 +148,11 @@ class _BasicInfoCard extends StatelessWidget {
                     const CircleAvatar(
                       radius: 40,
                       backgroundColor: Color(0xFFE2E8F0),
-                      child: Icon(Icons.person, size: 48, color: Color(0xFF64748B)),
+                      child: Icon(
+                        Icons.person,
+                        size: 48,
+                        color: Color(0xFF64748B),
+                      ),
                     ),
                     Positioned(
                       right: 0,
@@ -155,7 +164,11 @@ class _BasicInfoCard extends StatelessWidget {
                           shape: BoxShape.circle,
                           border: Border.all(color: AppColors.cardBorder),
                         ),
-                        child: const Icon(Icons.camera_alt_outlined, size: 14, color: AppColors.textSecondary),
+                        child: const Icon(
+                          Icons.camera_alt_outlined,
+                          size: 14,
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -163,7 +176,10 @@ class _BasicInfoCard extends StatelessWidget {
                 const SizedBox(height: 8),
                 Text(
                   'JPG, PNG or GIF, Max size 2MB.',
-                  style: TextStyle(fontSize: fontSize - 2, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: fontSize - 2,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -173,19 +189,31 @@ class _BasicInfoCard extends StatelessWidget {
           // Input 1: Full Name
           _fieldLabel('Full Name'),
           const SizedBox(height: 6),
-          _inputField(controller.fullNameController, 'Enter full name', fontSize),
+          _inputField(
+            controller.fullNameController,
+            'Enter full name',
+            fontSize,
+          ),
           const SizedBox(height: 16),
 
           // Input 2: Email Address
           _fieldLabel('Email Address'),
           const SizedBox(height: 6),
-          _inputField(controller.emailController, 'Enter email address', fontSize),
+          _inputField(
+            controller.emailController,
+            'Enter email address',
+            fontSize,
+          ),
           const SizedBox(height: 16),
 
           // Input 3: Phone Number
           _fieldLabel('Phone Number'),
           const SizedBox(height: 6),
-          _inputField(controller.phoneController, 'Enter phone number', fontSize),
+          _inputField(
+            controller.phoneController,
+            'Enter phone number',
+            fontSize,
+          ),
           const SizedBox(height: 16),
 
           // Input 4: Role (Disabled/Tinted background)
@@ -201,7 +229,10 @@ class _BasicInfoCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             'Role can not be changed from this interface',
-            style: TextStyle(fontSize: fontSize - 2, color: AppColors.textSecondary),
+            style: TextStyle(
+              fontSize: fontSize - 2,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 28),
           const Divider(height: 1, color: AppColors.cardBorder),
@@ -215,9 +246,14 @@ class _BasicInfoCard extends StatelessWidget {
               foregroundColor: Colors.white,
               elevation: 0,
               padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
             ),
-            child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13)),
+            child: const Text(
+              'Save Changes',
+              style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+            ),
           ),
         ],
       ),
@@ -225,9 +261,13 @@ class _BasicInfoCard extends StatelessWidget {
   }
 
   Widget _fieldLabel(String label) => Text(
-        label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-      );
+    label,
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textPrimary,
+    ),
+  );
 
   Widget _inputField(
     TextEditingController ctrl,
@@ -235,39 +275,41 @@ class _BasicInfoCard extends StatelessWidget {
     double size, {
     bool enabled = true,
     Color fillColor = Colors.white,
-  }) =>
-      SizedBox(
-        height: 42,
-        child: TextField(
-          controller: ctrl,
-          enabled: enabled,
-          style: TextStyle(fontSize: size, color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            hintText: hint,
-            filled: true,
-            fillColor: fillColor,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.cardBorder),
-            ),
-            disabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.cardBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.cardBorder),
-            ),
-          ),
+  }) => SizedBox(
+    height: 42,
+    child: TextField(
+      controller: ctrl,
+      enabled: enabled,
+      style: TextStyle(fontSize: size, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        hintText: hint,
+        filled: true,
+        fillColor: fillColor,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
         ),
-      );
+        disabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+      ),
+    ),
+  );
 }
 
 // ─── Right Card: Security Settings ───────────────────────────────────────────
 
 class _SecuritySettingsCard extends StatelessWidget {
-  const _SecuritySettingsCard({required this.controller, required this.fontSize});
+  const _SecuritySettingsCard({
+    required this.controller,
+    required this.fontSize,
+  });
   final ProfileController controller;
   final double fontSize;
 
@@ -294,7 +336,10 @@ class _SecuritySettingsCard extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             "Leave password fields empty if you don't want to change your password.",
-            style: TextStyle(fontSize: fontSize - 1, color: AppColors.textSecondary),
+            style: TextStyle(
+              fontSize: fontSize - 1,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 24),
 
@@ -326,9 +371,14 @@ class _SecuritySettingsCard extends StatelessWidget {
                 backgroundColor: AppColors.primaryBlue,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
-              child: const Text('Update Password', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+              child: const Text(
+                'Update Password',
+                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+              ),
             ),
           ),
           const SizedBox(height: 20),
@@ -346,7 +396,11 @@ class _SecuritySettingsCard extends StatelessWidget {
               children: [
                 const Row(
                   children: [
-                    Icon(Icons.info_outline_rounded, size: 16, color: AppColors.primaryBlue),
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 16,
+                      color: AppColors.primaryBlue,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Password Requirements:',
@@ -374,7 +428,11 @@ class _SecuritySettingsCard extends StatelessWidget {
             height: 44,
             child: ElevatedButton.icon(
               onPressed: controller.logout,
-              icon: const Icon(Icons.logout_rounded, size: 16, color: Color(0xFFEF4444)),
+              icon: const Icon(
+                Icons.logout_rounded,
+                size: 16,
+                color: Color(0xFFEF4444),
+              ),
               label: const Text(
                 'Log out',
                 style: TextStyle(
@@ -386,7 +444,9 @@ class _SecuritySettingsCard extends StatelessWidget {
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFFFEE2E2), // Light pink tint
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
               ),
             ),
           ),
@@ -396,38 +456,46 @@ class _SecuritySettingsCard extends StatelessWidget {
   }
 
   Widget _fieldLabel(String label) => Text(
-        label,
-        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-      );
+    label,
+    style: const TextStyle(
+      fontSize: 12,
+      fontWeight: FontWeight.w700,
+      color: AppColors.textPrimary,
+    ),
+  );
 
   Widget _passwordField(TextEditingController ctrl, double size) => SizedBox(
-        height: 42,
-        child: TextField(
-          controller: ctrl,
-          obscureText: true,
-          style: TextStyle(fontSize: size, color: AppColors.textPrimary),
-          decoration: InputDecoration(
-            prefixIcon: const Icon(Icons.lock_outline_rounded, size: 16, color: AppColors.textSecondary),
-            filled: true,
-            fillColor: Colors.white,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.cardBorder),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.cardBorder),
-            ),
-          ),
+    height: 42,
+    child: TextField(
+      controller: ctrl,
+      obscureText: true,
+      style: TextStyle(fontSize: size, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        prefixIcon: const Icon(
+          Icons.lock_outline_rounded,
+          size: 16,
+          color: AppColors.textSecondary,
         ),
-      );
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 0),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.cardBorder),
+        ),
+      ),
+    ),
+  );
 
   Widget _reqItem(String text, double size) => Padding(
-        padding: const EdgeInsets.only(left: 24, bottom: 4),
-        child: Text(
-          text,
-          style: TextStyle(fontSize: size - 1, color: AppColors.primaryBlue),
-        ),
-      );
+    padding: const EdgeInsets.only(left: 24, bottom: 4),
+    child: Text(
+      text,
+      style: TextStyle(fontSize: size - 1, color: AppColors.primaryBlue),
+    ),
+  );
 }

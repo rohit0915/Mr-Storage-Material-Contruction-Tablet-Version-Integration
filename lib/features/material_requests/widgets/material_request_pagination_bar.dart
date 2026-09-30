@@ -13,7 +13,7 @@ class MaterialRequestPaginationBar extends GetView<MaterialRequestsController> {
     final gap = (size.width * 0.010).clamp(8.0, 12.0);
 
     return Obx(() {
-      final total = controller.filteredRequests.length;
+      final total = controller.serverTotal.value;
       if (total == 0) {
         return const SizedBox.shrink();
       }
@@ -52,7 +52,7 @@ class MaterialRequestPaginationBar extends GetView<MaterialRequestsController> {
                     return _PageNumber(
                       index: i,
                       isActive: i == current,
-                      onTap: () => controller.pageIndex.value = i,
+                      onTap: () => controller.goToPage(i),
                     );
                   }),
                 ),
@@ -72,7 +72,11 @@ class MaterialRequestPaginationBar extends GetView<MaterialRequestsController> {
 }
 
 class _PageButton extends StatelessWidget {
-  const _PageButton({required this.label, required this.enabled, required this.onTap});
+  const _PageButton({
+    required this.label,
+    required this.enabled,
+    required this.onTap,
+  });
 
   final String label;
   final bool enabled;
@@ -128,4 +132,3 @@ class _PageNumber extends StatelessWidget {
     );
   }
 }
-

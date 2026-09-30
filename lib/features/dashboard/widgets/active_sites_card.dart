@@ -46,126 +46,217 @@ class ActiveSitesCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: size.width * 0.006,
-              vertical: size.height * 0.008,
-            ),
-            decoration: BoxDecoration(
-              color: AppColors.tableHeader,
-              borderRadius: BorderRadius.circular(DashboardGap.radius),
-            ),
-            child: Row(
-              children: [
-                _Header('Project', flex: 3, size: headerSize),
-                _Header('Progress', flex: 2, size: headerSize),
-                _Header('Deadline', flex: 2, size: headerSize),
-                _Header('Delivery Status', flex: 3, size: headerSize),
-              ],
-            ),
-          ),
-          SizedBox(height: gap),
-          GetBuilder<DashboardController>(
-            id: AppGetIds.activeSites,
-            builder: (controller) {
-              final list = controller.sites;
-              if (list.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Center(
-                    child: Text(
-                      'No active sites data available',
-                      style: TextStyle(fontSize: cellSize, color: AppColors.textSecondary),
-                    ),
-                  ),
-                );
-              }
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minTableWidth = constraints.maxWidth.clamp(650.0, 1600.0);
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: SizedBox(
+                  width: minTableWidth,
+                  child: Column(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 10,
+                        ),
+                        decoration: BoxDecoration(
+                          color: AppColors.tableHeader,
+                          borderRadius: BorderRadius.circular(
+                            DashboardGap.radius,
+                          ),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Row(
+                          children: [
+                            _Header('Project', flex: 3, size: headerSize),
+                            _Header('Progress', flex: 2, size: headerSize),
+                            _Header('Deadline', flex: 2, size: headerSize),
+                            _Header(
+                              'Delivery Status',
+                              flex: 3,
+                              size: headerSize,
+                            ),
+                          ],
+                        ),
+                      ),
+                      SizedBox(height: gap),
+                      GetBuilder<DashboardController>(
+                        id: AppGetIds.activeSites,
+                        builder: (controller) {
+                          final list = controller.sites;
+                          if (list.isEmpty) {
+                            return Padding(
+                              padding: const EdgeInsets.all(20),
+                              child: Center(
+                                child: Text(
+                                  'No active sites data available',
+                                  style: TextStyle(
+                                    fontSize: cellSize,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            );
+                          }
 
-              return Column(
-                children: list.map((site) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: gap),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 3,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                site.project,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: cellSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.chartTeal,
+                          return Column(
+                            children: list.asMap().entries.map((entry) {
+                              final index = entry.key;
+                              final site = entry.value;
+                              return Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 10,
                                 ),
-                              ),
-                              Text(
-                                site.location,
-                                style: TextStyle(
-                                  fontSize: cellSize - 1,
-                                  color: AppColors.textSecondary,
+                                decoration: BoxDecoration(
+                                  color: index % 2 == 1
+                                      ? const Color(0xFFF8FAFC)
+                                      : Colors.white,
+                                  border: const Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.cardBorder,
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                '${(site.progress * 100).round()}%',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  fontSize: cellSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 3,
+                                      child: Container(
+                                        padding: const EdgeInsets.only(
+                                          right: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            right: BorderSide(
+                                              color: AppColors.cardBorder
+                                                  .withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              site.project,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: cellSize,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.chartTeal,
+                                              ),
+                                            ),
+                                            Text(
+                                              site.location,
+                                              style: TextStyle(
+                                                fontSize: cellSize - 1,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            right: BorderSide(
+                                              color: AppColors.cardBorder
+                                                  .withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              '${(site.progress * 100).round()}%',
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: cellSize,
+                                                fontWeight: FontWeight.w700,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                            SizedBox(
+                                              height: size.height * 0.004,
+                                            ),
+                                            ClipRRect(
+                                              borderRadius:
+                                                  BorderRadius.circular(4),
+                                              child: LinearProgressIndicator(
+                                                value: site.progress,
+                                                minHeight: 6,
+                                                backgroundColor:
+                                                    AppColors.chartTealSoft,
+                                                valueColor:
+                                                    AlwaysStoppedAnimation(
+                                                      site.barColor,
+                                                    ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          border: Border(
+                                            right: BorderSide(
+                                              color: AppColors.cardBorder
+                                                  .withValues(alpha: 0.4),
+                                            ),
+                                          ),
+                                        ),
+                                        child: Text(
+                                          site.deadline,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontSize: cellSize,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Container(
+                                        padding: const EdgeInsets.only(left: 8),
+                                        child: Align(
+                                          alignment: Alignment.centerLeft,
+                                          child: StatusBadge(
+                                            label: site.status,
+                                            color: site.statusColor,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
                                 ),
-                              ),
-                              SizedBox(height: size.height * 0.004),
-                              ClipRRect(
-                                borderRadius: BorderRadius.circular(4),
-                                child: LinearProgressIndicator(
-                                  value: site.progress,
-                                  minHeight: 6,
-                                  backgroundColor: AppColors.chartTealSoft,
-                                  valueColor: AlwaysStoppedAnimation(site.barColor),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Expanded(
-                          flex: 2,
-                          child: Text(
-                            site.deadline,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: cellSize,
-                              color: AppColors.textSecondary,
-                            ),
-                          ),
-                        ),
-                        Expanded(
-                          flex: 3,
-                          child: Align(
-                            alignment: Alignment.centerLeft,
-                            child: StatusBadge(
-                              label: site.status,
-                              color: site.statusColor,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }).toList(),
+                              );
+                            }).toList(),
+                          );
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               );
             },
           ),

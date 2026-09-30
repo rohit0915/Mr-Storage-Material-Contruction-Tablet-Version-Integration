@@ -2,187 +2,233 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../models/packing_list_models.dart';
+import '../services/packing_list_service.dart';
 
 class PackingListController extends GetxController {
+  PackingListController({PackingListService? service})
+    : _service = service ?? PackingListService();
+
+  final PackingListService _service;
   final searchController = TextEditingController();
   final searchQuery = ''.obs;
   final selectedItems = <String>{}.obs;
+  final isLoading = false.obs;
 
-  final _allPackingLists = <PackingListItem>[
-    const PackingListItem(
-      id: '1',
-      packingListId: 'PKL-001',
-      loadId: 'LOAD-001',
-      truck: 'TX-4582',
-      bundles: 5,
-      totalWeight: '18,500 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.loading,
-      isSelected: true,
-    ),
-    const PackingListItem(
-      id: '2',
-      packingListId: 'PKL-002',
-      loadId: 'LOAD-002',
-      truck: 'TX-2345',
-      bundles: 8,
-      totalWeight: '37,700 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.ready,
-    ),
-    const PackingListItem(
-      id: '3',
-      packingListId: 'PKL-003',
-      loadId: 'LOAD-003',
-      truck: 'TX-4582',
-      bundles: 6,
-      totalWeight: '21,400 LBS',
-      destination: 'Site B',
-      status: PackingListStatus.loading,
-    ),
-    const PackingListItem(
-      id: '4',
-      packingListId: 'PKL-004',
-      loadId: 'LOAD-004',
-      truck: 'TX-2345',
-      bundles: 5,
-      totalWeight: '18,500 LBS',
-      destination: 'Site C',
-      status: PackingListStatus.ready,
-    ),
-    const PackingListItem(
-      id: '5',
-      packingListId: 'PKL-005',
-      loadId: 'LOAD-005',
-      truck: 'TX-4582',
-      bundles: 8,
-      totalWeight: '37,700 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.loading,
-    ),
-    const PackingListItem(
-      id: '6',
-      packingListId: 'PKL-006',
-      loadId: 'LOAD-006',
-      truck: 'TX-2345',
-      bundles: 6,
-      totalWeight: '21,400 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.ready,
-    ),
-    const PackingListItem(
-      id: '7',
-      packingListId: 'PKL-007',
-      loadId: 'LOAD-007',
-      truck: 'TX-4582',
-      bundles: 3,
-      totalWeight: '18,500 LBS',
-      destination: 'Site B',
-      status: PackingListStatus.loading,
-    ),
-    const PackingListItem(
-      id: '8',
-      packingListId: 'PKL-008',
-      loadId: 'LOAD-008',
-      truck: 'TX-2345',
-      bundles: 4,
-      totalWeight: '37,700 LBS',
-      destination: 'Site C',
-      status: PackingListStatus.ready,
-    ),
-    const PackingListItem(
-      id: '9',
-      packingListId: 'PKL-009',
-      loadId: 'LOAD-009',
-      truck: 'TX-4582',
-      bundles: 2,
-      totalWeight: '21,400 LBS',
-      destination: 'Site C',
-      status: PackingListStatus.loading,
-    ),
-    const PackingListItem(
-      id: '10',
-      packingListId: 'PKL-010',
-      loadId: 'LOAD-010',
-      truck: 'TX-2345',
-      bundles: 4,
-      totalWeight: '18,500 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.ready,
-    ),
-    const PackingListItem(
-      id: '11',
-      packingListId: 'PKL-011',
-      loadId: 'LOAD-011',
-      truck: 'TX-4582',
-      bundles: 5,
-      totalWeight: '37,700 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.loading,
-    ),
-    const PackingListItem(
-      id: '12',
-      packingListId: 'PKL-012',
-      loadId: 'LOAD-012',
-      truck: 'TX-2345',
-      bundles: 8,
-      totalWeight: '21,400 LBS',
-      destination: 'Site T',
-      status: PackingListStatus.ready,
-    ),
-    const PackingListItem(
-      id: '13',
-      packingListId: 'PKL-013',
-      loadId: 'LOAD-013',
-      truck: 'TX-4582',
-      bundles: 6,
-      totalWeight: '18,500 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.loading,
-    ),
-    const PackingListItem(
-      id: '14',
-      packingListId: 'PKL-014',
-      loadId: 'LOAD-014',
-      truck: 'TX-2345',
-      bundles: 8,
-      totalWeight: '37,700 LBS',
-      destination: 'Site A',
-      status: PackingListStatus.loading,
-    ),
-  ].obs;
+  final _allPackingLists = <PackingListItem>[].obs;
 
   final pageIndex = 0.obs;
-  final pageSize = 10;
+  final pageSize = 10.obs;
 
-  int get totalPackingList => 24;
-  int get loadsReadyForDispatch => 15;
-  int get bundlesAssigned => 58;
-  int get loadsDispatchToday => 3;
+  final apiTotal = 0.obs;
+  final apiReady = 0.obs;
+  final apiBundlesAssigned = 0.obs;
+  final apiDispatchToday = 0.obs;
+  final hasApiStats = false.obs;
+
+  int get totalPackingList => apiTotal.value;
+  int get loadsReadyForDispatch => apiReady.value;
+  int get bundlesAssigned => apiBundlesAssigned.value;
+  int get loadsDispatchToday => apiDispatchToday.value;
+
+  @override
+  void onInit() {
+    super.onInit();
+    fetchPackingListsFromApi();
+  }
+
+  Future<void> fetchPackingListsFromApi({
+    int? targetPage,
+    int? targetLimit,
+  }) async {
+    if (targetLimit != null) pageSize.value = targetLimit;
+    final pageToFetch = targetPage ?? (pageIndex.value + 1);
+    pageIndex.value = pageToFetch - 1;
+    isLoading.value = true;
+    try {
+      final resMap = await _service.fetchPackingListsData(
+        page: pageToFetch,
+        limit: pageSize.value,
+      );
+      final List<PackingListItem> list = resMap['items'] ?? [];
+      final Map<String, dynamic> stats = resMap['stats'] ?? {};
+      final int count = resMap['total'] ?? 0;
+
+      hasApiStats.value = true;
+      apiTotal.value = count;
+      apiReady.value =
+          (stats['ready'] as num?)?.toInt() ??
+          (stats['loadsReadyForDispatch'] as num?)?.toInt() ??
+          apiTotal.value;
+      apiBundlesAssigned.value =
+          (stats['bundlesAssigned'] as num?)?.toInt() ?? 0;
+      apiDispatchToday.value = (stats['dispatchToday'] as num?)?.toInt() ?? 0;
+
+      if (list.isNotEmpty) {
+        _allPackingLists.assignAll(list);
+      }
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<Map<String, dynamic>?> getPackingListDetail(String id) async {
+    final idx = _allPackingLists.indexWhere(
+      (item) => item.id == id || item.packingListId == id,
+    );
+    final reqId = idx >= 0 && _allPackingLists[idx].realMongoId.isNotEmpty
+        ? _allPackingLists[idx].realMongoId
+        : id;
+    return await _service.fetchPackingListDetail(reqId);
+  }
+
+  Future<String?> downloadPdf(String id) async {
+    final idx = _allPackingLists.indexWhere(
+      (item) => item.id == id || item.packingListId == id,
+    );
+    final reqId = idx >= 0 && _allPackingLists[idx].realMongoId.isNotEmpty
+        ? _allPackingLists[idx].realMongoId
+        : id;
+    return _service.downloadPackingListPdf(reqId);
+  }
+
+  Future<String?> exportExcel() => _service.exportPackingLists();
+
+  Future<bool> markReadyForDispatch(String id) async {
+    final idx = _allPackingLists.indexWhere(
+      (item) => item.id == id || item.packingListId == id,
+    );
+    final reqId = idx >= 0 && _allPackingLists[idx].realMongoId.isNotEmpty
+        ? _allPackingLists[idx].realMongoId
+        : id;
+    final success = await _service.markReady(reqId);
+    if (success && idx >= 0) {
+      _allPackingLists[idx] = _allPackingLists[idx].copyWith(
+        status: PackingListStatus.ready,
+        statusText: 'READY',
+      );
+    }
+    return success;
+  }
+
+  Future<bool> markDispatch(String id) async {
+    final idx = _allPackingLists.indexWhere(
+      (item) => item.id == id || item.packingListId == id,
+    );
+    final reqId = idx >= 0 && _allPackingLists[idx].realMongoId.isNotEmpty
+        ? _allPackingLists[idx].realMongoId
+        : id;
+    final success = await _service.markDispatch(reqId);
+    if (success && idx >= 0) {
+      _allPackingLists[idx] = _allPackingLists[idx].copyWith(
+        status: PackingListStatus.ready,
+        statusText: 'DISPATCHED',
+      );
+    }
+    return success;
+  }
+
+  final selectedStatus = 'All Statuses'.obs;
+  final selectedSort = 'Latest'.obs;
 
   List<PackingListItem> get filteredLists {
-    final q = searchQuery.value.toLowerCase();
-    if (q.isEmpty) return _allPackingLists;
-    return _allPackingLists
-        .where((item) =>
-            item.packingListId.toLowerCase().contains(q) ||
-            item.loadId.toLowerCase().contains(q) ||
-            item.truck.toLowerCase().contains(q) ||
-            item.destination.toLowerCase().contains(q))
-        .toList();
+    var list = List<PackingListItem>.from(_allPackingLists);
+
+    if (selectedStatus.value != 'All Statuses') {
+      final filterText = selectedStatus.value.toUpperCase();
+      list = list.where((item) {
+        return item.statusText.toUpperCase().contains(filterText) ||
+            item.status.name.toUpperCase().contains(filterText);
+      }).toList();
+    }
+
+    final q = searchQuery.value.trim().toLowerCase();
+    if (q.isNotEmpty) {
+      list = list
+          .where(
+            (item) =>
+                item.packingListId.toLowerCase().contains(q) ||
+                item.project.toLowerCase().contains(q) ||
+                item.jobId.toLowerCase().contains(q) ||
+                item.truck.toLowerCase().contains(q) ||
+                item.destination.toLowerCase().contains(q) ||
+                item.totalWeight.toLowerCase().contains(q) ||
+                item.statusText.toLowerCase().contains(q),
+          )
+          .toList();
+    }
+
+    if (selectedSort.value == 'Weight High to Low') {
+      list.sort(
+        (a, b) =>
+            _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)),
+      );
+    } else if (selectedSort.value == 'Weight Low to High') {
+      list.sort(
+        (a, b) =>
+            _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)),
+      );
+    } else if (selectedSort.value == 'Oldest') {
+      list = list.reversed.toList();
+    }
+
+    return list;
   }
 
-  int get totalPages =>
-      ((filteredLists.length / pageSize).ceil()).clamp(1, 15);
-
-  List<PackingListItem> get pageLists {
-    final start = pageIndex.value * pageSize;
-    final end = (start + pageSize).clamp(0, filteredLists.length);
-    if (start >= filteredLists.length) return [];
-    return filteredLists.sublist(start, end);
+  double _parseWeight(String w) {
+    final clean = w.replaceAll('LBS', '').replaceAll(',', '').trim();
+    return double.tryParse(clean) ?? 0.0;
   }
 
-  void toggleItemSelection(String id) {
+  void setStatusFilter(String status) {
+    selectedStatus.value = status;
+    pageIndex.value = 0;
+  }
+
+  void setSort(String sort) {
+    selectedSort.value = sort;
+  }
+
+  int get totalPages {
+    final t = totalPackingList;
+    if (t == 0) return 1;
+    final pSize = pageSize.value > 0 ? pageSize.value : 10;
+    return (t / pSize).ceil().clamp(1, 999);
+  }
+
+  List<PackingListItem> get pageItems => filteredLists;
+  List<PackingListItem> get pageLists => pageItems;
+
+  void nextPage() {
+    if (pageIndex.value < totalPages - 1) {
+      fetchPackingListsFromApi(targetPage: pageIndex.value + 2);
+    }
+  }
+
+  void prevPage() {
+    if (pageIndex.value > 0) {
+      fetchPackingListsFromApi(targetPage: pageIndex.value);
+    }
+  }
+
+  void goToPage(int p) {
+    if (p >= 0 && p < totalPages) {
+      fetchPackingListsFromApi(targetPage: p + 1);
+    }
+  }
+
+  void changePage(int pageNumber) {
+    if (pageNumber >= 1 && pageNumber <= totalPages) {
+      fetchPackingListsFromApi(targetPage: pageNumber);
+    }
+  }
+
+  void changeLimit(int newLimit) {
+    if (newLimit != pageSize.value) {
+      fetchPackingListsFromApi(targetPage: 1, targetLimit: newLimit);
+    }
+  }
+
+  void toggleSelect(String id) {
     if (selectedItems.contains(id)) {
       selectedItems.remove(id);
     } else {
@@ -190,31 +236,18 @@ class PackingListController extends GetxController {
     }
   }
 
-  bool isSelected(String id) => selectedItems.contains(id) || id == '1';
-
   void toggleSelectAll(bool? val) {
     if (val == true) {
-      selectedItems.addAll(pageLists.map((e) => e.id));
+      selectedItems.assignAll(pageItems.map((e) => e.id));
     } else {
       selectedItems.clear();
     }
   }
 
-  void nextPage() {
-    if (pageIndex.value < totalPages - 1) pageIndex.value++;
-  }
-
-  void prevPage() {
-    if (pageIndex.value > 0) pageIndex.value--;
-  }
-
-  void goToPage(int p) {
-    if (p >= 0 && p < totalPages) pageIndex.value = p;
-  }
-
-  void onSearch(String v) {
-    searchQuery.value = v;
+  void onSearch(String val) {
+    searchQuery.value = val;
     pageIndex.value = 0;
+    fetchPackingListsFromApi(targetPage: 1);
   }
 
   @override

@@ -31,8 +31,28 @@ class MaterialRequestsView extends GetView<MaterialRequestsController> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (Navigator.of(context).canPop()) ...[
+                  InkWell(
+                    onTap: Get.back,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -99,7 +119,7 @@ class MaterialRequestsView extends GetView<MaterialRequestsController> {
                   },
                   icon: const Icon(Icons.add_rounded, size: 18),
                   label: Text(
-                    '+ Requests Material',
+                    'Requests Material',
                     style: TextStyle(
                       fontSize: btnSize,
                       fontWeight: FontWeight.w700,

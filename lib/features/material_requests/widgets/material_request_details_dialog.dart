@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../controllers/material_requests_controller.dart';
 import '../models/material_request_models.dart';
 
 class MaterialRequestDetailsDialog extends StatelessWidget {
@@ -44,7 +46,11 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                   ),
                   IconButton(
                     onPressed: () => Navigator.of(context).pop(),
-                    icon: const Icon(Icons.close, color: Colors.black, size: 22),
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.black,
+                      size: 22,
+                    ),
                   ),
                 ],
               ),
@@ -60,15 +66,19 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                   children: [
                     // Top Yellow Status Badge
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 5,
+                      ),
                       decoration: BoxDecoration(
                         color: const Color(0xFFFEF9C3),
                         borderRadius: BorderRadius.circular(12),
                       ),
-                      child: const Text(
-                        'Pending',
+                      child: Text(
+                        item.status.name[0].toUpperCase() +
+                            item.status.name.substring(1),
                         style: TextStyle(
-                          color: Color(0xFFD97706),
+                          color: item.statusColor,
                           fontWeight: FontWeight.w700,
                           fontSize: 13,
                         ),
@@ -129,7 +139,8 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                                 children: [
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           'Requested By',
@@ -159,7 +170,8 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                                   ),
                                   Expanded(
                                     child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         const Text(
                                           'Request Date',
@@ -206,7 +218,10 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                               ),
                               const SizedBox(height: 4),
                               Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 14,
+                                  vertical: 4,
+                                ),
                                 decoration: BoxDecoration(
                                   color: const Color(0xFFFEE2E2),
                                   borderRadius: BorderRadius.circular(12),
@@ -229,10 +244,11 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(height: 2),
-                              const Text(
-                                'Pending',
+                              Text(
+                                item.status.name[0].toUpperCase() +
+                                    item.status.name.substring(1),
                                 style: TextStyle(
-                                  color: Color(0xFFD97706),
+                                  color: item.statusColor,
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
                                 ),
@@ -247,7 +263,9 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                               ),
                               const SizedBox(height: 2),
                               Text(
-                                dateFmt.format(item.requiredBy),
+                                item.requiredBy == null
+                                    ? '-'
+                                    : dateFmt.format(item.requiredBy!),
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 14,
@@ -328,12 +346,51 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                     // Bottom Cancel Request Button
                     Center(
                       child: OutlinedButton(
-                        onPressed: () => Navigator.of(context).pop(),
+                        onPressed: () async {
+                          final confirm = await showDialog<bool>(
+                            context: context,
+                            builder: (ctx) => AlertDialog(
+                              title: const Text('Cancel Material Request'),
+                              content: Text(
+                                'Are you sure you want to cancel request ${item.id}?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () => Navigator.of(ctx).pop(false),
+                                  child: const Text('No'),
+                                ),
+                                ElevatedButton(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFFEF4444),
+                                    foregroundColor: Colors.white,
+                                  ),
+                                  onPressed: () => Navigator.of(ctx).pop(true),
+                                  child: const Text('Yes, Cancel'),
+                                ),
+                              ],
+                            ),
+                          );
+
+                          if (confirm == true && context.mounted) {
+                            Navigator.of(context).pop();
+                            if (Get.isRegistered<
+                              MaterialRequestsController
+                            >()) {
+                              Get.find<MaterialRequestsController>()
+                                  .cancelRequest(item.id);
+                            }
+                          }
+                        },
                         style: OutlinedButton.styleFrom(
                           foregroundColor: const Color(0xFFEF4444),
                           side: const BorderSide(color: Color(0xFFEF4444)),
-                          padding: const EdgeInsets.symmetric(horizontal: 48, vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 48,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
                         child: const Text(
                           'Cancel Request',
@@ -374,11 +431,61 @@ class _ItemsTable extends StatelessWidget {
             ),
             child: Row(
               children: const [
-                Expanded(flex: 1, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
-                Expanded(flex: 4, child: Text('Item Description', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
-                Expanded(flex: 2, child: Text('Unit', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
-                Expanded(flex: 2, child: Text('Requested Qty', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
-                Expanded(flex: 3, child: Text('Remarks', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textSecondary))),
+                Expanded(
+                  flex: 1,
+                  child: Text(
+                    '#',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 4,
+                  child: Text(
+                    'Item Description',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Unit',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 2,
+                  child: Text(
+                    'Requested Qty',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  flex: 3,
+                  child: Text(
+                    'Remarks',
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
               ],
             ),
           ),
@@ -391,11 +498,57 @@ class _ItemsTable extends StatelessWidget {
               ),
               child: Row(
                 children: [
-                  Expanded(flex: 1, child: Text('${i + 1}', style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-                  Expanded(flex: 4, child: Text(it.name, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary, fontWeight: FontWeight.w500))),
-                  Expanded(flex: 2, child: Text(it.unit, style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-                  Expanded(flex: 2, child: Text(_fmtQty(it.quantity), style: const TextStyle(fontSize: 12, color: AppColors.textPrimary))),
-                  Expanded(flex: 3, child: Text(it.remarks, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                  Expanded(
+                    flex: 1,
+                    child: Text(
+                      '${i + 1}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 4,
+                    child: Text(
+                      it.name,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      it.unit,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      _fmtQty(it.quantity),
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      it.remarks,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             );
@@ -443,12 +596,18 @@ class _AttachmentTile extends StatelessWidget {
             height: 32,
             alignment: Alignment.center,
             decoration: BoxDecoration(
-              color: isExcel ? const Color(0xFFDCFCE7) : const Color(0xFFFEE2E2),
+              color: isExcel
+                  ? const Color(0xFFDCFCE7)
+                  : const Color(0xFFFEE2E2),
               borderRadius: BorderRadius.circular(6),
             ),
             child: Icon(
-              isExcel ? Icons.table_chart_outlined : Icons.picture_as_pdf_outlined,
-              color: isExcel ? const Color(0xFF16A34A) : const Color(0xFFDC2626),
+              isExcel
+                  ? Icons.table_chart_outlined
+                  : Icons.picture_as_pdf_outlined,
+              color: isExcel
+                  ? const Color(0xFF16A34A)
+                  : const Color(0xFFDC2626),
               size: 18,
             ),
           ),
@@ -479,7 +638,11 @@ class _AttachmentTile extends StatelessWidget {
           ),
           IconButton(
             onPressed: () {},
-            icon: const Icon(Icons.arrow_downward_rounded, size: 16, color: AppColors.textSecondary),
+            icon: const Icon(
+              Icons.arrow_downward_rounded,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
           ),
         ],
       ),

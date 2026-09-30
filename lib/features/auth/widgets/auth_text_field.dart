@@ -47,10 +47,7 @@ class AuthTextField extends StatelessWidget {
           obscureText: obscureText,
           keyboardType: keyboardType,
           validator: validator,
-          style: TextStyle(
-            fontSize: fontSize,
-            color: AppColors.textPrimary,
-          ),
+          style: TextStyle(fontSize: fontSize, color: AppColors.textPrimary),
           decoration: InputDecoration(
             hintText: hint,
             hintStyle: TextStyle(

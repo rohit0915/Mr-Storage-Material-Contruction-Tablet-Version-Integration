@@ -60,12 +60,14 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
                     _TabSegment(
                       label: 'Calendar',
                       selected: tab == ProjectCalendarTab.calendar,
-                      onTap: () => controller.setTab(ProjectCalendarTab.calendar),
+                      onTap: () =>
+                          controller.setTab(ProjectCalendarTab.calendar),
                     ),
                     _TabSegment(
                       label: 'Project',
                       selected: tab == ProjectCalendarTab.project,
-                      onTap: () => controller.setTab(ProjectCalendarTab.project),
+                      onTap: () =>
+                          controller.setTab(ProjectCalendarTab.project),
                     ),
                   ],
                 ),

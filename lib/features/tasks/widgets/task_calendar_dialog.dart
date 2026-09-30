@@ -191,7 +191,8 @@ class _TaskCalendarDialogState extends State<TaskCalendarDialog> {
                 return const Expanded(child: SizedBox(height: 32));
               }
               final date = DateTime(_month.year, _month.month, dayNum);
-              final selected = date.year == _selected.year &&
+              final selected =
+                  date.year == _selected.year &&
                   date.month == _selected.month &&
                   date.day == _selected.day;
               return Expanded(

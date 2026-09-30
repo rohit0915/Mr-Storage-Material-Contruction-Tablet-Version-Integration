@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/drawings_controller.dart';
 import '../models/drawing_models.dart';
 
@@ -23,21 +24,53 @@ class DrawingsView extends GetView<DrawingsController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text(
-              'Project Drawings',
-              style: TextStyle(
-                fontSize: (size.width * 0.018).clamp(20.0, 24.0),
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: size.height * 0.004),
-            Text(
-              'All structural, fabrication, and erection drawings for this project.',
-              style: TextStyle(
-                fontSize: (size.width * 0.010).clamp(11.0, 13.0),
-                color: AppColors.textSecondary,
-              ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                if (Navigator.of(context).canPop()) ...[
+                  InkWell(
+                    onTap: Get.back,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Project Drawings',
+                        style: TextStyle(
+                          fontSize: (size.width * 0.018).clamp(20.0, 24.0),
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      SizedBox(height: size.height * 0.004),
+                      Text(
+                        'All structural, fabrication, and erection drawings for this project.',
+                        style: TextStyle(
+                          fontSize: (size.width * 0.010).clamp(11.0, 13.0),
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
             ),
             SizedBox(height: gap),
 
@@ -67,12 +100,15 @@ class DrawingsView extends GetView<DrawingsController> {
                       ElevatedButton.icon(
                         onPressed: () => controller.openUpload(context),
                         icon: const Icon(Icons.add, size: 16),
-                        label: const Text('+ Upload Photos & Videos'),
+                        label: const Text('Upload Photos & Videos'),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 12,
+                          ),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
@@ -98,14 +134,20 @@ class DrawingsView extends GetView<DrawingsController> {
                             ),
                             filled: true,
                             fillColor: Colors.white,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 12),
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                            ),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.cardBorder),
+                              borderSide: const BorderSide(
+                                color: AppColors.cardBorder,
+                              ),
                             ),
                             enabledBorder: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(8),
-                              borderSide: const BorderSide(color: AppColors.cardBorder),
+                              borderSide: const BorderSide(
+                                color: AppColors.cardBorder,
+                              ),
                             ),
                           ),
                         ),
@@ -116,6 +158,12 @@ class DrawingsView extends GetView<DrawingsController> {
 
                   // List of Project Cards
                   Obx(() {
+                    if (controller.isLoading.value) {
+                      return const AppShimmerGrid(
+                        itemCount: 4,
+                        crossAxisCount: 2,
+                      );
+                    }
                     final projects = controller.filteredProjects;
                     if (projects.isEmpty) {
                       return const Padding(
@@ -241,10 +289,7 @@ class _MetaCol extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 10,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 2),
         Text(
@@ -325,12 +370,20 @@ class _FileCardTile extends GetView<DrawingsController> {
               ),
               InkWell(
                 onTap: () => controller.openFilePreview(context, file),
-                child: const Icon(Icons.arrow_downward, size: 16, color: AppColors.primaryBlue),
+                child: const Icon(
+                  Icons.arrow_downward,
+                  size: 16,
+                  color: AppColors.primaryBlue,
+                ),
               ),
               const SizedBox(width: 8),
               InkWell(
                 onTap: () => controller.openFilePreview(context, file),
-                child: const Icon(Icons.visibility_outlined, size: 16, color: AppColors.primaryBlue),
+                child: const Icon(
+                  Icons.visibility_outlined,
+                  size: 16,
+                  color: AppColors.primaryBlue,
+                ),
               ),
             ],
           ),

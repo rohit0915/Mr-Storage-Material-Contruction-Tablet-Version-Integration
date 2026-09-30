@@ -5,17 +5,12 @@ import '../../../app/constants/app_assets.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../models/bundle_scan_models.dart';
-import '../widgets/bundle_scan_dialogs.dart';
 
 class BundleScanDetailView extends StatelessWidget {
   const BundleScanDetailView({super.key});
 
-  static const _bundleListItems = [
-    ('1', 'BND-001', 'STL-B12 × 30', '10:32 AM', '3600 IBS', 'Staged'),
-    ('2', 'BND-001', 'STL-B12 × 30', '-', '2400 IBS', 'Pending'),
-    ('3', 'BND-001', 'STL-B12 × 30', '-', '4500 IBS', 'Pending'),
-    ('4', 'BND-001', 'STL-B12 × 30', '-', '2700 IBS', 'Pending'),
-  ];
+  static const _bundleListItems =
+      <(String, String, String, String, String, String)>[];
 
   @override
   Widget build(BuildContext context) {
@@ -23,13 +18,15 @@ class BundleScanDetailView extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final padH = size.width * 0.016;
 
-    void showSuccess(String title) =>
-        BundleScanSuccessDialog.show(context, title);
-
     return AppScaffold(
       menuTitle: 'Bundle Scan',
       body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(padH, size.height * 0.014, padH, size.height * 0.02),
+        padding: EdgeInsets.fromLTRB(
+          padH,
+          size.height * 0.014,
+          padH,
+          size.height * 0.02,
+        ),
         child: Container(
           width: double.infinity,
           padding: const EdgeInsets.all(20),
@@ -49,10 +46,18 @@ class BundleScanDetailView extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.textPrimary,
                       side: const BorderSide(color: AppColors.cardBorder),
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 20,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                    child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w700)),
+                    child: const Text(
+                      'Back',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
@@ -61,12 +66,12 @@ class BundleScanDetailView extends StatelessWidget {
                       runSpacing: 6,
                       alignment: WrapAlignment.end,
                       children: [
-                        _ActionBtn(label: 'Download', onTap: () => showSuccess('Downloaded\nsuccessfully')),
-                        _ActionBtn(label: 'Reprint Label', onTap: () => showSuccess('Reprint Label\nsuccessfully')),
-                        _ActionBtn(label: 'Report Mismatch', onTap: () => showSuccess('Report Mismatch\nsuccessfully')),
-                        _ActionBtn(label: 'Verify Bundle', onTap: () => showSuccess('Verify Bundle\nsuccessfully')),
-                        _ActionBtn(label: 'Mark Loaded', onTap: () => showSuccess('Mark Loaded\nsuccessfully')),
-                        _ActionBtn(label: 'Mark Staged', onTap: () => showSuccess('Mark Staged\nsuccessfully')),
+                        const _ActionBtn(label: 'Download', onTap: null),
+                        const _ActionBtn(label: 'Reprint Label', onTap: null),
+                        const _ActionBtn(label: 'Report Mismatch', onTap: null),
+                        const _ActionBtn(label: 'Verify Bundle', onTap: null),
+                        const _ActionBtn(label: 'Mark Loaded', onTap: null),
+                        const _ActionBtn(label: 'Mark Staged', onTap: null),
                       ],
                     ),
                   ),
@@ -82,11 +87,11 @@ class BundleScanDetailView extends StatelessWidget {
                     child: _InfoSection(
                       title: 'Bundle Information',
                       rows: [
-                        ('Bundle ID', item?.bundleId ?? 'BND-001'),
-                        ('Project', item?.project ?? 'Riverside Complex'),
-                        ('Load ID', 'LOAD-001'),
-                        ('Truck', 'TX-9876'),
-                        ('Destination', item?.site ?? 'Construction Site A'),
+                        ('Bundle ID', item?.bundleId ?? '—'),
+                        ('Project', item?.project ?? '—'),
+                        ('Load ID', item?.loadId ?? '—'),
+                        ('Truck', item?.truck ?? '—'),
+                        ('Destination', item?.site ?? '—'),
                       ],
                     ),
                   ),
@@ -95,9 +100,9 @@ class BundleScanDetailView extends StatelessWidget {
                     child: _InfoSection(
                       title: 'Bundle Details',
                       rows: [
-                        ('Quantity', '30'),
-                        ('Weight', '36,000 IBS'),
-                        ('Length', '20 ft'),
+                        ('Quantity', item?.quantity ?? '—'),
+                        ('Weight', item?.totalWeight ?? '—'),
+                        ('Length', item?.length ?? '—'),
                       ],
                     ),
                   ),
@@ -117,7 +122,11 @@ class BundleScanDetailView extends StatelessWidget {
                       children: [
                         const Text(
                           'Scanned QR Code',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 12),
                         Row(
@@ -150,12 +159,31 @@ class BundleScanDetailView extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(height: 6),
-                                  const _QrDetailLine(label: 'Shipper :', value: 'shipper=SHP-1044'),
-                                  const _QrDetailLine(label: 'Load :', value: 'load_id=LOAD-001'),
-                                  _QrDetailLine(label: 'Bundle :', value: 'bundle_id=${item?.bundleId ?? "BND-001"}'),
-                                  _QrDetailLine(label: 'Parts :', value: 'parts=${item?.parts ?? "STL-B12"}'),
-                                  const _QrDetailLine(label: 'Weight :', value: 'weight=3600'),
-                                  const _QrDetailLine(label: 'Length :', value: 'Length=20'),
+                                  const _QrDetailLine(
+                                    label: 'Shipper :',
+                                    value: 'shipper=SHP-1044',
+                                  ),
+                                  _QrDetailLine(
+                                    label: 'Load :',
+                                    value:
+                                        'load_id=${item?.loadId ?? "LOAD-001"}',
+                                  ),
+                                  _QrDetailLine(
+                                    label: 'Bundle :',
+                                    value: 'bundle_id=${item?.bundleId ?? ""}',
+                                  ),
+                                  _QrDetailLine(
+                                    label: 'Parts :',
+                                    value: 'parts=${item?.parts ?? "-"}',
+                                  ),
+                                  _QrDetailLine(
+                                    label: 'Weight :',
+                                    value: 'weight=${item?.totalWeight ?? ""}',
+                                  ),
+                                  _QrDetailLine(
+                                    label: 'Length :',
+                                    value: 'length=${item?.length ?? "20 ft"}',
+                                  ),
                                 ],
                               ),
                             ),
@@ -174,28 +202,46 @@ class BundleScanDetailView extends StatelessWidget {
                       children: [
                         const Text(
                           'Bundle Verification Status',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         Row(
                           children: const [
                             Text(
                               'Bundle assigned to load',
-                              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textSecondary,
+                              ),
                             ),
                             Spacer(),
-                            Icon(Icons.check_rounded, size: 16, color: AppColors.textPrimary),
+                            Icon(
+                              Icons.check_rounded,
+                              size: 16,
+                              color: AppColors.textPrimary,
+                            ),
                           ],
                         ),
                         const SizedBox(height: 18),
                         const Text(
                           'Load Context Panel',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: AppColors.textPrimary,
+                          ),
                         ),
                         const SizedBox(height: 10),
                         const _ContextLine(label: 'Load ID', value: 'LOAD-001'),
-                        const _ContextLine(label: 'Truck', value: 'TX-9876'),
-                        const _ContextLine(label: 'Driver', value: 'John Miler'),
+                        _ContextLine(label: 'Truck', value: item?.truck ?? '—'),
+                        const _ContextLine(
+                          label: 'Driver',
+                          value: 'John Miler',
+                        ),
                         const _ContextLine(label: 'Total Products', value: '4'),
                       ],
                     ),
@@ -207,7 +253,11 @@ class BundleScanDetailView extends StatelessWidget {
               // Bundle List Table Section
               const Text(
                 'Bundle List',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
               ),
               const SizedBox(height: 12),
               Container(
@@ -221,32 +271,157 @@ class BundleScanDetailView extends StatelessWidget {
                   children: [
                     Container(
                       color: const Color(0xFF1A1A2E),
-                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 10,
+                      ),
                       child: const Row(
                         children: [
-                          Expanded(flex: 1, child: Text('#', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.white))),
-                          Expanded(flex: 3, child: Text('Bundle ID', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.white))),
-                          Expanded(flex: 3, child: Text('Parts', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.white))),
-                          Expanded(flex: 2, child: Text('Time', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.white))),
-                          Expanded(flex: 2, child: Text('Weight', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.white))),
-                          Expanded(flex: 2, child: Text('Status', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Colors.white))),
+                          Expanded(
+                            flex: 1,
+                            child: Text(
+                              '#',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'Bundle ID',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              'Parts',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Time',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Weight',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              'Status',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 12,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
                         ],
                       ),
                     ),
                     ..._bundleListItems.map(
                       (r) => Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 10,
+                        ),
                         decoration: const BoxDecoration(
-                          border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
+                          border: Border(
+                            bottom: BorderSide(color: AppColors.cardBorder),
+                          ),
                         ),
                         child: Row(
                           children: [
-                            Expanded(flex: 1, child: Text(r.$1, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                            Expanded(flex: 3, child: Text(r.$2, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary))),
-                            Expanded(flex: 3, child: Text(r.$3, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                            Expanded(flex: 2, child: Text(r.$4, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                            Expanded(flex: 2, child: Text(r.$5, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                            Expanded(flex: 2, child: Text(r.$6, style: TextStyle(fontSize: 13, color: r.$6 == 'Staged' ? AppColors.textSecondary : AppColors.textSecondary))),
+                            Expanded(
+                              flex: 1,
+                              child: Text(
+                                r.$1,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                r.$2,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 3,
+                              child: Text(
+                                r.$3,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                r.$4,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                r.$5,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              flex: 2,
+                              child: Text(
+                                r.$6,
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  color: r.$6 == 'Staged'
+                                      ? AppColors.textSecondary
+                                      : AppColors.textSecondary,
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -263,13 +438,10 @@ class BundleScanDetailView extends StatelessWidget {
 }
 
 class _ActionBtn extends StatelessWidget {
-  const _ActionBtn({
-    required this.label,
-    required this.onTap,
-  });
+  const _ActionBtn({required this.label, required this.onTap});
 
   final String label;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -282,16 +454,16 @@ class _ActionBtn extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
       ),
-      child: Text(label, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11)),
+      child: Text(
+        label,
+        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 11),
+      ),
     );
   }
 }
 
 class _InfoSection extends StatelessWidget {
-  const _InfoSection({
-    required this.title,
-    required this.rows,
-  });
+  const _InfoSection({required this.title, required this.rows});
 
   final String title;
   final List<(String, String)> rows;
@@ -303,7 +475,11 @@ class _InfoSection extends StatelessWidget {
       children: [
         Text(
           title,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w800,
+            color: AppColors.textPrimary,
+          ),
         ),
         const SizedBox(height: 12),
         ...rows.map(
@@ -313,12 +489,22 @@ class _InfoSection extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 140,
-                  child: Text(r.$1, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  child: Text(
+                    r.$1,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                 ),
                 const Spacer(),
                 Text(
                   r.$2,
-                  style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ],
             ),
@@ -343,9 +529,22 @@ class _QrDetailLine extends StatelessWidget {
         children: [
           SizedBox(
             width: 60,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );
@@ -366,10 +565,23 @@ class _ContextLine extends StatelessWidget {
         children: [
           SizedBox(
             width: 120,
-            child: Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ),
           const Spacer(),
-          Text(value, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          Text(
+            value,
+            style: const TextStyle(
+              fontSize: 12,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );

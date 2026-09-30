@@ -18,7 +18,7 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
   final _descCtrl = TextEditingController();
   String? _project;
   String? _section;
-  DateTime _date = DateTime(2025, 5, 19);
+  DateTime _date = DateTime.now();
 
   @override
   void dispose() {
@@ -46,7 +46,9 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
     String leadId = '';
 
     if (_project != null && _project!.isNotEmpty) {
-      final match = controller.projects.firstWhereOrNull((p) => '${p.name} (${p.code})' == _project);
+      final match = controller.projects.firstWhereOrNull(
+        (p) => '${p.name} (${p.code})' == _project,
+      );
       if (match != null && match.id.isNotEmpty) {
         leadId = match.id;
       }
@@ -73,8 +75,8 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
       final calendarService = Get.find<ProjectCalendarService>();
       final success = await calendarService.createDelivery(
         leadId: leadId,
-        title: _titleCtrl.text.trim().isNotEmpty ? _titleCtrl.text.trim() : 'Project outbound freight',
-        location: _section ?? 'Yard-A',
+        title: _titleCtrl.text.trim(),
+        location: _section ?? '',
         date: _date,
         description: _descCtrl.text.trim(),
       );
@@ -140,10 +142,7 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
                 ),
                 const SizedBox(height: 20),
                 _label('Title'),
-                _field(
-                  controller: _titleCtrl,
-                  hint: 'Enter delivery title',
-                ),
+                _field(controller: _titleCtrl, hint: 'Enter delivery title'),
                 const SizedBox(height: 14),
                 _label('Project'),
                 _dropdown(
@@ -159,12 +158,7 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
                 _dropdown(
                   value: _section,
                   hint: 'Select section or location',
-                  items: const [
-                    'Yard-A',
-                    'Yard-B',
-                    'Construction Site A',
-                    'Construction Site B',
-                  ],
+                  items: const [],
                   onChanged: (v) => setState(() => _section = v),
                 ),
                 const SizedBox(height: 14),
@@ -180,7 +174,9 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
                             '${_monthName(_date.month)} ${_date.day}, ${_date.year}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(color: AppColors.textPrimary),
+                            style: const TextStyle(
+                              color: AppColors.textPrimary,
+                            ),
                           ),
                         ),
                         const Icon(
@@ -216,11 +212,17 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
                         : const Text(
                             'Ok',
-                            style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                            style: TextStyle(
+                              fontWeight: FontWeight.w700,
+                              fontSize: 16,
+                            ),
                           ),
                   ),
                 ),
@@ -238,36 +240,35 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+    ),
+  );
 
   InputDecoration _inputDecoration({String? hint}) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      );
+    hintText: hint,
+    hintStyle: const TextStyle(color: AppColors.textSecondary),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.cardBorder),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.cardBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.primaryBlue),
+    ),
+  );
 
   Widget _field({
     required TextEditingController controller,
@@ -303,11 +304,7 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
           .map(
             (e) => Align(
               alignment: Alignment.centerLeft,
-              child: Text(
-                e,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(e, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           )
           .toList(),
@@ -315,11 +312,7 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
           .map(
             (e) => DropdownMenuItem(
               value: e,
-              child: Text(
-                e,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
+              child: Text(e, maxLines: 1, overflow: TextOverflow.ellipsis),
             ),
           )
           .toList(),
@@ -401,8 +394,10 @@ class DeliverySuccessDialog extends StatelessWidget {
                     ),
                     child: const Text(
                       'Ok',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),

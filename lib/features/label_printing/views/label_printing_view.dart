@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../../tasks/widgets/task_success_dialog.dart';
 import '../controllers/label_printing_controller.dart';
 import '../widgets/label_print_success_dialog.dart';
@@ -31,8 +32,28 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (Navigator.of(context).canPop()) ...[
+                  InkWell(
+                    onTap: Get.back,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -106,7 +127,9 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
                             );
                           },
                     style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED), // Vibrant purple matching Image 1
+                      backgroundColor: const Color(
+                        0xFF7C3AED,
+                      ), // Vibrant purple matching Image 1
                       foregroundColor: Colors.white,
                       elevation: 0,
                       padding: EdgeInsets.symmetric(
@@ -134,7 +157,11 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
             SizedBox(height: gap),
             const LabelPrintingToolbar(),
             SizedBox(height: gap),
-            const LabelPrintingTable(),
+            Obx(
+              () => controller.isLoading.value
+                  ? const AppShimmerTable(rowCount: 6)
+                  : const LabelPrintingTable(),
+            ),
           ],
         ),
       ),

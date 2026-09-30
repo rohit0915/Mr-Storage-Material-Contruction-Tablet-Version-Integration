@@ -1,10 +1,6 @@
 import 'package:flutter/material.dart';
 
-enum MaterialRequestStatus {
-  pending,
-  approved,
-  rejected,
-}
+enum MaterialRequestStatus { pending, approved, rejected, cancelled, fulfilled }
 
 class MaterialRequestItemRow {
   const MaterialRequestItemRow({
@@ -36,6 +32,7 @@ class MaterialRequestBoardItem {
     required this.priorityColor,
     required this.items,
     this.itemsPreview = '',
+    this.requestedById = '',
     this.requestedByRole = 'Site Engineer',
     this.requestNotes =
         'Additional materials required for columns and slab casting on ground floor.',
@@ -47,7 +44,7 @@ class MaterialRequestBoardItem {
   final String department;
   final String requestedBy;
   final DateTime requestDate;
-  final DateTime requiredBy;
+  final DateTime? requiredBy;
   final int requestedItemsCount;
   final MaterialRequestStatus status;
   final String priority;
@@ -55,6 +52,7 @@ class MaterialRequestBoardItem {
   final Color priorityColor;
   final List<MaterialRequestItemRow> items;
   final String itemsPreview;
+  final String requestedById;
   final String requestedByRole;
   final String requestNotes;
 
@@ -65,12 +63,16 @@ class MaterialRequestBoardItem {
     String loc = 'Site Location';
     if (json['project'] is Map) {
       final pMap = json['project'] as Map;
-      pName = pMap['projectName']?.toString() ?? pMap['jobId']?.toString() ?? 'No Project';
+      pName =
+          pMap['projectName']?.toString() ??
+          pMap['jobId']?.toString() ??
+          'No Project';
       loc = pMap['location']?.toString() ?? 'Site Location';
     } else if (json['projectName'] != null) {
       pName = json['projectName'].toString();
     }
-    if (json['siteLocation'] != null && json['siteLocation'].toString().isNotEmpty) {
+    if (json['siteLocation'] != null &&
+        json['siteLocation'].toString().isNotEmpty) {
       loc = json['siteLocation'].toString();
     }
 
@@ -84,11 +86,13 @@ class MaterialRequestBoardItem {
     DateTime reqDate = DateTime.now();
     if (json['requestDate'] != null || json['createdAt'] != null) {
       try {
-        reqDate = DateTime.parse((json['requestDate'] ?? json['createdAt']).toString());
+        reqDate = DateTime.parse(
+          (json['requestDate'] ?? json['createdAt']).toString(),
+        );
       } catch (_) {}
     }
 
-    DateTime reqByDate = DateTime.now();
+    DateTime? reqByDate;
     if (json['requiredBy'] != null) {
       try {
         reqByDate = DateTime.parse(json['requiredBy'].toString());
@@ -99,12 +103,17 @@ class MaterialRequestBoardItem {
     if (json['requestedItems'] is List) {
       for (final item in (json['requestedItems'] as List)) {
         if (item is Map) {
-          itemsList.add(MaterialRequestItemRow(
-            name: item['name']?.toString() ?? 'Item',
-            unit: item['unit']?.toString() ?? 'pcs',
-            quantity: item['quantity'] is num ? (item['quantity'] as num) : 1,
-            remarks: item['notes']?.toString() ?? item['remarks']?.toString() ?? '',
-          ));
+          itemsList.add(
+            MaterialRequestItemRow(
+              name: item['name']?.toString() ?? 'Item',
+              unit: item['unit']?.toString() ?? 'pcs',
+              quantity: item['quantity'] is num ? (item['quantity'] as num) : 1,
+              remarks:
+                  item['notes']?.toString() ??
+                  item['remarks']?.toString() ??
+                  '',
+            ),
+          );
         }
       }
     }
@@ -121,7 +130,13 @@ class MaterialRequestBoardItem {
     if (statusRaw.contains('approve')) {
       mStatus = MaterialRequestStatus.approved;
       sColor = const Color(0xFF22C55E);
-    } else if (statusRaw.contains('reject') || statusRaw.contains('cancel')) {
+    } else if (statusRaw.contains('cancel')) {
+      mStatus = MaterialRequestStatus.cancelled;
+      sColor = const Color(0xFFEF4444);
+    } else if (statusRaw.contains('fulfill')) {
+      mStatus = MaterialRequestStatus.fulfilled;
+      sColor = const Color(0xFF22C55E);
+    } else if (statusRaw.contains('reject')) {
       mStatus = MaterialRequestStatus.rejected;
       sColor = const Color(0xFFEF4444);
     }
@@ -141,18 +156,29 @@ class MaterialRequestBoardItem {
       id: rId.toString(),
       project: pName,
       site: loc,
-      department: json['department']?.toString().isNotEmpty == true ? json['department'].toString() : 'Construction',
+      department: json['department']?.toString().isNotEmpty == true
+          ? json['department'].toString()
+          : 'Construction',
       requestedBy: reqByStr,
       requestDate: reqDate,
       requiredBy: reqByDate,
-      requestedItemsCount: itemCount is num ? itemCount.toInt() : itemsList.length,
+      requestedItemsCount: itemCount is num
+          ? itemCount.toInt()
+          : itemsList.length,
       status: mStatus,
       priority: prioStr,
       statusColor: sColor,
       priorityColor: pColor,
       items: itemsList,
       itemsPreview: preview,
+      requestedById: json['requestedBy'] is Map
+          ? (json['requestedBy']['userId'] ?? json['requestedBy']['_id'] ?? '')
+                .toString()
+          : '',
+      requestedByRole: json['requestedBy'] is Map
+          ? (json['requestedBy']['role']?.toString() ?? '')
+          : '',
+      requestNotes: json['notes']?.toString() ?? '',
     );
   }
 }
-

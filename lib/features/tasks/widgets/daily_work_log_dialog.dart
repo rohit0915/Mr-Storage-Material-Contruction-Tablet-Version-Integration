@@ -5,7 +5,9 @@ import '../models/task_models.dart';
 import 'task_calendar_dialog.dart';
 
 class DailyWorkLogDialog extends StatefulWidget {
-  const DailyWorkLogDialog({super.key});
+  const DailyWorkLogDialog({super.key, required this.tasks});
+
+  final List<TaskBoardItem> tasks;
 
   @override
   State<DailyWorkLogDialog> createState() => _DailyWorkLogDialogState();
@@ -13,12 +15,24 @@ class DailyWorkLogDialog extends StatefulWidget {
 
 class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
   DateTime? _date;
-  String _project = TaskStaticData.projects.first;
-  String _task = TaskStaticData.taskNames.first;
+  late String _project;
+  late String _task;
   final _progressCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
   final _notesCtrl = TextEditingController();
   String? _photoName;
+
+  @override
+  void initState() {
+    super.initState();
+    final projects = widget.tasks
+        .map((e) => e.project)
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    _project = projects.isEmpty ? '' : projects.first;
+    final matching = widget.tasks.where((e) => e.project == _project).toList();
+    _task = matching.isEmpty ? '' : matching.first.title;
+  }
 
   @override
   void dispose() {
@@ -85,10 +99,7 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _label('Date'),
-                                _dateField(),
-                              ],
+                              children: [_label('Date'), _dateField()],
                             ),
                           ),
                           const SizedBox(width: 16),
@@ -99,8 +110,20 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                                 _label('Project'),
                                 _dropdown(
                                   value: _project,
-                                  items: TaskStaticData.projects,
-                                  onChanged: (v) => setState(() => _project = v!),
+                                  items: widget.tasks
+                                      .map((e) => e.project)
+                                      .where((e) => e.isNotEmpty)
+                                      .toSet()
+                                      .toList(),
+                                  onChanged: (v) => setState(() {
+                                    _project = v!;
+                                    final matching = widget.tasks
+                                        .where((e) => e.project == _project)
+                                        .toList();
+                                    _task = matching.isEmpty
+                                        ? ''
+                                        : matching.first.title;
+                                  }),
                                 ),
                               ],
                             ),
@@ -117,7 +140,10 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                                 _label('Task'),
                                 _dropdown(
                                   value: _task,
-                                  items: TaskStaticData.taskNames,
+                                  items: widget.tasks
+                                      .where((e) => e.project == _project)
+                                      .map((e) => e.title)
+                                      .toList(),
                                   onChanged: (v) => setState(() => _task = v!),
                                 ),
                               ],
@@ -151,7 +177,8 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                       const SizedBox(height: 16),
                       _label('Upload Photos'),
                       InkWell(
-                        onTap: () => setState(() => _photoName = 'site_photo.jpg'),
+                        onTap: () =>
+                            setState(() => _photoName = 'site_photo.jpg'),
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 20),
@@ -173,7 +200,8 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                               ),
                               const SizedBox(height: 8),
                               Text(
-                                _photoName ?? 'Click to upload photos or drag and drop',
+                                _photoName ??
+                                    'Click to upload photos or drag and drop',
                                 style: const TextStyle(
                                   fontWeight: FontWeight.w500,
                                   fontSize: 13,
@@ -226,7 +254,10 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -234,7 +265,33 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                       width: 120,
                       height: 42,
                       child: ElevatedButton(
-                        onPressed: () => Navigator.of(context).pop(true),
+                        onPressed: () {
+                          final task = widget.tasks.firstWhere(
+                            (item) =>
+                                item.project == _project && item.title == _task,
+                            orElse: () => TaskBoardItem(
+                              id: '',
+                              title: '',
+                              project: '',
+                              description: '',
+                              assignee: '',
+                              dueDate: DateTime.now(),
+                              priority: '',
+                              column: TaskColumn.todo,
+                            ),
+                          );
+                          Navigator.of(context).pop(
+                            WorkLogDraft(
+                              leadId: task.leadId,
+                              taskId: task.id,
+                              date: _date ?? DateTime.now(),
+                              progress:
+                                  int.tryParse(_progressCtrl.text.trim()) ?? 0,
+                              description: _descCtrl.text.trim(),
+                              issues: _notesCtrl.text.trim(),
+                            ),
+                          );
+                        },
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryBlue,
                           foregroundColor: Colors.white,
@@ -284,37 +341,36 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        color: AppColors.textPrimary,
+      ),
+    ),
+  );
 
   InputDecoration _inputDecoration({String? hint}) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      );
+    hintText: hint,
+    hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.cardBorder),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.cardBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.primaryBlue),
+    ),
+  );
 
   Widget _dropdown({
     required String value,
@@ -330,11 +386,33 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
           .map(
             (e) => DropdownMenuItem(
               value: e,
-              child: Text(e, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+              child: Text(
+                e,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
           )
           .toList(),
       onChanged: onChanged,
     );
   }
+}
+
+class WorkLogDraft {
+  const WorkLogDraft({
+    required this.leadId,
+    required this.taskId,
+    required this.date,
+    required this.progress,
+    required this.description,
+    required this.issues,
+  });
+
+  final String leadId;
+  final String taskId;
+  final DateTime date;
+  final int progress;
+  final String description;
+  final String issues;
 }

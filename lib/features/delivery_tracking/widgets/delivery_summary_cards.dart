@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 
 import '../controllers/delivery_tracking_controller.dart';
 
+import '../../../app/widgets/app_shimmer.dart';
+
 class DeliverySummaryCards extends StatelessWidget {
   const DeliverySummaryCards({super.key});
 
@@ -12,8 +14,11 @@ class DeliverySummaryCards extends StatelessWidget {
     final gap = (size.width * 0.01).clamp(10.0, 14.0);
     final controller = Get.find<DeliveryTrackingController>();
 
-    return Obx(
-      () => Row(
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const AppShimmerSummaryRow(count: 4);
+      }
+      return Row(
         children: [
           Expanded(
             child: _SummaryCard(
@@ -55,8 +60,8 @@ class DeliverySummaryCards extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
+      );
+    });
   }
 }
 

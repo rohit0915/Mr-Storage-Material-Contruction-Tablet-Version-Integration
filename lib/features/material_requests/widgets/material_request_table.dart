@@ -7,6 +7,8 @@ import '../controllers/material_requests_controller.dart';
 import '../models/material_request_models.dart';
 import 'material_request_details_dialog.dart';
 
+import '../../../app/widgets/app_shimmer.dart';
+
 class MaterialRequestTable extends GetView<MaterialRequestsController> {
   const MaterialRequestTable({super.key});
 
@@ -17,9 +19,12 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
     final titleSize = (size.width * 0.012).clamp(14.0, 16.0);
 
     return Obx(() {
+      if (controller.isLoading.value) {
+        return const AppShimmerTable(rowCount: 6);
+      }
       final _ = controller.pageIndex.value;
       final rows = controller.pageRequests;
-      final totalCount = controller.filteredRequests.length;
+      final totalCount = controller.serverTotal.value;
       final currentPage = controller.pageIndex.value;
       final totalPages = controller.totalPages;
 
@@ -50,7 +55,10 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
             ),
             LayoutBuilder(
               builder: (context, constraints) {
-                final minTableWidth = constraints.maxWidth.clamp(820.0, 2000.0);
+                final minTableWidth = constraints.maxWidth.clamp(
+                  1150.0,
+                  2400.0,
+                );
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
@@ -58,25 +66,68 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
                     child: Column(
                       children: [
                         Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.012,
-                            vertical: size.height * 0.010,
+                          decoration: const BoxDecoration(
+                            color: AppColors.tableHeader,
+                            border: Border(
+                              bottom: BorderSide(
+                                color: AppColors.cardBorder,
+                                width: 1.5,
+                              ),
+                            ),
                           ),
-                          color: AppColors.tableHeader,
                           child: Row(
                             children: [
-                              _HeadCell(flex: 2, text: 'Request ID', size: cellFont),
-                              _HeadCell(flex: 3, text: 'Project / Site', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Requested Items', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Request Date', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Required By', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Status', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Priority', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Actions', size: cellFont),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Request ID',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 3,
+                                text: 'Project / Site',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Requested Items',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Request Date',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Required By',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Status',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Priority',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Actions',
+                                size: cellFont,
+                                isLast: true,
+                              ),
                             ],
                           ),
                         ),
-                        ...rows.map((r) => _DataRow(item: r, cellFont: cellFont)),
+                        ...rows.asMap().entries.map(
+                          (entry) => _DataRow(
+                            item: entry.value,
+                            cellFont: cellFont,
+                            isEven: entry.key % 2 == 0,
+                          ),
+                        ),
                         if (rows.isEmpty)
                           Padding(
                             padding: const EdgeInsets.all(24),
@@ -111,10 +162,15 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
 }
 
 class _DataRow extends StatelessWidget {
-  const _DataRow({required this.item, required this.cellFont});
+  const _DataRow({
+    required this.item,
+    required this.cellFont,
+    this.isEven = true,
+  });
 
   final MaterialRequestBoardItem item;
   final double cellFont;
+  final bool isEven;
 
   @override
   Widget build(BuildContext context) {
@@ -122,15 +178,12 @@ class _DataRow extends StatelessWidget {
     final timeFmt = DateFormat('hh:mm a');
 
     return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: MediaQuery.sizeOf(context).width * 0.012,
-        vertical: MediaQuery.sizeOf(context).height * 0.012,
-      ),
-      decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
+      decoration: BoxDecoration(
+        color: isEven ? Colors.white : const Color(0xFFF8FAFC),
+        border: const Border(bottom: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _DataCell(
             flex: 2,
@@ -147,6 +200,7 @@ class _DataRow extends StatelessWidget {
             flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   item.project,
@@ -175,6 +229,7 @@ class _DataRow extends StatelessWidget {
             flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   '${item.requestedItemsCount} Items',
@@ -201,14 +256,21 @@ class _DataRow extends StatelessWidget {
             flex: 2,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   dateFmt.format(item.requestDate),
-                  style: TextStyle(fontSize: cellFont, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: cellFont,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
                 Text(
                   timeFmt.format(item.requestDate),
-                  style: TextStyle(fontSize: cellFont - 1, color: AppColors.textSecondary),
+                  style: TextStyle(
+                    fontSize: cellFont - 1,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ],
             ),
@@ -216,38 +278,49 @@ class _DataRow extends StatelessWidget {
           _DataCell(
             flex: 2,
             child: Text(
-              dateFmt.format(item.requiredBy),
-              style: TextStyle(fontSize: cellFont, color: AppColors.textSecondary),
+              item.requiredBy == null ? '-' : dateFmt.format(item.requiredBy!),
+              style: TextStyle(
+                fontSize: cellFont,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
+          _DataCell(flex: 2, child: _StatusLabel(status: item.status)),
+          _DataCell(flex: 2, child: _PriorityLabel(priority: item.priority)),
           _DataCell(
             flex: 2,
-            child: _StatusLabel(status: item.status),
-          ),
-          _DataCell(
-            flex: 2,
-            child: _PriorityLabel(priority: item.priority),
-          ),
-          _DataCell(
-            flex: 2,
+            isLast: true,
             child: Align(
               alignment: Alignment.centerLeft,
               child: OutlinedButton(
-                onPressed: () => showDialog<void>(
-                  context: context,
-                  barrierDismissible: false,
-                  builder: (_) => MaterialRequestDetailsDialog(item: item),
-                ),
+                onPressed: () async {
+                  final detail = await Get.find<MaterialRequestsController>()
+                      .loadDetails(item);
+                  if (!context.mounted) return;
+                  await showDialog<void>(
+                    context: context,
+                    barrierDismissible: false,
+                    builder: (_) => MaterialRequestDetailsDialog(item: detail),
+                  );
+                },
                 style: OutlinedButton.styleFrom(
                   foregroundColor: AppColors.textPrimary,
                   backgroundColor: const Color(0xFFF9FAFB),
                   side: const BorderSide(color: AppColors.cardBorder),
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 20,
+                    vertical: 8,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
                 child: Text(
                   'View',
-                  style: TextStyle(fontWeight: FontWeight.w600, fontSize: cellFont),
+                  style: TextStyle(
+                    fontWeight: FontWeight.w600,
+                    fontSize: cellFont,
+                  ),
                 ),
               ),
             ),
@@ -297,7 +370,10 @@ class _PaginationFooter extends GetView<MaterialRequestsController> {
               ),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.cardBorder),
                   borderRadius: BorderRadius.circular(8),
@@ -314,7 +390,11 @@ class _PaginationFooter extends GetView<MaterialRequestsController> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                   ],
                 ),
               ),
@@ -340,7 +420,13 @@ class _PaginationFooter extends GetView<MaterialRequestsController> {
             if (p == -1) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text('...', style: TextStyle(color: AppColors.textSecondary, fontSize: fontSize)),
+                child: Text(
+                  '...',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: fontSize,
+                  ),
+                ),
               );
             }
             return Padding(
@@ -348,7 +434,7 @@ class _PaginationFooter extends GetView<MaterialRequestsController> {
               child: _PageNumber(
                 page: p + 1,
                 isActive: p == currentPage,
-                onTap: () => controller.pageIndex.value = p,
+                onTap: () => controller.goToPage(p),
               ),
             );
           }),
@@ -448,39 +534,77 @@ class _PageNumber extends StatelessWidget {
 }
 
 class _HeadCell extends StatelessWidget {
-  const _HeadCell({required this.flex, required this.text, required this.size});
+  const _HeadCell({
+    required this.flex,
+    required this.text,
+    required this.size,
+    this.isLast = false,
+  });
 
   final int flex;
   final String text;
   final double size;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       flex: flex,
-      child: Text(
-        text,
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
-          fontSize: size,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder.withValues(alpha: 0.7),
+                  ),
+                ),
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+            fontSize: size,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
 }
 
 class _DataCell extends StatelessWidget {
-  const _DataCell({required this.flex, required this.child});
+  const _DataCell({
+    required this.flex,
+    required this.child,
+    this.isLast = false,
+  });
 
   final int flex;
   final Widget child;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(flex: flex, child: child);
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder.withValues(alpha: 0.5),
+                  ),
+                ),
+        ),
+        child: child,
+      ),
+    );
   }
 }
 
@@ -493,20 +617,30 @@ class _StatusLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, color, bg) = switch (status) {
       MaterialRequestStatus.pending => (
-          'Pending',
-          const Color(0xFF92400E),
-          const Color(0xFFFEF3C7),
-        ),
+        'Pending',
+        const Color(0xFF92400E),
+        const Color(0xFFFEF3C7),
+      ),
       MaterialRequestStatus.approved => (
-          'Approved',
-          const Color(0xFF166534),
-          const Color(0xFFDCFCE7),
-        ),
+        'Approved',
+        const Color(0xFF166534),
+        const Color(0xFFDCFCE7),
+      ),
       MaterialRequestStatus.rejected => (
-          'Rejected',
-          const Color(0xFF991B1B),
-          const Color(0xFFFEE2E2),
-        ),
+        'Rejected',
+        const Color(0xFF991B1B),
+        const Color(0xFFFEE2E2),
+      ),
+      MaterialRequestStatus.cancelled => (
+        'Cancelled',
+        const Color(0xFF991B1B),
+        const Color(0xFFFEE2E2),
+      ),
+      MaterialRequestStatus.fulfilled => (
+        'Fulfilled',
+        const Color(0xFF166534),
+        const Color(0xFFDCFCE7),
+      ),
     };
 
     return Align(
@@ -522,7 +656,10 @@ class _StatusLabel extends StatelessWidget {
           style: TextStyle(
             color: color,
             fontWeight: FontWeight.w700,
-            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0),
+            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(
+              11.0,
+              12.0,
+            ),
           ),
         ),
       ),

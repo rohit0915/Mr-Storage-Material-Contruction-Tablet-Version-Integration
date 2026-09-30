@@ -5,7 +5,9 @@ import '../models/task_models.dart';
 import 'task_calendar_dialog.dart';
 
 class AddTaskDialog extends StatefulWidget {
-  const AddTaskDialog({super.key});
+  const AddTaskDialog({super.key, required this.projects});
+
+  final List<TaskBoardItem> projects;
 
   @override
   State<AddTaskDialog> createState() => _AddTaskDialogState();
@@ -14,11 +16,21 @@ class AddTaskDialog extends StatefulWidget {
 class _AddTaskDialogState extends State<AddTaskDialog> {
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  String _project = TaskStaticData.projects.first;
+  late String _project;
   String _assignee = 'Mike Johnson';
   DateTime? _deadline;
   String _priority = 'High';
   String _status = 'To Do';
+
+  @override
+  void initState() {
+    super.initState();
+    final names = widget.projects
+        .map((e) => e.project)
+        .where((e) => e.isNotEmpty)
+        .toSet();
+    _project = names.isEmpty ? '' : names.first;
+  }
 
   @override
   void dispose() {
@@ -45,6 +57,21 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     Navigator.of(context).pop(
       TaskBoardItem(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
+        leadId: widget.projects
+            .firstWhere(
+              (item) => item.project == _project,
+              orElse: () => TaskBoardItem(
+                id: '',
+                title: '',
+                project: '',
+                description: '',
+                assignee: '',
+                dueDate: DateTime.now(),
+                priority: '',
+                column: TaskColumn.todo,
+              ),
+            )
+            .leadId,
         title: _nameCtrl.text.trim().isEmpty
             ? 'New Task'
             : _nameCtrl.text.trim(),
@@ -126,8 +153,13 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _label('Project'),
                                 _dropdown(
                                   value: _project,
-                                  items: TaskStaticData.projects,
-                                  onChanged: (v) => setState(() => _project = v!),
+                                  items: widget.projects
+                                      .map((e) => e.project)
+                                      .where((e) => e.isNotEmpty)
+                                      .toSet()
+                                      .toList(),
+                                  onChanged: (v) =>
+                                      setState(() => _project = v!),
                                 ),
                               ],
                             ),
@@ -145,7 +177,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _dropdown(
                                   value: _assignee,
                                   items: TaskStaticData.assignees,
-                                  onChanged: (v) => setState(() => _assignee = v!),
+                                  onChanged: (v) =>
+                                      setState(() => _assignee = v!),
                                 ),
                               ],
                             ),
@@ -154,10 +187,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _label('Deadline'),
-                                _dateField(),
-                              ],
+                              children: [_label('Deadline'), _dateField()],
                             ),
                           ),
                         ],
@@ -173,7 +203,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _dropdown(
                                   value: _priority,
                                   items: TaskStaticData.priorities,
-                                  onChanged: (v) => setState(() => _priority = v!),
+                                  onChanged: (v) =>
+                                      setState(() => _priority = v!),
                                 ),
                               ],
                             ),
@@ -187,7 +218,8 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _dropdown(
                                   value: _status,
                                   items: TaskStaticData.statuses,
-                                  onChanged: (v) => setState(() => _status = v!),
+                                  onChanged: (v) =>
+                                      setState(() => _status = v!),
                                 ),
                               ],
                             ),
@@ -226,7 +258,10 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 14),
@@ -291,37 +326,36 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   }
 
   Widget _label(String text) => Padding(
-        padding: const EdgeInsets.only(bottom: 6),
-        child: Text(
-          text,
-          style: const TextStyle(
-            fontWeight: FontWeight.w600,
-            fontSize: 13,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      );
+    padding: const EdgeInsets.only(bottom: 6),
+    child: Text(
+      text,
+      style: const TextStyle(
+        fontWeight: FontWeight.w600,
+        fontSize: 13,
+        color: AppColors.textPrimary,
+      ),
+    ),
+  );
 
   InputDecoration _inputDecoration({String? hint}) => InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-        filled: true,
-        fillColor: Colors.white,
-        contentPadding:
-            const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.primaryBlue),
-        ),
-      );
+    hintText: hint,
+    hintStyle: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
+    filled: true,
+    fillColor: Colors.white,
+    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    border: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.cardBorder),
+    ),
+    enabledBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.cardBorder),
+    ),
+    focusedBorder: OutlineInputBorder(
+      borderRadius: BorderRadius.circular(10),
+      borderSide: const BorderSide(color: AppColors.primaryBlue),
+    ),
+  );
 
   Widget _dropdown({
     required String value,
@@ -337,7 +371,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
           .map(
             (e) => DropdownMenuItem(
               value: e,
-              child: Text(e, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 13)),
+              child: Text(
+                e,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13),
+              ),
             ),
           )
           .toList(),

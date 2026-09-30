@@ -11,14 +11,20 @@ import 'label_printing_checkbox.dart';
 class LabelPrintingTable extends GetView<LabelPrintingController> {
   const LabelPrintingTable({super.key});
 
-  static String _fmtWeight(int lbs) {
-    final s = lbs.toString();
+  static String _fmtWeight(double lbs) {
+    if (lbs == 0) return '0 LBS';
+    final isInt = lbs == lbs.roundToDouble();
+    final s = isInt ? lbs.toInt().toString() : lbs.toStringAsFixed(1);
+    final parts = s.split('.');
+    final intPart = parts[0];
     final buf = StringBuffer();
-    for (var i = 0; i < s.length; i++) {
-      if (i > 0 && (s.length - i) % 3 == 0) buf.write(',');
-      buf.write(s[i]);
+    for (var i = 0; i < intPart.length; i++) {
+      if (i > 0 && (intPart.length - i) % 3 == 0) buf.write(',');
+      buf.write(intPart[i]);
     }
-    return '${buf.toString()} LBS';
+    final formattedInt = buf.toString();
+    final res = parts.length > 1 ? '$formattedInt.${parts[1]}' : formattedInt;
+    return '$res LBS';
   }
 
   @override
@@ -53,7 +59,7 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
           children: [
             LayoutBuilder(
               builder: (context, constraints) {
-                final minWidth = constraints.maxWidth.clamp(820.0, 2000.0);
+                final minWidth = constraints.maxWidth.clamp(1100.0, 2400.0);
                 return SingleChildScrollView(
                   scrollDirection: Axis.horizontal,
                   child: SizedBox(
@@ -74,13 +80,39 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
                                     ? null
                                     : (_) => controller.toggleSelectAllOnPage(),
                               ),
-                              _HeadCell(flex: 2, text: 'Bundle ID', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Load ID', size: cellFont),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Bundle ID',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Load ID',
+                                size: cellFont,
+                              ),
                               _HeadCell(flex: 2, text: 'Parts', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Total Weight ⇅', size: cellFont),
-                              _HeadCell(flex: 1, text: 'Length', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Status', size: cellFont),
-                              _HeadCell(flex: 2, text: 'Action', size: cellFont, align: TextAlign.end),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Total Weight ⇅',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 1,
+                                text: 'Length',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Status',
+                                size: cellFont,
+                              ),
+                              _HeadCell(
+                                flex: 2,
+                                text: 'Action',
+                                size: cellFont,
+                                align: TextAlign.end,
+                                isLast: true,
+                              ),
                             ],
                           ),
                         ),
@@ -137,9 +169,8 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
           await showDialog<void>(
             context: context,
             barrierDismissible: false,
-            builder: (_) => const TaskSuccessDialog(
-              title: 'Label Printed Successfully',
-            ),
+            builder: (_) =>
+                const TaskSuccessDialog(title: 'Label Printed Successfully'),
           );
         },
       ),
@@ -158,7 +189,7 @@ class _DataRow extends GetView<LabelPrintingController> {
 
   final LabelBundleItem item;
   final double cellFont;
-  final String Function(int) fmtWeight;
+  final String Function(double) fmtWeight;
   final VoidCallback onPrint;
 
   @override
@@ -196,7 +227,10 @@ class _DataRow extends GetView<LabelPrintingController> {
             flex: 2,
             child: Text(
               item.loadId,
-              style: TextStyle(fontSize: cellFont, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: cellFont,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           _DataCell(
@@ -214,25 +248,29 @@ class _DataRow extends GetView<LabelPrintingController> {
             flex: 2,
             child: Text(
               fmtWeight(item.totalWeightLbs),
-              style: TextStyle(fontSize: cellFont, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: cellFont,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
           _DataCell(
             flex: 1,
             child: Text(
               '${item.lengthFt} ft',
-              style: TextStyle(fontSize: cellFont, color: AppColors.textSecondary),
+              style: TextStyle(
+                fontSize: cellFont,
+                color: AppColors.textSecondary,
+              ),
             ),
           ),
-          _DataCell(
-            flex: 2,
-            child: _StatusBadge(status: item.status),
-          ),
+          _DataCell(flex: 2, child: _StatusBadge(item: item)),
           _DataCell(
             flex: 2,
             align: Alignment.centerRight,
+            isLast: true,
             child: _ActionButton(
-              isReprint: isPrinted,
+              isReprint: isPrinted || item.status == LabelPrintStatus.assigned,
               cellFont: cellFont,
               onTap: onPrint,
             ),
@@ -244,45 +282,49 @@ class _DataRow extends GetView<LabelPrintingController> {
 }
 
 class _StatusBadge extends StatelessWidget {
-  const _StatusBadge({required this.status});
+  const _StatusBadge({required this.item});
 
-  final LabelPrintStatus status;
+  final LabelBundleItem item;
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0);
-    final isPrinted = status == LabelPrintStatus.printed;
+    final fontSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(
+      11.0,
+      12.0,
+    );
+    final text = item.statusText.isNotEmpty
+        ? item.statusText
+        : (item.status == LabelPrintStatus.printed ? 'PRINTED' : 'PENDING');
 
-    final (text, textColor, bg, iconData) = isPrinted
-        ? ('Printed', const Color(0xFF166534), const Color(0xFFDCFCE7), Icons.check_circle_outline_rounded)
-        : ('Pending', const Color(0xFF92400E), const Color(0xFFFEF3C7), Icons.hourglass_empty_rounded);
+    Color textColor = const Color(0xFF1D4ED8);
+    Color bg = const Color(0xFFEFF6FF);
+
+    if (text.contains('PRINT')) {
+      textColor = const Color(0xFF166534);
+      bg = const Color(0xFFDCFCE7);
+    } else if (text.contains('ASSIGN') || text.contains('TRUCK')) {
+      textColor = const Color(0xFF1D4ED8);
+      bg = const Color(0xFFDBEAFE);
+    } else if (text.contains('PEND')) {
+      textColor = const Color(0xFF92400E);
+      bg = const Color(0xFFFEF3C7);
+    }
 
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
         decoration: BoxDecoration(
           color: bg,
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              text,
-              style: TextStyle(
-                color: textColor,
-                fontWeight: FontWeight.w700,
-                fontSize: fontSize,
-              ),
-            ),
-            const SizedBox(width: 5),
-            Icon(
-              iconData,
-              size: fontSize + 3,
-              color: textColor,
-            ),
-          ],
+        child: Text(
+          text,
+          style: TextStyle(
+            color: textColor,
+            fontWeight: FontWeight.w800,
+            fontSize: fontSize - 2,
+          ),
         ),
       ),
     );
@@ -307,7 +349,9 @@ class _ActionButton extends StatelessWidget {
       child: ElevatedButton(
         onPressed: onTap,
         style: ElevatedButton.styleFrom(
-          backgroundColor: isReprint ? const Color(0xFF4F46E5) : const Color(0xFF2563EB),
+          backgroundColor: isReprint
+              ? const Color(0xFF4F46E5)
+              : const Color(0xFF2563EB),
           foregroundColor: Colors.white,
           elevation: 0,
           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
@@ -362,7 +406,10 @@ class _PaginationFooter extends GetView<LabelPrintingController> {
               ),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 6,
+                ),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.cardBorder),
                   borderRadius: BorderRadius.circular(8),
@@ -379,8 +426,11 @@ class _PaginationFooter extends GetView<LabelPrintingController> {
                       ),
                     ),
                     const SizedBox(width: 4),
-                    Icon(Icons.keyboard_arrow_down,
-                        size: 16, color: AppColors.textSecondary),
+                    Icon(
+                      Icons.keyboard_arrow_down,
+                      size: 16,
+                      color: AppColors.textSecondary,
+                    ),
                   ],
                 ),
               ),
@@ -406,8 +456,13 @@ class _PaginationFooter extends GetView<LabelPrintingController> {
             if (p == -1) {
               return Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 4),
-                child: Text('...',
-                    style: TextStyle(color: AppColors.textSecondary, fontSize: fontSize)),
+                child: Text(
+                  '...',
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: fontSize,
+                  ),
+                ),
               );
             }
             return Padding(
@@ -518,27 +573,41 @@ class _HeadCell extends StatelessWidget {
     required this.text,
     required this.size,
     this.align = TextAlign.start,
+    this.isLast = false,
   });
 
   final int flex;
   final String text;
   final double size;
   final TextAlign align;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       flex: flex,
-      child: Text(
-        text,
-        textAlign: align,
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontWeight: FontWeight.w700,
-          fontSize: size,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder.withValues(alpha: 0.7),
+                  ),
+                ),
         ),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
+        child: Text(
+          text,
+          textAlign: align,
+          style: TextStyle(
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+            fontSize: size,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }
@@ -549,17 +618,31 @@ class _DataCell extends StatelessWidget {
     required this.flex,
     required this.child,
     this.align = Alignment.centerLeft,
+    this.isLast = false,
   });
 
   final int flex;
   final Widget child;
   final Alignment align;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       flex: flex,
-      child: Align(alignment: align, child: child),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder.withValues(alpha: 0.5),
+                  ),
+                ),
+        ),
+        child: Align(alignment: align, child: child),
+      ),
     );
   }
 }

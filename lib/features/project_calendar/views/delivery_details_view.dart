@@ -1,83 +1,67 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
+import '../../delivery_tracking/controllers/delivery_details_controller.dart';
 
-class DeliveryDetailsView extends StatelessWidget {
+class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
   const DeliveryDetailsView({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final padH = size.width * 0.016;
-    final padV = size.height * 0.014;
-    final gap = size.height * 0.014;
-
-    final args = (Get.arguments as Map?) ?? {};
-    final id = (args['id'] as String?) ?? 'DEL-2001';
-    final title = (args['title'] as String?) ?? 'Downtown Office Complex';
-    final location = (args['location'] as String?) ?? 'Construction Site A';
-
-    return AppScaffold(
-      menuTitle: 'Delivery Details',
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(padH, gap, padH, padV),
+  Widget build(BuildContext context) => AppScaffold(
+    menuTitle: 'Delivery Details',
+    body: Obx(() {
+      if (controller.isLoading.value) {
+        return const Padding(
+          padding: EdgeInsets.all(24),
+          child: AppShimmer(
+            width: double.infinity,
+            height: 620,
+            borderRadius: 14,
+          ),
+        );
+      }
+      if (controller.delivery.isEmpty) {
+        return _Empty(onRetry: controller.fetchDetails);
+      }
+      final project = controller.mapValue(['project']);
+      final schedule = controller.mapValue(['schedule']);
+      final carrier = controller.mapValue(['carrier']);
+      final contact = controller.mapValue(['siteContact']);
+      String v(List<String> keys, {String fallback = '—'}) =>
+          controller.value(keys, fallback: fallback);
+      String n(
+        Map<String, dynamic> map,
+        List<String> keys, {
+        String fallback = '—',
+      }) => controller.nestedValue(map, keys, fallback: fallback);
+      final projectName = v([
+        'projectName',
+        'jobName',
+      ], fallback: n(project, ['projectName', 'name', 'jobId']));
+      final location = v([
+        'deliveryLocation',
+        'siteLocation',
+        'location',
+        'destination',
+      ], fallback: n(project, ['location', 'siteLocation']));
+      final material = v(['materialType', 'materialName', 'description']);
+      final quantity = _withUnit(
+        v(['loadWeight', 'weight', 'quantity', 'totalWeight']),
+        v(['weightUnit', 'unit'], fallback: ''),
+      );
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Sub Header Navigation & Action Buttons Row
-            Row(
-              children: [
-                InkWell(
-                  onTap: Get.back,
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: AppColors.primaryBlue,
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
-                  ),
-                ),
-                SizedBox(width: size.width * 0.01),
-                Text(
-                  'Delivery Details',
-                  style: TextStyle(
-                    fontSize: (size.width * 0.016).clamp(18.0, 22.0),
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                const Spacer(),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _TopActionButton(label: 'Mark as Received', onTap: () {}),
-                    _TopActionButton(
-                      label: 'Scan QR Code',
-                      onTap: () => Get.toNamed(AppRoutes.bundleScanDetail),
-                    ),
-                    _TopActionButton(label: 'Mark as Partial Received', onTap: () {}),
-                    _TopActionButton(label: 'Update Site Contact', onTap: () {}),
-                  ],
-                ),
-              ],
-            ),
-            SizedBox(height: gap),
-
-            // Top Summary Card
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.cardBorder),
-              ),
+            _Actions(controller: controller, project: projectName),
+            const SizedBox(height: 16),
+            _Panel(
               child: Row(
                 children: [
                   Expanded(
@@ -85,731 +69,509 @@ class DeliveryDetailsView extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          title,
-                          style: TextStyle(
-                            fontSize: (size.width * 0.016).clamp(18.0, 22.0),
+                          projectName,
+                          style: const TextStyle(
+                            fontSize: 22,
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
                           ),
                         ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            const Icon(Icons.location_on_outlined, size: 16, color: AppColors.textSecondary),
-                            const SizedBox(width: 4),
-                            Text(
-                              location,
-                              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                            ),
-                          ],
+                        const SizedBox(height: 5),
+                        Text(
+                          location,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ],
                     ),
                   ),
-                  _MetaSummaryBox(label: 'DELIVERY ID', value: id),
-                  SizedBox(width: size.width * 0.015),
-                  const _MetaSummaryPillBox(
-                    label: 'CURRENT STATUS',
-                    pillText: 'In Transit to Plant',
-                    pillColor: AppColors.badgeGreen,
-                    bgColor: AppColors.softGreenBg,
+                  _Meta(
+                    'DELIVERY ID',
+                    v(['deliveryNumber', 'code', 'deliveryId', '_id']),
                   ),
-                  SizedBox(width: size.width * 0.015),
-                  const _MetaSummaryPillBox(
-                    label: 'PRIORITY',
-                    pillText: 'High',
-                    pillColor: AppColors.badgeRed,
-                    bgColor: AppColors.softPinkBg,
+                  _Meta(
+                    'CURRENT STATUS',
+                    _title(v(['status', 'deliveryStatus'])),
                   ),
-                  SizedBox(width: size.width * 0.015),
-                  const _MetaSummaryBox(label: 'ETA', value: '10:45 AM'),
-                  SizedBox(width: size.width * 0.015),
-                  const _MetaSummaryBox(label: 'STAGING AREA', value: 'Yard-A'),
+                  _Meta('PRIORITY', _title(v(['priority', 'priorityLevel']))),
+                  _Meta(
+                    'ETA',
+                    _date(v(['eta', 'expectedArrival', 'deliveryTime'])),
+                  ),
+                  _Meta('STAGING AREA', v(['stagingArea', 'plant'])),
                 ],
               ),
             ),
-            SizedBox(height: gap),
-
-            // 3-Column Grid Row 1 (Material Info, Plant Schedule, Live Map Preview)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 900;
-                if (isNarrow) {
-                  return Column(
-                    children: [
-                      const _MaterialInfoCard(),
-                      SizedBox(height: gap),
-                      const _PlantScheduleCard(),
-                      SizedBox(height: gap),
-                      const _LiveMapPreviewCard(),
-                    ],
-                  );
-                }
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Expanded(child: _MaterialInfoCard()),
-                    SizedBox(width: size.width * 0.014),
-                    const Expanded(child: _PlantScheduleCard()),
-                    SizedBox(width: size.width * 0.014),
-                    const Expanded(child: _LiveMapPreviewCard()),
-                  ],
-                );
-              },
-            ),
-            SizedBox(height: gap),
-
-            // 3-Column Grid Row 2 (Carrier & Route, Weight & Specs, Documents & Special Instruction)
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isNarrow = constraints.maxWidth < 900;
-                if (isNarrow) {
-                  return Column(
-                    children: [
-                      const _CarrierRouteCard(),
-                      SizedBox(height: gap),
-                      const _WeightTypeCard(),
-                      SizedBox(height: gap),
-                      const _DocumentsInstructionCard(),
-                    ],
-                  );
-                }
-
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Expanded(child: _CarrierRouteCard()),
-                    SizedBox(width: size.width * 0.014),
-                    const Expanded(child: _WeightTypeCard()),
-                    SizedBox(width: size.width * 0.014),
-                    const Expanded(child: _DocumentsInstructionCard()),
-                  ],
-                );
-              },
-            ),
-            SizedBox(height: gap),
-
-            // Delivery Timeline & Flow Section
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: AppColors.cardBorder),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Delivery Timeline & Flow',
-                    style: TextStyle(
-                      fontSize: (size.width * 0.014).clamp(15.0, 18.0),
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
+            const SizedBox(height: 16),
+            _Grid(
+              children: [
+                _InfoCard('Material Information', [
+                  _Row(Icons.inventory_2_outlined, 'Material', material),
+                  _Row(Icons.domain_outlined, 'Project', projectName),
+                  _Row(Icons.scale_outlined, 'Quantity', quantity),
+                ]),
+                _InfoCard('Plant Schedule', [
+                  _Row(
+                    Icons.calendar_today_outlined,
+                    'Arrival at Plant',
+                    _date(
+                      v(
+                        ['arrivalAtPlant', 'arrivalTime', 'expectedArrival'],
+                        fallback: n(schedule, [
+                          'arrivalAtPlant',
+                          'arrivalDate',
+                          'deliveryDate',
+                        ]),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  _Row(
+                    Icons.calendar_month_outlined,
+                    'Departure from Plant',
+                    _date(
+                      v(
+                        ['departureFromPlant', 'departureTime', 'pickupDate'],
+                        fallback: n(schedule, [
+                          'departureFromPlant',
+                          'departureDate',
+                          'pickupDate',
+                        ]),
+                      ),
+                    ),
+                  ),
+                ]),
+                _InfoCard('Site Contact', [
+                  _Row(
+                    Icons.person_outline,
+                    'Name',
+                    n(contact, ['contactName', 'name']),
+                  ),
+                  _Row(
+                    Icons.phone_outlined,
+                    'Phone',
+                    n(contact, ['phone', 'contactPhone']),
+                  ),
+                  _Row(Icons.email_outlined, 'Email', n(contact, ['email'])),
+                ]),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _Grid(
+              children: [
+                _InfoCard('Carrier & Route', [
+                  _Row(
+                    Icons.local_shipping_outlined,
+                    'Carrier',
+                    v(
+                      ['carrierName'],
+                      fallback: n(carrier, ['name', 'carrierName', 'company']),
+                    ),
+                  ),
+                  _Row(
+                    Icons.badge_outlined,
+                    'Driver',
+                    v([
+                      'driverName',
+                      'driver',
+                    ], fallback: n(carrier, ['driverName'])),
+                  ),
+                  _Row(
+                    Icons.fire_truck_outlined,
+                    'Truck',
+                    v(['truck', 'vehicle', 'truckNumber']),
+                  ),
+                  _Row(Icons.location_on_outlined, 'Destination', location),
+                ]),
+                _InfoCard('Weight Units + Material Type', [
+                  _Row(Icons.scale_outlined, 'Quantity', quantity),
+                  _Row(Icons.category_outlined, 'Material Type', material),
+                  _Row(
+                    Icons.inventory_outlined,
+                    'Packaging',
+                    v(['packaging', 'packageSummary', 'packagingType']),
+                  ),
+                  _Row(
+                    Icons.notes_outlined,
+                    'Instructions',
+                    v(['notes', 'specialInstructions', 'instructions']),
+                  ),
+                ]),
+                _Documents(controller: controller),
+              ],
+            ),
+            const SizedBox(height: 16),
+            _Timeline(controller: controller),
+          ],
+        ),
+      );
+    }),
+  );
+}
 
-                  // Vertical Steps List
-                  const _TimelineStepItem(
-                    title: 'Scheduled',
-                    date: '14/01/2024',
-                    isDone: true,
-                    statusText: 'COMPLETED',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Material Prepared',
-                    date: '14/01/2024',
-                    isDone: true,
-                    statusText: 'COMPLETED',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Loaded',
-                    date: '14/01/2024',
-                    isDone: true,
-                    statusText: 'COMPLETED',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Picked Up',
-                    date: '14/01/2024',
-                    isDone: true,
-                    statusText: 'COMPLETED',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'In Transit',
-                    date: '14/01/2024',
-                    isInProgress: true,
-                    statusText: 'IN PROGRESS',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Arrived at Plant',
-                    date: '14/01/2024',
-                    isUpcoming: true,
-                    statusText: 'UPCOMING',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Staged',
-                    date: '14/01/2024',
-                    isUpcoming: true,
-                    statusText: 'UPCOMING',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Dispatched to site',
-                    date: '14/01/2024',
-                    isUpcoming: true,
-                    statusText: 'UPCOMING',
-                  ),
-                  const _TimelineStepItem(
-                    title: 'Delivered',
-                    date: '14/01/2024',
-                    isUpcoming: true,
-                    statusText: 'UPCOMING',
-                    isLast: true,
-                  ),
-                ],
+class _Actions extends StatelessWidget {
+  const _Actions({required this.controller, required this.project});
+  final DeliveryDetailsController controller;
+  final String project;
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      IconButton.filled(
+        onPressed: Get.back,
+        icon: const Icon(Icons.arrow_back),
+        style: IconButton.styleFrom(backgroundColor: AppColors.primaryBlue),
+      ),
+      const SizedBox(width: 10),
+      const Text(
+        'Delivery Details',
+        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+      ),
+      const Spacer(),
+      Obx(() {
+        final status = controller.value(['status']).toLowerCase();
+        final isDelivered = status == 'delivered' || status == 'received';
+        return Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (!isDelivered) ...[
+              _Button(
+                'Mark as Received',
+                controller.isActionLoading.value
+                    ? null
+                    : () => _confirm(context, controller),
               ),
+              _Button(
+                'Scan QR Code',
+                () => Get.toNamed(
+                  AppRoutes.bundleScan,
+                  arguments: {
+                    'deliveryId': controller.requestId,
+                    'project': project,
+                  },
+                ),
+              ),
+              _Button(
+                'Partial Received',
+                controller.isActionLoading.value
+                    ? null
+                    : () => _partial(context, controller),
+              ),
+            ],
+            _Button(
+              'Update Site Contact',
+              controller.isActionLoading.value
+                  ? null
+                  : () => _contact(context, controller),
+            ),
+          ],
+        );
+      }),
+    ],
+  );
+}
+
+class _Button extends StatelessWidget {
+  const _Button(this.text, this.onPressed);
+  final String text;
+  final VoidCallback? onPressed;
+  @override
+  Widget build(BuildContext context) => ElevatedButton(
+    onPressed: onPressed,
+    style: ElevatedButton.styleFrom(
+      backgroundColor: AppColors.primaryBlue,
+      foregroundColor: Colors.white,
+    ),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+    ),
+  );
+}
+
+class _Panel extends StatelessWidget {
+  const _Panel({required this.child});
+  final Widget child;
+  @override
+  Widget build(BuildContext context) => Container(
+    padding: const EdgeInsets.all(20),
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      border: Border.all(color: AppColors.cardBorder),
+    ),
+    child: child,
+  );
+}
+
+class _Meta extends StatelessWidget {
+  const _Meta(this.label, this.value);
+  final String label, value;
+  @override
+  Widget build(BuildContext context) => Container(
+    margin: const EdgeInsets.only(left: 12),
+    padding: const EdgeInsets.all(11),
+    decoration: BoxDecoration(
+      color: AppColors.tableHeader,
+      borderRadius: BorderRadius.circular(10),
+      border: Border.all(color: AppColors.cardBorder),
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+            fontWeight: FontWeight.w700,
+          ),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Grid extends StatelessWidget {
+  const _Grid({required this.children});
+  final List<Widget> children;
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (_, c) => c.maxWidth < 900
+        ? Column(
+            children: children
+                .map(
+                  (e) => Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
+                    child: e,
+                  ),
+                )
+                .toList(),
+          )
+        : Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              for (int i = 0; i < children.length; i++) ...[
+                Expanded(child: children[i]),
+                if (i < children.length - 1) const SizedBox(width: 16),
+              ],
+            ],
+          ),
+  );
+}
+
+class _InfoCard extends StatelessWidget {
+  const _InfoCard(this.title, this.rows);
+  final String title;
+  final List<Widget> rows;
+  @override
+  Widget build(BuildContext context) => _Panel(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800),
+        ),
+        const SizedBox(height: 14),
+        for (int i = 0; i < rows.length; i++) ...[
+          rows[i],
+          if (i < rows.length - 1) const SizedBox(height: 10),
+        ],
+      ],
+    ),
+  );
+}
+
+class _Row extends StatelessWidget {
+  const _Row(this.icon, this.label, this.value);
+  final IconData icon;
+  final String label, value;
+  @override
+  Widget build(BuildContext context) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Container(
+        width: 32,
+        height: 32,
+        decoration: BoxDecoration(
+          color: AppColors.softBlueBg,
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Icon(icon, size: 16, color: AppColors.primaryBlue),
+      ),
+      const SizedBox(width: 10),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                fontSize: 11,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700),
             ),
           ],
         ),
       ),
-    );
-  }
+    ],
+  );
 }
 
-class _TopActionButton extends StatelessWidget {
-  const _TopActionButton({required this.label, required this.onTap});
-
-  final String label;
-  final VoidCallback onTap;
-
+class _Documents extends StatelessWidget {
+  const _Documents({required this.controller});
+  final DeliveryDetailsController controller;
   @override
   Widget build(BuildContext context) {
-    return ElevatedButton(
-      onPressed: onTap,
-      style: ElevatedButton.styleFrom(
-        backgroundColor: AppColors.primaryBlue,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
-      ),
-      child: Text(
-        label,
-        style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 12),
-      ),
-    );
-  }
-}
-
-class _MetaSummaryBox extends StatelessWidget {
-  const _MetaSummaryBox({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.tableHeader,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MetaSummaryPillBox extends StatelessWidget {
-  const _MetaSummaryPillBox({
-    required this.label,
-    required this.pillText,
-    required this.pillColor,
-    required this.bgColor,
-  });
-
-  final String label;
-  final String pillText;
-  final Color pillColor;
-  final Color bgColor;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: AppColors.tableHeader,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-          ),
-          const SizedBox(height: 4),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(width: 5, height: 5, decoration: BoxDecoration(color: pillColor, shape: BoxShape.circle)),
-                const SizedBox(width: 4),
-                Text(
-                  pillText,
-                  style: TextStyle(color: pillColor, fontSize: 11, fontWeight: FontWeight.w700),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _MaterialInfoCard extends StatelessWidget {
-  const _MaterialInfoCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'Material Information',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-          SizedBox(height: 16),
-          _InfoRow(icon: Icons.inventory_2_outlined, label: 'Material', value: 'Primary Frame Steel'),
-          SizedBox(height: 12),
-          _InfoRow(icon: Icons.domain_outlined, label: 'Project', value: 'ABC Logistics Warehouse'),
-          SizedBox(height: 12),
-          _InfoRow(icon: Icons.scale_outlined, label: 'Quantity', value: '45,000 lbs'),
-        ],
-      ),
-    );
-  }
-}
-
-class _PlantScheduleCard extends StatelessWidget {
-  const _PlantScheduleCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: const [
-          Text(
-            'Plant Schedule',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-          SizedBox(height: 16),
-          _InfoRow(
-            icon: Icons.calendar_today_outlined,
-            label: 'Arrival at Plant',
-            value: 'Tuesday, March 24, 2026\nat 10:00 AM',
-          ),
-          SizedBox(height: 12),
-          _InfoRow(
-            icon: Icons.calendar_month_outlined,
-            label: 'Departure from Plant',
-            value: 'Tuesday, March 24, 2026\nat 02:00 PM',
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _LiveMapPreviewCard extends StatelessWidget {
-  const _LiveMapPreviewCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      height: 190,
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Stack(
-        children: [
-          Positioned.fill(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                color: const Color(0xFFE5E7EB),
-                child: const Center(
-                  child: Icon(Icons.map_outlined, size: 48, color: AppColors.textSecondary),
-                ),
+    final docs = controller.listValue(['documents', 'attachments', 'files']);
+    return _InfoCard(
+      'Documents',
+      docs.isEmpty
+          ? [
+              const Text(
+                'No documents available',
+                style: TextStyle(color: AppColors.textSecondary),
               ),
-            ),
-          ),
-          Positioned(
-            bottom: 10,
-            left: 10,
-            child: ElevatedButton.icon(
-              onPressed: () {},
-              icon: const Icon(Icons.map, size: 14),
-              label: const Text('View Live Map', style: TextStyle(fontSize: 12)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 2,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              ),
-            ),
-          ),
-        ],
-      ),
+            ]
+          : docs.whereType<Map>().map((raw) {
+              final doc = Map<String, dynamic>.from(raw);
+              final name = controller.nestedValue(doc, [
+                'name',
+                'fileName',
+                'title',
+              ]);
+              final lower = '${doc['type'] ?? ''} $name'.toLowerCase();
+              return ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(
+                  Icons.picture_as_pdf,
+                  color: AppColors.badgeRed,
+                ),
+                title: Text(name),
+                subtitle: Text(
+                  controller.nestedValue(doc, [
+                    'size',
+                    'fileSize',
+                  ], fallback: ''),
+                ),
+                trailing: IconButton(
+                  icon: const Icon(Icons.download_outlined),
+                  onPressed: () => controller.downloadDocument(
+                    lower.contains('bill') ? 'bill-of-lading' : 'packing-list',
+                  ),
+                ),
+              );
+            }).toList(),
     );
   }
 }
 
-class _CarrierRouteCard extends StatelessWidget {
-  const _CarrierRouteCard();
-
+class _Timeline extends StatelessWidget {
+  const _Timeline({required this.controller});
+  final DeliveryDetailsController controller;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
+    final items = controller.listValue([
+      'timeline',
+      'statusHistory',
+      'deliveryTimeline',
+    ]);
+    return _Panel(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text(
-            'Carrier & Route',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            'Delivery Timeline & Flow',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 16),
-          const _InfoRow(icon: Icons.local_shipping_outlined, label: 'Carrier', value: 'FastFreight Logistics'),
-          const SizedBox(height: 10),
-          const _InfoRow(icon: Icons.location_on_outlined, label: 'Final Destination', value: 'Construction Site A'),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: AppColors.tableHeader,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.cardBorder),
-            ),
-            child: const Column(
-              children: [
-                _SmallMetaRow(label: 'Truck:', value: 'TX-4582'),
-                SizedBox(height: 4),
-                _SmallMetaRow(label: 'Driver:', value: 'John Miller'),
-                SizedBox(height: 4),
-                _SmallMetaRow(label: 'Phone:', value: '+1555-812-9921'),
-                SizedBox(height: 4),
-                _SmallMetaRow(label: 'Destination:', value: 'Construction Site A'),
-              ],
-            ),
-          ),
+          if (items.isEmpty)
+            const Text(
+              'No timeline data available',
+              style: TextStyle(color: AppColors.textSecondary),
+            )
+          else
+            for (final raw in items.whereType<Map>())
+              _TimelineRow(controller, Map<String, dynamic>.from(raw)),
         ],
       ),
     );
   }
 }
 
-class _WeightTypeCard extends StatelessWidget {
-  const _WeightTypeCard();
-
+class _TimelineRow extends StatelessWidget {
+  const _TimelineRow(this.controller, this.data);
+  final DeliveryDetailsController controller;
+  final Map<String, dynamic> data;
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Weight Units + Material Type',
-            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-          ),
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppColors.softGreenBg,
-              borderRadius: BorderRadius.circular(10),
-              border: Border.all(color: AppColors.badgeGreen.withValues(alpha: 0.3)),
-            ),
-            child: const Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Quantity: 45,000 lbs', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: AppColors.textPrimary)),
-                SizedBox(height: 6),
-                Text('Material Type: Structural Steel', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                SizedBox(height: 6),
-                Text('Packaging: Bundled Frame Components', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DocumentsInstructionCard extends StatelessWidget {
-  const _DocumentsInstructionCard();
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Documents', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              const SizedBox(height: 12),
-              const _DocItemTile(title: 'Packing List', size: '5.3MB'),
-              const SizedBox(height: 8),
-              const _DocItemTile(title: 'Bill of Lading', size: '5.3MB'),
-            ],
-          ),
-        ),
-        const SizedBox(height: 12),
-        Container(
-          padding: const EdgeInsets.all(14),
-          decoration: BoxDecoration(
-            color: const Color(0xFFFEF3C7),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFFF59E0B)),
-          ),
-          child: const Row(
-            children: [
-              Icon(Icons.warning_amber_rounded, color: Color(0xFFD97706), size: 20),
-              SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Requires forklift for unloading',
-                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF92400E)),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          width: 32,
-          height: 32,
-          decoration: BoxDecoration(
-            color: AppColors.softBlueBg,
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, size: 16, color: AppColors.primaryBlue),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-              Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _SmallMetaRow extends StatelessWidget {
-  const _SmallMetaRow({required this.label, required this.value});
-
-  final String label;
-  final String value;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-        Text(value, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-      ],
-    );
-  }
-}
-
-class _DocItemTile extends StatelessWidget {
-  const _DocItemTile({required this.title, required this.size});
-
-  final String title;
-  final String size;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      decoration: BoxDecoration(
-        color: AppColors.softPinkBg.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.picture_as_pdf, color: AppColors.badgeRed, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(title, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: AppColors.textPrimary)),
-                Text(size, style: const TextStyle(fontSize: 10, color: AppColors.textSecondary)),
-              ],
-            ),
-          ),
-          const Icon(Icons.download_outlined, color: AppColors.textSecondary, size: 16),
-        ],
-      ),
-    );
-  }
-}
-
-class _TimelineStepItem extends StatelessWidget {
-  const _TimelineStepItem({
-    required this.title,
-    required this.date,
-    this.isDone = false,
-    this.isInProgress = false,
-    this.isUpcoming = false,
-    required this.statusText,
-    this.isLast = false,
-  });
-
-  final String title;
-  final String date;
-  final bool isDone;
-  final bool isInProgress;
-  final bool isUpcoming;
-  final String statusText;
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    Color badgeColor = AppColors.badgeGreen;
-    Color badgeBg = AppColors.softGreenBg;
-    if (isInProgress) {
-      badgeColor = AppColors.primaryBlue;
-      badgeBg = AppColors.softBlueBg;
-    } else if (isUpcoming) {
-      badgeColor = AppColors.textSecondary;
-      badgeBg = AppColors.tableHeader;
-    }
-
+    final state = controller.nestedValue(data, [
+      'state',
+      'status',
+    ], fallback: '').toLowerCase();
+    final done = state.contains('complete') || state.contains('done');
+    final active =
+        state.contains('progress') ||
+        state.contains('current') ||
+        state.contains('transit');
+    final color = done
+        ? AppColors.badgeGreen
+        : active
+        ? AppColors.primaryBlue
+        : AppColors.textSecondary;
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isInProgress ? AppColors.softBlueBg.withValues(alpha: 0.4) : Colors.white,
+        border: Border.all(
+          color: active ? AppColors.primaryBlue : AppColors.cardBorder,
+        ),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: isInProgress ? AppColors.primaryBlue : AppColors.cardBorder),
       ),
       child: Row(
         children: [
           Icon(
-            isDone ? Icons.check_circle : (isInProgress ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-            color: isDone ? AppColors.badgeGreen : (isInProgress ? AppColors.primaryBlue : AppColors.textSecondary),
-            size: 20,
+            done
+                ? Icons.check_circle
+                : active
+                ? Icons.radio_button_checked
+                : Icons.radio_button_unchecked,
+            color: color,
           ),
           const SizedBox(width: 12),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 13,
-              color: isUpcoming ? AppColors.textSecondary : AppColors.textPrimary,
-            ),
-          ),
-          const SizedBox(width: 12),
-          Text(date, style: const TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-          const Spacer(),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-            decoration: BoxDecoration(
-              color: badgeBg,
-              borderRadius: BorderRadius.circular(10),
-            ),
+          Expanded(
             child: Text(
-              statusText,
-              style: TextStyle(color: badgeColor, fontSize: 10, fontWeight: FontWeight.w700),
+              controller.nestedValue(data, ['title', 'label', 'name', 'event']),
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+          ),
+          Text(
+            _date(
+              controller.nestedValue(data, [
+                'date',
+                'timestamp',
+                'completedAt',
+                'targetDate',
+              ]),
+            ),
+            style: const TextStyle(color: AppColors.textSecondary),
+          ),
+          const SizedBox(width: 16),
+          Text(
+            _title(state),
+            style: TextStyle(
+              color: color,
+              fontWeight: FontWeight.w700,
+              fontSize: 11,
             ),
           ),
         ],
@@ -817,3 +579,148 @@ class _TimelineStepItem extends StatelessWidget {
     );
   }
 }
+
+class _Empty extends StatelessWidget {
+  const _Empty({required this.onRetry});
+  final VoidCallback onRetry;
+  @override
+  Widget build(BuildContext context) => Center(
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const Icon(Icons.cloud_off_outlined, size: 48),
+        const SizedBox(height: 12),
+        const Text('Delivery data is not available'),
+        ElevatedButton(onPressed: onRetry, child: const Text('Retry')),
+      ],
+    ),
+  );
+}
+
+Future<void> _confirm(BuildContext context, DeliveryDetailsController c) async {
+  final ok = await showDialog<bool>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Mark as received?'),
+      content: const Text('This updates the delivery through the API.'),
+      actions: [
+        TextButton(
+          onPressed: () => Get.back(result: false),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () => Get.back(result: true),
+          child: const Text('Confirm'),
+        ),
+      ],
+    ),
+  );
+  if (ok == true) await c.markReceived();
+}
+
+Future<void> _partial(BuildContext context, DeliveryDetailsController c) async {
+  final ctrl = TextEditingController();
+  final notes = await showDialog<String>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Mark as Partial Received'),
+      content: TextField(
+        controller: ctrl,
+        maxLines: 3,
+        decoration: const InputDecoration(labelText: 'Notes'),
+      ),
+      actions: [
+        TextButton(onPressed: Get.back, child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: () => Get.back(result: ctrl.text.trim()),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  ctrl.dispose();
+  if (notes?.isNotEmpty == true) await c.markPartial(notes!);
+}
+
+Future<void> _contact(BuildContext context, DeliveryDetailsController c) async {
+  final old = c.mapValue(['siteContact']);
+  String val(List<String> k) => c.nestedValue(old, k, fallback: '');
+  final name = TextEditingController(text: val(['contactName', 'name'])),
+      title = TextEditingController(text: val(['contactTitle', 'title'])),
+      phone = TextEditingController(text: val(['phone'])),
+      email = TextEditingController(text: val(['email']));
+  final result = await showDialog<Map<String, dynamic>>(
+    context: context,
+    builder: (_) => AlertDialog(
+      title: const Text('Update Site Contact'),
+      content: SizedBox(
+        width: 480,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextField(
+              controller: name,
+              decoration: const InputDecoration(labelText: 'Contact name'),
+            ),
+            TextField(
+              controller: title,
+              decoration: const InputDecoration(labelText: 'Contact title'),
+            ),
+            TextField(
+              controller: phone,
+              decoration: const InputDecoration(labelText: 'Phone'),
+            ),
+            TextField(
+              controller: email,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: Get.back, child: const Text('Cancel')),
+        ElevatedButton(
+          onPressed: () => Get.back(
+            result: {
+              'contactName': name.text.trim(),
+              'contactTitle': title.text.trim(),
+              'phone': phone.text.trim(),
+              'email': email.text.trim(),
+            },
+          ),
+          child: const Text('Save'),
+        ),
+      ],
+    ),
+  );
+  name.dispose();
+  title.dispose();
+  phone.dispose();
+  email.dispose();
+  if (result != null) await c.updateSiteContact(result);
+}
+
+String _date(String raw) {
+  if (raw == '—' || raw.isEmpty) return '—';
+  final parsed = DateTime.tryParse(raw);
+  return parsed == null
+      ? raw
+      : DateFormat('EEE, MMM d, yyyy • h:mm a').format(parsed.toLocal());
+}
+
+String _title(String raw) {
+  if (raw == '—' || raw.isEmpty) return '—';
+  return raw
+      .replaceAll('_', ' ')
+      .split(' ')
+      .where((e) => e.isNotEmpty)
+      .map((e) => '${e[0].toUpperCase()}${e.substring(1)}')
+      .join(' ');
+}
+
+String _withUnit(String value, String unit) =>
+    value == '—' ||
+        unit.isEmpty ||
+        value.toLowerCase().contains(unit.toLowerCase())
+    ? value
+    : '$value $unit';

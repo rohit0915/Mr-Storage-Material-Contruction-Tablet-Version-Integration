@@ -61,9 +61,10 @@ class DispatchVerificationSuccessDialog extends StatelessWidget {
                       borderRadius: BorderRadius.circular(12),
                     ),
                   ),
-                  child: const Text('Ok',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 16)),
+                  child: const Text(
+                    'Ok',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
                 ),
               ),
             ],

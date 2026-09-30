@@ -36,11 +36,7 @@ class DashboardHeader extends GetView<DashboardController> {
                 color: AppColors.primaryBlue,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(
-                Icons.menu,
-                color: Colors.white,
-                size: iconBox * 0.5,
-              ),
+              child: Icon(Icons.menu, color: Colors.white, size: iconBox * 0.5),
             ),
           ),
           SizedBox(width: gap),
@@ -102,10 +98,7 @@ class DashboardHeader extends GetView<DashboardController> {
             showBadge: true,
           ),
           SizedBox(width: size.width * 0.006),
-          _CircleAction(
-            icon: Icons.person_outline,
-            size: iconBox,
-          ),
+          _CircleAction(icon: Icons.person_outline, size: iconBox),
         ],
       ),
     );

@@ -63,10 +63,7 @@ class PackingListSuccessDialog extends StatelessWidget {
                   ),
                   child: const Text(
                     'Ok',
-                    style: TextStyle(
-                      fontWeight: FontWeight.w700,
-                      fontSize: 16,
-                    ),
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
                   ),
                 ),
               ),

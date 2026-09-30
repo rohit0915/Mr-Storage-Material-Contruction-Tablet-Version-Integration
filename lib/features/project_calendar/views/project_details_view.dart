@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../app/constants/app_assets.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/project_details_controller.dart';
 import '../models/project_calendar_models.dart';
 
@@ -40,7 +40,11 @@ class ProjectDetailsView extends StatelessWidget {
                       color: AppColors.primaryBlue,
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                    child: const Icon(
+                      Icons.arrow_back,
+                      color: Colors.white,
+                      size: 20,
+                    ),
                   ),
                 ),
                 SizedBox(width: size.width * 0.01),
@@ -73,22 +77,62 @@ class ProjectDetailsView extends StatelessWidget {
                     _ActionButton(
                       icon: Icons.print_outlined,
                       label: 'View BOM File',
-                      onTap: () => Get.toNamed(AppRoutes.bomFileDetails),
+                      onTap: () {
+                        if (controller.bomFiles.isEmpty) {
+                          Get.snackbar(
+                            'BOM unavailable',
+                            'This project has no BOM file URL in the API response.',
+                          );
+                          return;
+                        }
+                        Get.toNamed(
+                          AppRoutes.bomFileDetails,
+                          arguments: {
+                            'leadId': controller.leadId.value,
+                            'projectName': controller.title.value,
+                            'jobId': controller.projectId.value,
+                            'customerName': controller.customerName.value,
+                            'buildingType': controller.buildingType.value,
+                            'location': controller.location.value,
+                            'status': controller.lifecycleStatus.value,
+                            'files': controller.bomFiles.toList(),
+                          },
+                        );
+                      },
                     ),
                     _ActionButton(
                       icon: Icons.indeterminate_check_box_outlined,
                       label: 'View Drawings & Photos',
-                      onTap: () => Get.toNamed(AppRoutes.drawings),
+                      onTap: () => Get.toNamed(
+                        AppRoutes.drawings,
+                        arguments: {'leadId': controller.leadId.value},
+                      ),
                     ),
                     _ActionButton(
                       icon: Icons.assignment_turned_in_outlined,
                       label: 'Material Delivery',
-                      onTap: () => Get.toNamed(AppRoutes.deliveryTracking),
+                      onTap: () => Get.toNamed(
+                        AppRoutes.deliveryTracking,
+                        arguments: {
+                          'leadId': controller.leadId.value,
+                          'project': controller.title.value,
+                          'jobId': controller.projectId.value,
+                          'fromProject': true,
+                        },
+                      ),
                     ),
                     _ActionButton(
                       icon: Icons.inventory_2_outlined,
                       label: 'Bundle Scan',
-                      onTap: () => Get.toNamed(AppRoutes.bundleScan),
+                      onTap: () => Get.toNamed(
+                        AppRoutes.bundleScan,
+                        arguments: {
+                          'leadId': controller.leadId.value,
+                          'project': controller.title.value,
+                          'jobId': controller.projectId.value,
+                          'fromProject': true,
+                        },
+                      ),
                     ),
                   ],
                 ),
@@ -129,17 +173,27 @@ class ProjectDetailsView extends StatelessWidget {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                controller.title.value,
+                                controller.title.value.isEmpty
+                                    ? '—'
+                                    : controller.title.value,
                                 style: TextStyle(
-                                  fontSize: (size.width * 0.016).clamp(18.0, 22.0),
+                                  fontSize: (size.width * 0.016).clamp(
+                                    18.0,
+                                    22.0,
+                                  ),
                                   fontWeight: FontWeight.w800,
                                   color: AppColors.textPrimary,
                                 ),
                               ),
                               Text(
-                                controller.location.value,
+                                controller.location.value.isEmpty
+                                    ? '—'
+                                    : controller.location.value,
                                 style: TextStyle(
-                                  fontSize: (size.width * 0.011).clamp(12.0, 14.0),
+                                  fontSize: (size.width * 0.011).clamp(
+                                    12.0,
+                                    14.0,
+                                  ),
                                   color: AppColors.textSecondary,
                                 ),
                               ),
@@ -148,9 +202,14 @@ class ProjectDetailsView extends StatelessWidget {
                         ),
                         if (controller.projectId.value.isNotEmpty)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
                             decoration: BoxDecoration(
-                              color: AppColors.primaryBlue.withValues(alpha: 0.1),
+                              color: AppColors.primaryBlue.withValues(
+                                alpha: 0.1,
+                              ),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -169,7 +228,9 @@ class ProjectDetailsView extends StatelessWidget {
                       children: [
                         _MetaItem(
                           icon: Icons.location_on_outlined,
-                          text: controller.location.value,
+                          text: controller.location.value.isEmpty
+                              ? '—'
+                              : controller.location.value,
                         ),
                         if (controller.customerName.value.isNotEmpty) ...[
                           SizedBox(width: size.width * 0.02),
@@ -179,17 +240,19 @@ class ProjectDetailsView extends StatelessWidget {
                           ),
                         ],
                         const Spacer(),
-                        _BadgePill(
-                          text: controller.lifecycleStatus.value,
-                          color: AppColors.primaryBlue,
-                          bgColor: AppColors.softBlueBg,
-                        ),
+                        if (controller.lifecycleStatus.value.isNotEmpty)
+                          _BadgePill(
+                            text: controller.lifecycleStatus.value,
+                            color: AppColors.primaryBlue,
+                            bgColor: AppColors.softBlueBg,
+                          ),
                       ],
                     ),
                     SizedBox(height: size.height * 0.008),
                     _MetaItem(
                       icon: Icons.domain_outlined,
-                      text: 'Type: ${controller.buildingType.value.isNotEmpty ? controller.buildingType.value : 'Warehouse'}',
+                      text:
+                          'Type: ${controller.buildingType.value.isNotEmpty ? controller.buildingType.value : '—'}',
                     ),
                   ],
                 ),
@@ -206,7 +269,7 @@ class ProjectDetailsView extends StatelessWidget {
                     children: [
                       _UpcomingDeliveriesSection(controller: controller),
                       SizedBox(height: gap),
-                      const _PhotosVideosSection(),
+                      _PhotosVideosSection(controller: controller),
                     ],
                   );
                 }
@@ -214,9 +277,15 @@ class ProjectDetailsView extends StatelessWidget {
                 return Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Expanded(flex: 6, child: _UpcomingDeliveriesSection(controller: controller)),
+                    Expanded(
+                      flex: 6,
+                      child: _UpcomingDeliveriesSection(controller: controller),
+                    ),
                     SizedBox(width: size.width * 0.014),
-                    const Expanded(flex: 4, child: _PhotosVideosSection()),
+                    Expanded(
+                      flex: 4,
+                      child: _PhotosVideosSection(controller: controller),
+                    ),
                   ],
                 );
               },
@@ -253,9 +322,7 @@ class _ActionButton extends StatelessWidget {
         foregroundColor: Colors.white,
         elevation: 0,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       ),
     );
   }
@@ -341,10 +408,7 @@ class _UpcomingDeliveriesSection extends StatelessWidget {
     return Obx(() {
       final list = controller.deliveries;
       if (controller.isLoading.value) {
-        return const SizedBox(
-          height: 150,
-          child: Center(child: CircularProgressIndicator()),
-        );
+        return const AppShimmerTable(rowCount: 4);
       }
 
       return Column(
@@ -376,7 +440,10 @@ class _UpcomingDeliveriesSection extends StatelessWidget {
             ...list.map(
               (d) => Padding(
                 padding: const EdgeInsets.only(bottom: 12),
-                child: _DeliveryDetailCard(item: d, projectTitle: controller.title.value),
+                child: _DeliveryDetailCard(
+                  item: d,
+                  projectTitle: controller.title.value,
+                ),
               ),
             ),
         ],
@@ -386,10 +453,7 @@ class _UpcomingDeliveriesSection extends StatelessWidget {
 }
 
 class _DeliveryDetailCard extends StatelessWidget {
-  const _DeliveryDetailCard({
-    required this.item,
-    required this.projectTitle,
-  });
+  const _DeliveryDetailCard({required this.item, required this.projectTitle});
 
   final DeliveryItem item;
   final String projectTitle;
@@ -424,7 +488,10 @@ class _DeliveryDetailCard extends StatelessWidget {
                     ),
                     const Spacer(),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: item.statusColor.withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(12),
@@ -477,7 +544,9 @@ class _DeliveryDetailCard extends StatelessWidget {
                             iconBg: AppColors.softBlueBg,
                             iconColor: AppColors.primaryBlue,
                             label: 'Delivery Date',
-                            value: item.date.isNotEmpty ? item.date.split('T')[0] : 'N/A',
+                            value: item.date.isNotEmpty
+                                ? item.date.split('T')[0]
+                                : 'N/A',
                           ),
                         ],
                       ),
@@ -582,7 +651,10 @@ class _DetailRow extends StatelessWidget {
           children: [
             Text(
               label,
-              style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
+              style: const TextStyle(
+                fontSize: 10,
+                color: AppColors.textSecondary,
+              ),
             ),
             Text(
               value,
@@ -600,78 +672,114 @@ class _DetailRow extends StatelessWidget {
 }
 
 class _PhotosVideosSection extends StatelessWidget {
-  const _PhotosVideosSection();
+  const _PhotosVideosSection({required this.controller});
+
+  final ProjectDetailsController controller;
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
 
-    final photos = const [
-      AppAssets.project1,
-      AppAssets.project2,
-      AppAssets.project3,
-      AppAssets.project4,
-      AppAssets.project5,
-      AppAssets.project6,
-    ];
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: AppColors.cardBorder),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Project Photos & Videos (Latest)',
-            style: TextStyle(
-              fontSize: (size.width * 0.013).clamp(14.0, 16.0),
-              fontWeight: FontWeight.w800,
-              color: AppColors.textPrimary,
+    return Obx(
+      () => Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppColors.cardBorder),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Project Photos & Videos (Latest)',
+              style: TextStyle(
+                fontSize: (size.width * 0.013).clamp(14.0, 16.0),
+                fontWeight: FontWeight.w800,
+                color: AppColors.textPrimary,
+              ),
             ),
-          ),
-          const SizedBox(height: 14),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 6,
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              mainAxisSpacing: 10,
-              crossAxisSpacing: 10,
-              childAspectRatio: 1.4,
-            ),
-            itemBuilder: (context, index) {
-              return ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: Image.asset(
-                  photos[index % photos.length],
-                  fit: BoxFit.cover,
+            const SizedBox(height: 14),
+            if (controller.isLoading.value)
+              const AppShimmerTable(rowCount: 3)
+            else if (controller.media.isEmpty)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 24),
+                child: Center(
+                  child: Text(
+                    'No photos or videos returned by the API.',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
                 ),
-              );
-            },
-          ),
-          const SizedBox(height: 14),
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: () => Get.toNamed(AppRoutes.drawings),
-              icon: const Icon(Icons.photo_library_outlined, size: 16),
-              label: const Text('View All Media'),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: AppColors.primaryBlue,
-                side: const BorderSide(color: AppColors.primaryBlue),
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+              )
+            else
+              GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: controller.media.length > 6
+                    ? 6
+                    : controller.media.length,
+                gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  mainAxisSpacing: 10,
+                  crossAxisSpacing: 10,
+                  childAspectRatio: 1.4,
+                ),
+                itemBuilder: (context, index) {
+                  final item = controller.media[index];
+                  final url = item['url'] ?? '';
+                  final isVideo =
+                      (item['type'] ?? '').toLowerCase().contains('video') ||
+                      RegExp(
+                        r'\.(mp4|mov)(\?|$)',
+                        caseSensitive: false,
+                      ).hasMatch(url);
+                  return ClipRRect(
+                    borderRadius: BorderRadius.circular(8),
+                    child: isVideo
+                        ? Container(
+                            color: AppColors.softBlueBg,
+                            child: const Center(
+                              child: Icon(
+                                Icons.play_circle_outline,
+                                size: 42,
+                                color: AppColors.primaryBlue,
+                              ),
+                            ),
+                          )
+                        : Image.network(
+                            url,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) =>
+                                const Center(
+                                  child: Icon(Icons.broken_image_outlined),
+                                ),
+                          ),
+                  );
+                },
+              ),
+            const SizedBox(height: 14),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => Get.toNamed(
+                  AppRoutes.drawings,
+                  arguments: {'leadId': controller.leadId.value},
+                ),
+                icon: const Icon(Icons.photo_library_outlined, size: 16),
+                label: const Text('View All Media'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primaryBlue,
+                  side: const BorderSide(color: AppColors.primaryBlue),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

@@ -109,9 +109,7 @@ class _SummaryCard extends StatelessWidget {
         children: [
           // Background Decorative Wave
           Positioned.fill(
-            child: CustomPaint(
-              painter: _CardWavePainter(color: themeColor),
-            ),
+            child: CustomPaint(painter: _CardWavePainter(color: themeColor)),
           ),
 
           Padding(
@@ -180,7 +178,9 @@ class _SummaryCard extends StatelessWidget {
                 Row(
                   children: [
                     Icon(
-                      isUp ? Icons.north_east_rounded : Icons.south_east_rounded,
+                      isUp
+                          ? Icons.north_east_rounded
+                          : Icons.south_east_rounded,
                       size: subSize + 2,
                       color: subColor,
                     ),
@@ -222,9 +222,12 @@ class _CardWavePainter extends CustomPainter {
       ..moveTo(0, size.height)
       ..lineTo(size.width * 0.3, size.height)
       ..cubicTo(
-        size.width * 0.5, size.height * 0.95,
-        size.width * 0.7, size.height * 0.6,
-        size.width, size.height * 0.68,
+        size.width * 0.5,
+        size.height * 0.95,
+        size.width * 0.7,
+        size.height * 0.6,
+        size.width,
+        size.height * 0.68,
       )
       ..lineTo(size.width, size.height)
       ..close();
@@ -239,9 +242,12 @@ class _CardWavePainter extends CustomPainter {
       ..moveTo(0, size.height)
       ..lineTo(size.width * 0.5, size.height)
       ..cubicTo(
-        size.width * 0.7, size.height * 0.8,
-        size.width * 0.85, size.height * 0.4,
-        size.width, size.height * 0.45,
+        size.width * 0.7,
+        size.height * 0.8,
+        size.width * 0.85,
+        size.height * 0.4,
+        size.width,
+        size.height * 0.45,
       )
       ..lineTo(size.width, size.height)
       ..close();

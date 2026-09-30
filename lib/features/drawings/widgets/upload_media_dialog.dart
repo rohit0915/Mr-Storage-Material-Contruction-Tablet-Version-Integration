@@ -1,9 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
 import 'package:get/get.dart';
 
 import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
-import '../models/drawing_models.dart';
+import '../controllers/drawings_controller.dart';
 import '../services/drawings_service.dart';
 
 class UploadMediaDialog extends StatefulWidget {
@@ -14,8 +15,9 @@ class UploadMediaDialog extends StatefulWidget {
 }
 
 class _UploadMediaDialogState extends State<UploadMediaDialog> {
-  String? _project = 'Downtown Office Complex';
+  String? _projectId;
   String? _pickedFileName;
+  PlatformFile? _pickedFile;
   bool _isSubmitting = false;
 
   Future<void> _onSubmit() async {
@@ -23,25 +25,65 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
     setState(() => _isSubmitting = true);
     try {
       final service = Get.find<DrawingsService>();
-      await service.uploadDrawing({
-        'projectName': _project ?? 'Project',
-        'fileName': _pickedFileName ?? 'site_photos_batch.zip',
-      });
-      if (mounted) Navigator.of(context).pop(true);
+      if (_projectId == null ||
+          _projectId!.isEmpty ||
+          _pickedFileName == null) {
+        if (mounted) setState(() => _isSubmitting = false);
+        return;
+      }
+      final file = _pickedFile!;
+      final bytes = await file.readAsBytes();
+      final extension = (file.extension ?? '').toLowerCase();
+      final mimeType = switch (extension) {
+        'png' => 'image/png',
+        'webp' => 'image/webp',
+        'mp4' => 'video/mp4',
+        'mov' => 'video/quicktime',
+        _ => 'image/jpeg',
+      };
+      final success = await service.uploadMediaFile(
+        leadId: _projectId!,
+        fileName: file.name,
+        mimeType: mimeType,
+        bytes: bytes,
+      );
+      if (!success && mounted) {
+        Get.snackbar(
+          'Upload failed',
+          'Backend upload permission is unavailable for the construction role.',
+        );
+      }
+      if (success && mounted) Navigator.of(context).pop(true);
     } catch (_) {
-      if (mounted) Navigator.of(context).pop(true);
+      if (mounted) Navigator.of(context).pop(false);
     } finally {
       if (mounted) setState(() => _isSubmitting = false);
     }
+  }
+
+  Future<void> _pickFile() async {
+    final file = await FilePicker.pickFile(
+      type: FileType.custom,
+      allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp', 'mp4', 'mov'],
+    );
+    if (file == null || !mounted) return;
+    setState(() {
+      _pickedFile = file;
+      _pickedFileName = _pickedFile!.name;
+    });
   }
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final dialogWidth = (size.width * 0.48).clamp(480.0, 600.0);
-    final projects = DrawingProjectsData.projects.map((p) => p.name).toList();
-    if (!projects.contains('Downtown Office Complex')) {
-      projects.add('Downtown Office Complex');
+    final projects = Get.find<DrawingsController>().projectList;
+    final scopedLeadId = Get.find<DrawingsController>().scopedLeadId;
+    if (_projectId == null && scopedLeadId.isNotEmpty) {
+      _projectId = scopedLeadId;
+    }
+    if (_projectId == null && projects.isNotEmpty) {
+      _projectId = projects.first.id;
     }
 
     return Dialog(
@@ -93,11 +135,7 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                   children: [
                     // Dashed Dropzone Container
                     InkWell(
-                      onTap: () {
-                        setState(() {
-                          _pickedFileName = 'site_photos_batch.zip';
-                        });
-                      },
+                      onTap: _pickFile,
                       borderRadius: BorderRadius.circular(12),
                       child: Container(
                         padding: const EdgeInsets.all(24),
@@ -146,11 +184,7 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                               ),
                             ),
                             ElevatedButton(
-                              onPressed: () {
-                                setState(() {
-                                  _pickedFileName = 'site_photos_batch.zip';
-                                });
-                              },
+                              onPressed: _pickFile,
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: AppColors.primaryBlue,
                                 foregroundColor: Colors.white,
@@ -173,7 +207,7 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
 
                     // Supported Formats Subtext
                     const Text(
-                      'Supported formats: CSV, Excel (.xlsx, .xls)\nRequired columns: Company, Contact, Email',
+                      'Supported formats: JPG, JPEG, PNG, WEBP, MP4, MOV',
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -193,8 +227,8 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                     ),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
-                      key: ValueKey(_project),
-                      initialValue: _project,
+                      key: ValueKey(_projectId),
+                      initialValue: _projectId,
                       isExpanded: true,
                       decoration: InputDecoration(
                         filled: true,
@@ -205,20 +239,24 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                         ),
                         border: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.cardBorder),
+                          borderSide: const BorderSide(
+                            color: AppColors.cardBorder,
+                          ),
                         ),
                         enabledBorder: OutlineInputBorder(
                           borderRadius: BorderRadius.circular(10),
-                          borderSide: const BorderSide(color: AppColors.cardBorder),
+                          borderSide: const BorderSide(
+                            color: AppColors.cardBorder,
+                          ),
                         ),
                       ),
                       hint: const Text('Select Project'),
                       items: projects
                           .map(
                             (e) => DropdownMenuItem(
-                              value: e,
+                              value: e.id,
                               child: Text(
-                                e,
+                                e.name,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(fontSize: 14),
@@ -226,7 +264,7 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                             ),
                           )
                           .toList(),
-                      onChanged: (v) => setState(() => _project = v),
+                      onChanged: (v) => setState(() => _projectId = v),
                     ),
                   ],
                 ),
@@ -252,7 +290,10 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                             borderRadius: BorderRadius.circular(10),
                           ),
                         ),
-                        child: const Text('Cancel', style: TextStyle(fontWeight: FontWeight.w600)),
+                        child: const Text(
+                          'Cancel',
+                          style: TextStyle(fontWeight: FontWeight.w600),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 16),
@@ -273,7 +314,10 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
                             ? const SizedBox(
                                 width: 20,
                                 height: 20,
-                                child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                child: CircularProgressIndicator(
+                                  color: Colors.white,
+                                  strokeWidth: 2,
+                                ),
                               )
                             : const Text(
                                 'Submit',
@@ -346,8 +390,10 @@ class UploadSuccessDialog extends StatelessWidget {
                     ),
                     child: const Text(
                       'Ok',
-                      style:
-                          TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                      style: TextStyle(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 16,
+                      ),
                     ),
                   ),
                 ),

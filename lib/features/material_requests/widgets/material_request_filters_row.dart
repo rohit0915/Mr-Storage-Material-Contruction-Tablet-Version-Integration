@@ -72,10 +72,7 @@ class MaterialRequestFiltersRow extends GetView<MaterialRequestsController> {
             ),
             SizedBox(width: gap),
             Expanded(
-              child: _DateRangeBox(
-                label: 'Date Range',
-                value: dateRange,
-              ),
+              child: _DateRangeBox(label: 'Date Range', value: dateRange),
             ),
           ];
 
@@ -105,8 +102,29 @@ class _DropdownBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final labelSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(10.0, 12.0);
-    final valueSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(12.0, 13.0);
+    final labelSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(
+      10.0,
+      12.0,
+    );
+    final valueSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(
+      12.0,
+      13.0,
+    );
+
+    // Deduplicate dropdown items to prevent assertion errors
+    final list = <String>[];
+    for (final item in items) {
+      if (!list.contains(item)) {
+        list.add(item);
+      }
+    }
+    // Ensure selected value is present in list
+    final selectedVal = list.contains(value)
+        ? value
+        : (list.isNotEmpty ? list.first : value);
+    if (!list.contains(selectedVal)) {
+      list.insert(0, selectedVal);
+    }
 
     return Container(
       padding: EdgeInsets.symmetric(horizontal: padH, vertical: padV),
@@ -120,12 +138,15 @@ class _DropdownBox extends StatelessWidget {
         children: [
           Text(
             label,
-            style: TextStyle(fontSize: labelSize, color: AppColors.textSecondary),
+            style: TextStyle(
+              fontSize: labelSize,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(height: 6),
           DropdownButtonFormField<String>(
-            key: ValueKey(value),
-            initialValue: value,
+            key: ValueKey('$label-$selectedVal-${list.length}'),
+            initialValue: selectedVal,
             isExpanded: true,
             decoration: const InputDecoration(
               isDense: true,
@@ -133,9 +154,12 @@ class _DropdownBox extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
             ),
             dropdownColor: Colors.white,
-            items: items
+            items: list
                 .map(
-                  (e) => DropdownMenuItem(value: e, child: Text(e, overflow: TextOverflow.ellipsis)),
+                  (e) => DropdownMenuItem(
+                    value: e,
+                    child: Text(e, overflow: TextOverflow.ellipsis),
+                  ),
                 )
                 .toList(),
             onChanged: (v) {
@@ -155,10 +179,7 @@ class _DropdownBox extends StatelessWidget {
 }
 
 class _DateRangeBox extends StatelessWidget {
-  const _DateRangeBox({
-    required this.label,
-    required this.value,
-  });
+  const _DateRangeBox({required this.label, required this.value});
 
   final String label;
   final String value;
@@ -166,8 +187,14 @@ class _DateRangeBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final controller = Get.find<MaterialRequestsController>();
-    final labelSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(10.0, 12.0);
-    final valueSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(12.0, 13.0);
+    final labelSize = (MediaQuery.sizeOf(context).width * 0.008).clamp(
+      10.0,
+      12.0,
+    );
+    final valueSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(
+      12.0,
+      13.0,
+    );
 
     return InkWell(
       onTap: () async {
@@ -196,7 +223,10 @@ class _DateRangeBox extends StatelessWidget {
         );
       },
       child: Container(
-        padding: EdgeInsets.symmetric(horizontal: MediaQuery.sizeOf(context).width * 0.012, vertical: MediaQuery.sizeOf(context).height * 0.014),
+        padding: EdgeInsets.symmetric(
+          horizontal: MediaQuery.sizeOf(context).width * 0.012,
+          vertical: MediaQuery.sizeOf(context).height * 0.014,
+        ),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(12),
@@ -209,7 +239,13 @@ class _DateRangeBox extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: TextStyle(fontSize: labelSize, color: AppColors.textSecondary)),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      fontSize: labelSize,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
                   const SizedBox(height: 6),
                   Text(
                     value,
@@ -225,11 +261,14 @@ class _DateRangeBox extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.calendar_today_outlined, size: 18, color: AppColors.textSecondary),
+            const Icon(
+              Icons.calendar_today_outlined,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
           ],
         ),
       ),
     );
   }
 }
-

@@ -60,11 +60,13 @@ class BundleScanSuccessDialog extends StatelessWidget {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
                   ),
-                  child: const Text('Ok',
-                      style: TextStyle(
-                          fontWeight: FontWeight.w700, fontSize: 16)),
+                  child: const Text(
+                    'Ok',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16),
+                  ),
                 ),
               ),
             ],
@@ -81,20 +83,21 @@ class BundleScanQrDialog extends StatefulWidget {
   const BundleScanQrDialog({super.key, this.onScanned});
   final ValueChanged<String>? onScanned;
 
-  static Future<void> show(BuildContext context,
-          {ValueChanged<String>? onScanned}) =>
-      showDialog<void>(
-        context: context,
-        barrierDismissible: false,
-        builder: (_) => BundleScanQrDialog(onScanned: onScanned),
-      );
+  static Future<void> show(
+    BuildContext context, {
+    ValueChanged<String>? onScanned,
+  }) => showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (_) => BundleScanQrDialog(onScanned: onScanned),
+  );
 
   @override
   State<BundleScanQrDialog> createState() => _BundleScanQrDialogState();
 }
 
 class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
-  final _ctrl = TextEditingController(text: 'BND-001');
+  final _ctrl = TextEditingController();
 
   @override
   void dispose() {
@@ -135,7 +138,11 @@ class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
               Center(
                 child: ElevatedButton.icon(
                   onPressed: () {},
-                  icon: const Icon(Icons.camera_alt_rounded, size: 20, color: Colors.white),
+                  icon: const Icon(
+                    Icons.camera_alt_rounded,
+                    size: 20,
+                    color: Colors.white,
+                  ),
                   label: const Text(
                     'Camera Scan',
                     style: TextStyle(
@@ -148,7 +155,10 @@ class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
                     backgroundColor: AppColors.primaryBlue,
                     foregroundColor: Colors.white,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -167,12 +177,19 @@ class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
               const SizedBox(height: 10),
               TextField(
                 controller: _ctrl,
-                style: TextStyle(fontSize: fontSize, color: AppColors.textPrimary, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                ),
                 decoration: InputDecoration(
                   hintText: 'BND-001',
                   filled: true,
                   fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 14,
+                  ),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(10),
                     borderSide: const BorderSide(color: AppColors.cardBorder),
@@ -200,7 +217,11 @@ class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
                       ),
                       child: const Text(
                         'Cancel',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
@@ -223,7 +244,11 @@ class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
                       ),
                       child: const Text(
                         'Scan',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 16,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),

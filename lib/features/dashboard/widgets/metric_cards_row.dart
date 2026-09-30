@@ -8,6 +8,8 @@ import '../models/dashboard_models.dart';
 import 'section_card.dart';
 import 'stat_icon_box.dart';
 
+import '../../../app/widgets/app_shimmer.dart';
+
 class MetricCardsRow extends StatelessWidget {
   const MetricCardsRow({super.key});
 
@@ -18,6 +20,9 @@ class MetricCardsRow extends StatelessWidget {
     return GetBuilder<DashboardController>(
       id: AppGetIds.dashboardMetrics,
       builder: (controller) {
+        if (controller.isLoading) {
+          return const AppShimmerMetricsRow();
+        }
         final list = controller.metrics;
         if (list.isEmpty) return const SizedBox.shrink();
 
@@ -30,10 +35,12 @@ class MetricCardsRow extends StatelessWidget {
                 spacing: gap,
                 runSpacing: gap,
                 children: list
-                    .map((m) => SizedBox(
-                          width: colWidth,
-                          child: MetricCard(item: m),
-                        ))
+                    .map(
+                      (m) => SizedBox(
+                        width: colWidth,
+                        child: MetricCard(item: m),
+                      ),
+                    )
                     .toList(),
               );
             }

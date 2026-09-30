@@ -88,7 +88,11 @@ class DrawingPreviewDialog extends StatelessWidget {
                     ),
                     IconButton(
                       onPressed: () => Navigator.of(context).pop(),
-                      icon: const Icon(Icons.close, color: Colors.black, size: 22),
+                      icon: const Icon(
+                        Icons.close,
+                        color: Colors.black,
+                        size: 22,
+                      ),
                     ),
                   ],
                 ),
@@ -189,10 +193,7 @@ class _MetaCol extends StatelessWidget {
       children: [
         Text(
           label,
-          style: const TextStyle(
-            fontSize: 11,
-            color: AppColors.textSecondary,
-          ),
+          style: const TextStyle(fontSize: 11, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 2),
         Text(
@@ -228,10 +229,7 @@ class _ImageGrid2x2 extends StatelessWidget {
       itemBuilder: (context, index) {
         return ClipRRect(
           borderRadius: BorderRadius.circular(8),
-          child: Image.asset(
-            assets[index],
-            fit: BoxFit.cover,
-          ),
+          child: Image.asset(assets[index], fit: BoxFit.cover),
         );
       },
     );

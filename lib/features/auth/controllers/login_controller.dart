@@ -2,20 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/routes/app_routes.dart';
+import '../../../app/services/construction_socket_service.dart';
 import '../../../app/utils/app_logger.dart';
 import '../../../app/utils/app_toast.dart';
 import '../services/auth_service.dart';
 
-enum ForgotPasswordStep {
-  email,
-  otp,
-  newPassword,
-  success,
-}
+enum ForgotPasswordStep { email, otp, newPassword, success }
 
 class LoginController extends GetxController {
   LoginController({AuthService? authService})
-      : _authService = authService ?? Get.find<AuthService>();
+    : _authService = authService ?? Get.find<AuthService>();
 
   final AuthService _authService;
 
@@ -35,7 +31,8 @@ class LoginController extends GetxController {
   final TextEditingController otp3Controller = TextEditingController();
   final TextEditingController otp4Controller = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
-  final TextEditingController retypePasswordController = TextEditingController();
+  final TextEditingController retypePasswordController =
+      TextEditingController();
 
   void toggleRememberMe(bool? value) {
     rememberMe.value = value ?? false;
@@ -77,16 +74,16 @@ class LoginController extends GetxController {
       );
 
       if (errorMsg == null) {
+        if (Get.isRegistered<ConstructionSocketService>()) {
+          Get.find<ConstructionSocketService>().connect();
+        }
         AppToast.showSuccess(
           title: 'Login Successful',
           description: 'Welcome back!',
         );
         Get.offAllNamed(AppRoutes.dashboard);
       } else {
-        AppToast.showError(
-          title: 'Login Failed',
-          description: errorMsg,
-        );
+        AppToast.showError(title: 'Login Failed', description: errorMsg);
       }
     } finally {
       isLoading.value = false;
@@ -116,7 +113,8 @@ class LoginController extends GetxController {
   }
 
   void continueOtp() {
-    final otp = otp1Controller.text +
+    final otp =
+        otp1Controller.text +
         otp2Controller.text +
         otp3Controller.text +
         otp4Controller.text;

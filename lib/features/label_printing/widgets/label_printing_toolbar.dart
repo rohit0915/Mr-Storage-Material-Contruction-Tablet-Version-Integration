@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/theme/app_colors.dart';
-import '../../../app/utils/app_toast.dart';
 import '../controllers/label_printing_controller.dart';
 
 class LabelPrintingToolbar extends GetView<LabelPrintingController> {
@@ -21,7 +20,10 @@ class LabelPrintingToolbar extends GetView<LabelPrintingController> {
             height: (size.height * 0.048).clamp(42.0, 48.0),
             child: TextField(
               controller: controller.searchController,
-              style: TextStyle(fontSize: fontSize, color: AppColors.textPrimary),
+              style: TextStyle(
+                fontSize: fontSize,
+                color: AppColors.textPrimary,
+              ),
               decoration: InputDecoration(
                 hintText: 'Search',
                 hintStyle: TextStyle(
@@ -56,27 +58,42 @@ class LabelPrintingToolbar extends GetView<LabelPrintingController> {
           ),
         ),
         SizedBox(width: size.width * 0.008),
-        OutlinedButton.icon(
-          onPressed: () {
-            AppToast.showInfo(
-              title: 'Filter',
-              description: 'Filter options will be available soon.',
-            );
-          },
-          icon: const Icon(Icons.filter_list_rounded, size: 18),
-          label: Text(
-            'Filter',
-            style: TextStyle(fontSize: fontSize, fontWeight: FontWeight.w700),
-          ),
-          style: OutlinedButton.styleFrom(
-            foregroundColor: AppColors.textPrimary,
-            backgroundColor: Colors.white,
-            side: const BorderSide(color: AppColors.cardBorder),
-            padding: EdgeInsets.symmetric(
-              horizontal: size.width * 0.012,
-              vertical: size.height * 0.014,
+        Obx(
+          () => Container(
+            height: (size.height * 0.048).clamp(42.0, 48.0),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.cardBorder),
             ),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            child: DropdownButtonHideUnderline(
+              child: DropdownButton<String>(
+                value: controller.selectedStatus.value,
+                icon: const Icon(
+                  Icons.filter_list_rounded,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
+                style: TextStyle(
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
+                ),
+                items: const [
+                  DropdownMenuItem(
+                    value: 'All Statuses',
+                    child: Text('All Statuses'),
+                  ),
+                  DropdownMenuItem(value: 'PRINTED', child: Text('PRINTED')),
+                  DropdownMenuItem(value: 'PENDING', child: Text('PENDING')),
+                  DropdownMenuItem(value: 'ASSIGNED', child: Text('ASSIGNED')),
+                ],
+                onChanged: (val) {
+                  if (val != null) controller.setStatusFilter(val);
+                },
+              ),
+            ),
           ),
         ),
         const Spacer(),
@@ -92,7 +109,10 @@ class LabelPrintingToolbar extends GetView<LabelPrintingController> {
             child: DropdownButtonHideUnderline(
               child: DropdownButton<LabelSortOption>(
                 value: sort,
-                icon: Icon(Icons.keyboard_arrow_down, color: AppColors.textSecondary),
+                icon: Icon(
+                  Icons.keyboard_arrow_down,
+                  color: AppColors.textSecondary,
+                ),
                 style: TextStyle(
                   fontSize: fontSize,
                   fontWeight: FontWeight.w600,

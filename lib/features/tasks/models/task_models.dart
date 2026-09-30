@@ -5,6 +5,7 @@ enum TaskColumn { todo, inProgress, done }
 class TaskBoardItem {
   const TaskBoardItem({
     required this.id,
+    this.leadId = '',
     required this.title,
     required this.project,
     required this.description,
@@ -16,6 +17,7 @@ class TaskBoardItem {
   });
 
   final String id;
+  final String leadId;
   final String title;
   final String project;
   final String description;
@@ -28,7 +30,10 @@ class TaskBoardItem {
   factory TaskBoardItem.fromJson(Map<String, dynamic> json) {
     String pName = 'No Project';
     if (json['leadId'] is Map) {
-      pName = json['leadId']['projectName']?.toString() ?? json['leadId']['jobId']?.toString() ?? 'No Project';
+      pName =
+          json['leadId']['projectName']?.toString() ??
+          json['leadId']['jobId']?.toString() ??
+          'No Project';
     } else if (json['project'] != null) {
       pName = json['project'].toString();
     }
@@ -62,6 +67,9 @@ class TaskBoardItem {
 
     return TaskBoardItem(
       id: json['_id'] ?? json['id'] ?? '',
+      leadId: json['leadId'] is Map
+          ? (json['leadId']['_id'] ?? json['leadId']['id'] ?? '').toString()
+          : (json['leadId'] ?? '').toString(),
       title: json['title'] ?? 'Task',
       project: pName,
       description: json['description'] ?? '',
@@ -75,6 +83,7 @@ class TaskBoardItem {
 
   TaskBoardItem copyWith({
     String? id,
+    String? leadId,
     String? title,
     String? project,
     String? description,
@@ -86,6 +95,7 @@ class TaskBoardItem {
   }) {
     return TaskBoardItem(
       id: id ?? this.id,
+      leadId: leadId ?? this.leadId,
       title: title ?? this.title,
       project: project ?? this.project,
       description: description ?? this.description,
@@ -113,28 +123,9 @@ class TaskSummaryItem {
 }
 
 class TaskStaticData {
-  static const projects = [
-    'Downtown Office Complex',
-    'Residential Tower A',
-    'ABC Logistics Warehouse',
-    'Metro Cast Factory Shed',
-  ];
-
-  static const assignees = [
-    'Sarah Wilson',
-    'Mike Johnson',
-    'Robert Chen',
-    'John Miller',
-  ];
-
-  static const taskNames = [
-    'Foundation Excavation',
-    'Steel Frame Installation',
-    'Plumbing Installation',
-    'Electrical Wiring - Floor 1',
-  ];
-
-  static const priorities = ['High', 'Medium', 'Low'];
-
-  static const statuses = ['To Do', 'In Progress', 'Done'];
+  static const projects = <String>[];
+  static const assignees = <String>[];
+  static const taskNames = <String>[];
+  static const priorities = <String>[];
+  static const statuses = <String>[];
 }

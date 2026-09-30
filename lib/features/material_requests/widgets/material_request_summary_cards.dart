@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/material_requests_controller.dart';
 
+import '../../../app/widgets/app_shimmer.dart';
+
 class MaterialRequestSummaryCards extends GetView<MaterialRequestsController> {
   const MaterialRequestSummaryCards({super.key});
 
@@ -12,8 +14,11 @@ class MaterialRequestSummaryCards extends GetView<MaterialRequestsController> {
     final size = MediaQuery.sizeOf(context);
     final gap = (size.width * 0.01).clamp(10.0, 14.0);
 
-    return Obx(
-      () => Row(
+    return Obx(() {
+      if (controller.isLoading.value) {
+        return const AppShimmerSummaryRow(count: 4);
+      }
+      return Row(
         children: [
           Expanded(
             child: _SummaryCard(
@@ -59,8 +64,8 @@ class MaterialRequestSummaryCards extends GetView<MaterialRequestsController> {
             ),
           ),
         ],
-      ),
-    );
+      );
+    });
   }
 }
 
@@ -105,9 +110,7 @@ class _SummaryCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: CustomPaint(
-              painter: _CardWavePainter(color: iconBg),
-            ),
+            child: CustomPaint(painter: _CardWavePainter(color: iconBg)),
           ),
           Padding(
             padding: EdgeInsets.symmetric(
@@ -191,9 +194,12 @@ class _CardWavePainter extends CustomPainter {
       ..moveTo(0, size.height)
       ..lineTo(size.width * 0.3, size.height)
       ..cubicTo(
-        size.width * 0.5, size.height * 0.95,
-        size.width * 0.7, size.height * 0.6,
-        size.width, size.height * 0.68,
+        size.width * 0.5,
+        size.height * 0.95,
+        size.width * 0.7,
+        size.height * 0.6,
+        size.width,
+        size.height * 0.68,
       )
       ..lineTo(size.width, size.height)
       ..close();
@@ -208,9 +214,12 @@ class _CardWavePainter extends CustomPainter {
       ..moveTo(0, size.height)
       ..lineTo(size.width * 0.5, size.height)
       ..cubicTo(
-        size.width * 0.7, size.height * 0.8,
-        size.width * 0.85, size.height * 0.4,
-        size.width, size.height * 0.45,
+        size.width * 0.7,
+        size.height * 0.8,
+        size.width * 0.85,
+        size.height * 0.4,
+        size.width,
+        size.height * 0.45,
       )
       ..lineTo(size.width, size.height)
       ..close();

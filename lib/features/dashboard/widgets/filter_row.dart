@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
@@ -14,10 +13,6 @@ class FilterRow extends GetView<DashboardController> {
       context: context,
       firstDate: DateTime(2020),
       lastDate: DateTime(2030),
-      initialDateRange: DateTimeRange(
-        start: DateTime(2025, 3, 24),
-        end: DateTime(2025, 3, 31),
-      ),
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -33,9 +28,7 @@ class FilterRow extends GetView<DashboardController> {
     );
 
     if (picked != null) {
-      final formatter = DateFormat('dd MMM yyyy');
-      final formattedStr = '${formatter.format(picked.start)} - ${formatter.format(picked.end)}';
-      controller.setDateRangeFilter(formattedStr);
+      controller.setDateRangeFilter(picked);
     }
   }
 
@@ -150,15 +143,23 @@ class _DropdownFilterChip extends StatelessWidget {
             child: Row(
               children: [
                 if (opt == value)
-                  const Icon(Icons.check_rounded, size: 16, color: AppColors.primaryBlue)
+                  const Icon(
+                    Icons.check_rounded,
+                    size: 16,
+                    color: AppColors.primaryBlue,
+                  )
                 else
                   const SizedBox(width: 16),
                 const SizedBox(width: 8),
                 Text(
                   opt,
                   style: TextStyle(
-                    fontWeight: opt == value ? FontWeight.w700 : FontWeight.w500,
-                    color: opt == value ? AppColors.primaryBlue : AppColors.textPrimary,
+                    fontWeight: opt == value
+                        ? FontWeight.w700
+                        : FontWeight.w500,
+                    color: opt == value
+                        ? AppColors.primaryBlue
+                        : AppColors.textPrimary,
                   ),
                 ),
               ],
@@ -240,4 +241,3 @@ class _FilterChip extends StatelessWidget {
     );
   }
 }
-

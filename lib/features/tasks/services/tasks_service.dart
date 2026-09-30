@@ -6,7 +6,7 @@ import '../../../app/utils/app_logger.dart';
 
 class TasksService extends GetxService {
   TasksService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? Get.find<ApiClient>();
+    : _apiClient = apiClient ?? Get.find<ApiClient>();
 
   final ApiClient _apiClient;
 
@@ -17,7 +17,12 @@ class TasksService extends GetxService {
         return Map<String, dynamic>.from(res['data'] as Map);
       }
     } catch (e, stackTrace) {
-      AppLogger.e('getTaskStats Error', error: e, stackTrace: stackTrace, tag: 'TASKS_SVC');
+      AppLogger.e(
+        'getTaskStats Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
     }
     return null;
   }
@@ -38,7 +43,12 @@ class TasksService extends GetxService {
         return Map<String, dynamic>.from(res['data'] as Map);
       }
     } catch (e, stackTrace) {
-      AppLogger.e('getTasks Error', error: e, stackTrace: stackTrace, tag: 'TASKS_SVC');
+      AppLogger.e(
+        'getTasks Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
     }
     return null;
   }
@@ -46,21 +56,72 @@ class TasksService extends GetxService {
   Future<bool> createTask(Map<String, dynamic> payload) async {
     try {
       final res = await _apiClient.post(ApiConstants.tasks, body: payload);
-      return res != null && (res['success'] == true || res['_id'] != null || res['data'] != null);
+      return res != null &&
+          (res['success'] == true || res['_id'] != null || res['data'] != null);
     } catch (e, stackTrace) {
-      AppLogger.e('createTask Error', error: e, stackTrace: stackTrace, tag: 'TASKS_SVC');
+      AppLogger.e(
+        'createTask Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
     }
     return false;
   }
 
   Future<bool> updateTask(String taskId, Map<String, dynamic> payload) async {
     try {
-      final res = await _apiClient.put(ApiConstants.taskDetail(taskId), body: payload);
+      final res = await _apiClient.put(
+        ApiConstants.taskDetail(taskId),
+        body: payload,
+      );
       return res != null;
     } catch (e, stackTrace) {
-      AppLogger.e('updateTask Error', error: e, stackTrace: stackTrace, tag: 'TASKS_SVC');
+      AppLogger.e(
+        'updateTask Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
     }
     return false;
+  }
+
+  Future<bool> deleteTask(String taskId) async {
+    try {
+      final res = await _apiClient.delete(ApiConstants.taskDetail(taskId));
+      return res != null;
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'deleteTask Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
+    }
+    return false;
+  }
+
+  Future<Map<String, dynamic>?> getWorkLogs({String? leadId}) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.workLogs,
+        queryParams: leadId == null || leadId.isEmpty
+            ? null
+            : {'leadId': leadId},
+      );
+      if (res is Map && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'getWorkLogs Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
+    }
+    return null;
   }
 
   Future<bool> createWorkLog(Map<String, dynamic> payload) async {
@@ -68,7 +129,12 @@ class TasksService extends GetxService {
       final res = await _apiClient.post(ApiConstants.workLogs, body: payload);
       return res != null;
     } catch (e, stackTrace) {
-      AppLogger.e('createWorkLog Error', error: e, stackTrace: stackTrace, tag: 'TASKS_SVC');
+      AppLogger.e(
+        'createWorkLog Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_SVC',
+      );
     }
     return false;
   }

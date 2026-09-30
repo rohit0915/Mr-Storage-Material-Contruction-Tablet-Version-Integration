@@ -47,8 +47,19 @@ class MaterialRequestCard extends StatelessWidget {
           GetBuilder<DashboardController>(
             id: AppGetIds.materialOverview,
             builder: (controller) {
-              final pendingCount = controller.materialSlices
-                  .fold<double>(0, (sum, item) => sum + item.percent)
+              final pendingSlice = controller.materialSlices.firstWhere(
+                (s) => s.label == 'Pending Approval',
+                orElse: () => const ChartSlice(
+                  label: 'Pending Approval',
+                  percent: 0,
+                  color: Colors.transparent,
+                ),
+              );
+              final pendingCount = pendingSlice.percent.round();
+              
+              final totalCount = controller.materialSlices
+                  .where((s) => s.label != 'Urgent Requests')
+                  .fold<double>(0, (sum, s) => sum + s.percent)
                   .round();
 
               return Column(
@@ -56,12 +67,15 @@ class MaterialRequestCard extends StatelessWidget {
                   Center(
                     child: DonutChart(
                       slices: controller.materialSlices,
-                      centerTitle: 'Pending Approval',
-                      centerValue: '$pendingCount',
+                      centerTitle: '$pendingCount Pending',
+                      centerValue: '$totalCount',
                     ),
                   ),
                   SizedBox(height: DashboardGap.section(context)),
-                  ChartLegend(slices: controller.materialSlices),
+                  ChartLegend(
+                    slices: controller.materialSlices,
+                    totalOverride: totalCount.toDouble(),
+                  ),
                 ],
               );
             },

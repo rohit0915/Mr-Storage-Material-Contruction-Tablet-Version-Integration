@@ -61,25 +61,19 @@ class _CurvedEdge extends StatelessWidget {
   Widget build(BuildContext context) {
     // srcIn keeps curve shape; stack boosts export alpha so blue reads solid.
     Widget layer() => Image.asset(
-          asset,
-          width: width,
-          height: height,
-          fit: BoxFit.fill,
-          color: AppColors.edgeBlue,
-          colorBlendMode: BlendMode.srcIn,
-          filterQuality: FilterQuality.high,
-        );
+      asset,
+      width: width,
+      height: height,
+      fit: BoxFit.fill,
+      color: AppColors.edgeBlue,
+      colorBlendMode: BlendMode.srcIn,
+      filterQuality: FilterQuality.high,
+    );
 
     return SizedBox(
       width: width,
       height: height,
-      child: Stack(
-        fit: StackFit.expand,
-        children: [
-          layer(),
-          layer(),
-        ],
-      ),
+      child: Stack(fit: StackFit.expand, children: [layer(), layer()]),
     );
   }
 }

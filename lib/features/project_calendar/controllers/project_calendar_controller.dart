@@ -9,7 +9,7 @@ import '../widgets/add_delivery_dialog.dart';
 
 class ProjectCalendarController extends GetxController {
   ProjectCalendarController({ProjectCalendarService? calendarService})
-      : _calendarService = calendarService ?? Get.put(ProjectCalendarService());
+    : _calendarService = calendarService ?? Get.put(ProjectCalendarService());
 
   final ProjectCalendarService _calendarService;
 
@@ -67,18 +67,63 @@ class ProjectCalendarController extends GetxController {
     await fetchCalendarData();
   }
 
-  Future<void> fetchProjects() async {
+  int projectPage = 1;
+  int projectLimit = 10;
+  int projectTotalPages = 1;
+  int projectTotalResults = 0;
+
+  Future<void> fetchProjects({int? page, int? limit}) async {
+    if (page != null) projectPage = page;
+    if (limit != null) projectLimit = limit;
+
     isLoadingProjects = true;
     update([AppGetIds.projectCards, AppGetIds.projectDropdown]);
     try {
-      final res = await _calendarService.getProjects();
+      final res = await _calendarService.getProjects(
+        page: projectPage,
+        limit: projectLimit,
+      );
       if (res != null) {
         List itemsList = [];
-        if (res is Map && res['projects'] is List) {
-          itemsList = res['projects'] as List;
+        if (res is Map) {
+          if (res['projects'] is List) {
+            itemsList = res['projects'] as List;
+          } else if (res['data'] is List) {
+            itemsList = res['data'] as List;
+          } else if (res['items'] is List) {
+            itemsList = res['items'] as List;
+          }
+
+          final rawPages =
+              res['totalPages'] ??
+              res['pages'] ??
+              res['total_pages'] ??
+              res['pagination']?['totalPages'];
+          projectTotalPages = int.tryParse(rawPages?.toString() ?? '') ?? 1;
+
+          final rawTotal =
+              res['totalProjects'] ??
+              res['total'] ??
+              res['totalResults'] ??
+              res['pagination']?['total'];
+          projectTotalResults =
+              int.tryParse(rawTotal?.toString() ?? '') ?? itemsList.length;
+
+          final rawCurr =
+              res['currentPage'] ?? res['page'] ?? res['pagination']?['page'];
+          if (rawCurr != null) {
+            projectPage = int.tryParse(rawCurr.toString()) ?? projectPage;
+          }
         } else if (res is List) {
           itemsList = res;
+          projectTotalResults = itemsList.length;
+          projectTotalPages = (projectTotalResults / projectLimit).ceil().clamp(
+            1,
+            999,
+          );
         }
+
+        if (projectTotalPages < 1) projectTotalPages = 1;
 
         final parsedOptions = <CalendarProjectOption>[allProjectsOption];
         final parsedCards = <ProjectCardItem>[];
@@ -95,11 +140,26 @@ class ProjectCalendarController extends GetxController {
         projectCards = parsedCards;
       }
     } catch (e, stackTrace) {
-      AppLogger.e('fetchProjects Error', error: e, stackTrace: stackTrace, tag: 'CALENDAR_CTRL');
+      AppLogger.e(
+        'fetchProjects Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'CALENDAR_CTRL',
+      );
     } finally {
       isLoadingProjects = false;
       update([AppGetIds.projectCards, AppGetIds.projectDropdown]);
     }
+  }
+
+  void changeProjectPage(int page) {
+    if (page < 1 || page > projectTotalPages || page == projectPage) return;
+    fetchProjects(page: page);
+  }
+
+  void changeProjectLimit(int limit) {
+    if (limit == projectLimit) return;
+    fetchProjects(page: 1, limit: limit);
   }
 
   Future<void> fetchCalendarData() async {
@@ -108,7 +168,9 @@ class ProjectCalendarController extends GetxController {
     try {
       final m = focusedMonth.value.month;
       final y = focusedMonth.value.year;
-      final leadId = selectedProjectId.value.isNotEmpty ? selectedProjectId.value : null;
+      final leadId = selectedProjectId.value.isNotEmpty
+          ? selectedProjectId.value
+          : null;
 
       final res = await _calendarService.getProjectCalendar(
         month: m,
@@ -180,7 +242,12 @@ class ProjectCalendarController extends GetxController {
         }
       }
     } catch (e, stackTrace) {
-      AppLogger.e('fetchCalendarData Error', error: e, stackTrace: stackTrace, tag: 'CALENDAR_CTRL');
+      AppLogger.e(
+        'fetchCalendarData Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'CALENDAR_CTRL',
+      );
     } finally {
       isLoadingCalendar = false;
       update([AppGetIds.calendarEvents]);
@@ -190,7 +257,11 @@ class ProjectCalendarController extends GetxController {
   void setTab(ProjectCalendarTab tab) {
     selectedTab.value = tab;
     dropdownOpen.value = false;
-    update([AppGetIds.projectCalendarTab, AppGetIds.projectCards, AppGetIds.projectDropdown]);
+    update([
+      AppGetIds.projectCalendarTab,
+      AppGetIds.projectCards,
+      AppGetIds.projectDropdown,
+    ]);
   }
 
   void selectDay(int day) {
@@ -220,7 +291,7 @@ class ProjectCalendarController extends GetxController {
   void selectProject(String id) {
     selectedProjectId.value = id;
     dropdownOpen.value = false;
-    update([AppGetIds.projectDropdown]);
+    update([AppGetIds.projectDropdown, AppGetIds.projectCards]);
     fetchCalendarData();
   }
 

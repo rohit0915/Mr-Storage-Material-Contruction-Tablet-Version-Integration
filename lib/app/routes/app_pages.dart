@@ -7,6 +7,7 @@ import '../../features/dashboard/views/dashboard_view.dart';
 import '../../features/drawings/bindings/drawings_binding.dart';
 import '../../features/drawings/views/drawings_view.dart';
 import '../../features/project_calendar/bindings/project_calendar_binding.dart';
+import '../../features/project_calendar/bindings/bom_file_details_binding.dart';
 import '../../features/tasks/bindings/tasks_binding.dart';
 import '../../features/tasks/views/tasks_view.dart';
 import '../../features/bundle_scan/bindings/bundle_scan_binding.dart';
@@ -64,10 +65,12 @@ class AppPages {
     GetPage(
       name: AppRoutes.bomFileDetails,
       page: () => const BomFileDetailsView(),
+      binding: BomFileDetailsBinding(),
     ),
     GetPage(
       name: AppRoutes.deliveryDetails,
       page: () => const DeliveryDetailsView(),
+      binding: DeliveryDetailsBinding(),
     ),
     GetPage(
       name: AppRoutes.drawings,
@@ -141,4 +144,3 @@ class AppPages {
     ),
   ];
 }
-

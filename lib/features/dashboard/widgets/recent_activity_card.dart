@@ -69,7 +69,10 @@ class RecentActivityCard extends StatelessWidget {
                   child: Center(
                     child: Text(
                       'No recent activity',
-                      style: TextStyle(fontSize: itemSize, color: AppColors.textSecondary),
+                      style: TextStyle(
+                        fontSize: itemSize,
+                        color: AppColors.textSecondary,
+                      ),
                     ),
                   ),
                 );

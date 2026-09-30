@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/utils/app_log_dialog.dart';
-import '../../../app/utils/app_toast.dart';
 import '../controllers/profile_controller.dart';
 
 class SettingsDialog extends GetView<ProfileController> {
   const SettingsDialog({super.key});
 
   static Future<void> show(BuildContext context) => showDialog<void>(
-        context: context,
-        builder: (_) => const SettingsDialog(),
-      );
+    context: context,
+    builder: (_) => const SettingsDialog(),
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -131,29 +130,56 @@ class SettingsDialog extends GetView<ProfileController> {
                           borderRadius: BorderRadius.circular(10),
                         ),
                       ),
-                      child: const Text('Back', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
+                      child: const Text(
+                        'Back',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 14),
                   Expanded(
-                    child: ElevatedButton(
-                      onPressed: () {
-                        Get.back();
-                        AppToast.showSuccess(
-                          title: 'Settings Saved',
-                          description: 'Your account settings have been updated.',
-                        );
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryBlue,
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                    child: Obx(
+                      () => ElevatedButton(
+                        onPressed: controller.isSavingSettings.value
+                            ? null
+                            : () async {
+                                final success = await controller
+                                    .saveSettingsData();
+                                if (success) {
+                                  Get.back();
+                                }
+                              },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primaryBlue,
+                          disabledBackgroundColor: AppColors.primaryBlue
+                              .withValues(alpha: 0.6),
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
                         ),
+                        child: controller.isSavingSettings.value
+                            ? const SizedBox(
+                                width: 20,
+                                height: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : const Text(
+                                'Save Changes',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 14,
+                                ),
+                              ),
                       ),
-                      child: const Text('Save Changes', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14)),
                     ),
                   ),
                 ],

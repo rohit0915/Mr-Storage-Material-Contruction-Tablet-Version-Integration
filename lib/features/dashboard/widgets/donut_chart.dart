@@ -39,13 +39,18 @@ class DonutChart extends StatelessWidget {
         alignment: isSemiGauge ? Alignment.bottomCenter : Alignment.center,
         children: [
           TweenAnimationBuilder<double>(
-            key: ValueKey(slices.map((s) => '${s.label}_${s.percent}').join(',')),
+            key: ValueKey(
+              slices.map((s) => '${s.label}_${s.percent}').join(','),
+            ),
             tween: Tween<double>(begin: 0.0, end: 1.0),
             duration: const Duration(milliseconds: 1000),
             curve: Curves.easeOutCubic,
             builder: (context, animValue, child) {
               return CustomPaint(
-                size: Size(chartSize, isSemiGauge ? chartSize * 0.75 : chartSize),
+                size: Size(
+                  chartSize,
+                  isSemiGauge ? chartSize * 0.75 : chartSize,
+                ),
                 painter: _DonutPainter(
                   slices: slices,
                   strokeWidth: stroke,
@@ -144,15 +149,16 @@ class ProgressCircleBar extends StatelessWidget {
 }
 
 class ChartLegend extends StatelessWidget {
-  const ChartLegend({super.key, required this.slices});
+  const ChartLegend({super.key, required this.slices, this.totalOverride});
 
   final List<ChartSlice> slices;
+  final double? totalOverride;
 
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final fontSize = (size.width * 0.009).clamp(10.0, 12.0);
-    final totalSum = slices.fold<double>(0, (sum, item) => sum + item.percent);
+    final totalSum = totalOverride ?? slices.fold<double>(0, (sum, item) => sum + item.percent);
 
     return Column(
       children: slices.map((slice) {

@@ -30,15 +30,9 @@ class CalendarTabBody extends GetView<ProjectCalendarController> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Expanded(
-              flex: 65,
-              child: CalendarMonthGrid(),
-            ),
+            const Expanded(flex: 65, child: CalendarMonthGrid()),
             SizedBox(width: colGap),
-            const Expanded(
-              flex: 35,
-              child: DeliveryCardsSection(),
-            ),
+            const Expanded(flex: 35, child: DeliveryCardsSection()),
           ],
         );
       },

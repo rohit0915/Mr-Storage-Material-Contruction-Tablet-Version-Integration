@@ -2,135 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../models/label_printing_models.dart';
+import '../services/label_printing_service.dart';
 
 enum LabelSortOption { latest, oldest, weightHigh, weightLow }
 
 class LabelPrintingController extends GetxController {
+  LabelPrintingController({LabelPrintingService? service})
+    : _service = service ?? LabelPrintingService();
+
+  final LabelPrintingService _service;
   final searchController = TextEditingController();
+  final isLoading = false.obs;
 
-  final bundles = <LabelBundleItem>[
-    const LabelBundleItem(
-      id: 'BND-001',
-      loadId: 'LOAD-001',
-      part: 'STL-B12',
-      totalWeightLbs: 18500,
-      lengthFt: 20,
-      status: LabelPrintStatus.pending,
-      project: 'RiversideComplex',
-      shipper: 'SHP-1044',
-    ),
-    const LabelBundleItem(
-      id: 'BND-002',
-      loadId: 'LOAD-002',
-      part: 'STL-B13',
-      totalWeightLbs: 37700,
-      lengthFt: 30,
-      status: LabelPrintStatus.printed,
-      project: 'RiversideComplex',
-      shipper: 'SHP-1044',
-    ),
-    const LabelBundleItem(
-      id: 'BND-003',
-      loadId: 'LOAD-003',
-      part: 'STL-B14',
-      totalWeightLbs: 18500,
-      lengthFt: 20,
-      status: LabelPrintStatus.pending,
-      project: 'Downtown Office Complex',
-      shipper: 'SHP-1045',
-    ),
-    const LabelBundleItem(
-      id: 'BND-004',
-      loadId: 'LOAD-004',
-      part: 'STL-B15',
-      totalWeightLbs: 37700,
-      lengthFt: 30,
-      status: LabelPrintStatus.printed,
-      project: 'Residential Tower A',
-      shipper: 'SHP-1046',
-    ),
-    const LabelBundleItem(
-      id: 'BND-005',
-      loadId: 'LOAD-005',
-      part: 'STL-B16',
-      totalWeightLbs: 18500,
-      lengthFt: 20,
-      status: LabelPrintStatus.pending,
-      project: 'ABC Construction Site A',
-      shipper: 'SHP-1047',
-    ),
-    const LabelBundleItem(
-      id: 'BND-006',
-      loadId: 'LOAD-006',
-      part: 'STL-B17',
-      totalWeightLbs: 37700,
-      lengthFt: 30,
-      status: LabelPrintStatus.printed,
-      project: 'XYZ Building Complex',
-      shipper: 'SHP-1048',
-    ),
-    const LabelBundleItem(
-      id: 'BND-007',
-      loadId: 'LOAD-007',
-      part: 'STL-B18',
-      totalWeightLbs: 21400,
-      lengthFt: 20,
-      status: LabelPrintStatus.pending,
-      project: 'RiversideComplex',
-      shipper: 'SHP-1044',
-    ),
-    const LabelBundleItem(
-      id: 'BND-008',
-      loadId: 'LOAD-008',
-      part: 'STL-B19',
-      totalWeightLbs: 3600,
-      lengthFt: 20,
-      status: LabelPrintStatus.printed,
-      project: 'Duplex Villa',
-      shipper: 'SHP-1049',
-    ),
-    const LabelBundleItem(
-      id: 'BND-009',
-      loadId: 'LOAD-009',
-      part: 'STL-B20',
-      totalWeightLbs: 18500,
-      lengthFt: 30,
-      status: LabelPrintStatus.pending,
-      project: 'RiversideComplex',
-      shipper: 'SHP-1044',
-    ),
-    const LabelBundleItem(
-      id: 'BND-010',
-      loadId: 'LOAD-010',
-      part: 'STL-B21',
-      totalWeightLbs: 37700,
-      lengthFt: 20,
-      status: LabelPrintStatus.printed,
-      project: 'Downtown Office Complex',
-      shipper: 'SHP-1045',
-    ),
-    const LabelBundleItem(
-      id: 'BND-011',
-      loadId: 'LOAD-011',
-      part: 'STL-B22',
-      totalWeightLbs: 18500,
-      lengthFt: 30,
-      status: LabelPrintStatus.pending,
-      project: 'Residential Tower A',
-      shipper: 'SHP-1046',
-    ),
-    const LabelBundleItem(
-      id: 'BND-012',
-      loadId: 'LOAD-012',
-      part: 'STL-B23',
-      totalWeightLbs: 37700,
-      lengthFt: 20,
-      status: LabelPrintStatus.printed,
-      project: 'XYZ Building Complex',
-      shipper: 'SHP-1048',
-    ),
-  ].obs;
-
+  final bundles = <LabelBundleItem>[].obs;
   final searchQuery = ''.obs;
   final sortOption = LabelSortOption.latest.obs;
   final selectedIds = <String>{}.obs;
@@ -138,23 +22,40 @@ class LabelPrintingController extends GetxController {
   final pageIndex = 0.obs;
   final pageSize = 10;
 
-  int get totalBundles => bundles.length;
-  int get labelsPrinted =>
-      bundles.where((b) => b.status == LabelPrintStatus.printed).length;
-  int get labelsPending =>
-      bundles.where((b) => b.status == LabelPrintStatus.pending).length;
-  int get labelsPrintedToday => 4;
+  final apiTotalBundles = 0.obs;
+  final apiLabelsPrinted = 0.obs;
+  final apiLabelsPending = 0.obs;
+  final apiLabelsPrintedToday = 0.obs;
+  final hasApiStats = false.obs;
+
+  int get totalBundles =>
+      hasApiStats.value ? apiTotalBundles.value : bundles.length;
+  int get labelsPrinted => hasApiStats.value
+      ? apiLabelsPrinted.value
+      : bundles.where((b) => b.status == LabelPrintStatus.printed).length;
+  int get labelsPending => hasApiStats.value
+      ? apiLabelsPending.value
+      : bundles
+            .where(
+              (b) =>
+                  b.status == LabelPrintStatus.pending ||
+                  b.status == LabelPrintStatus.assigned,
+            )
+            .length;
+  int get labelsPrintedToday =>
+      hasApiStats.value ? apiLabelsPrintedToday.value : 0;
 
   int get selectedCount => selectedIds.length;
 
   List<LabelBundleItem> get pageBundles {
-    final start = pageIndex.value * pageSize;
-    return filteredBundles.skip(start).take(pageSize).toList();
+    if (filteredBundles.isEmpty) return [];
+    return filteredBundles;
   }
 
   int get totalPages {
-    if (filteredBundles.isEmpty) return 1;
-    return (filteredBundles.length / pageSize).ceil();
+    final total = totalBundles;
+    if (total == 0) return 1;
+    return (total / pageSize).ceil();
   }
 
   bool get isAllOnPageSelected {
@@ -168,12 +69,43 @@ class LabelPrintingController extends GetxController {
     super.onInit();
     searchController.addListener(_onSearchChanged);
     _recomputeFiltered();
+    fetchLabelsFromApi();
+  }
+
+  Future<void> fetchLabelsFromApi({int? targetPage}) async {
+    final pageToFetch = targetPage ?? (pageIndex.value + 1);
+    isLoading.value = true;
+    try {
+      final resMap = await _service.fetchLabelsData(
+        page: pageToFetch,
+        limit: pageSize,
+      );
+      final List<LabelBundleItem> apiList = resMap['items'] ?? [];
+      final Map<String, dynamic> stats = resMap['stats'] ?? {};
+      final int totalCount = resMap['total'] ?? stats['total'] ?? 222;
+
+      if (stats.isNotEmpty || totalCount > 0) {
+        hasApiStats.value = true;
+        apiTotalBundles.value = (stats['total'] as num?)?.toInt() ?? totalCount;
+        apiLabelsPrinted.value = (stats['printed'] as num?)?.toInt() ?? 0;
+        apiLabelsPending.value = (stats['pending'] as num?)?.toInt() ?? 0;
+        apiLabelsPrintedToday.value =
+            (stats['printedToday'] as num?)?.toInt() ?? 0;
+      }
+
+      if (apiList.isNotEmpty) {
+        bundles.assignAll(apiList);
+      }
+    } finally {
+      isLoading.value = false;
+      _recomputeFiltered();
+    }
   }
 
   void _onSearchChanged() {
     searchQuery.value = searchController.text.trim();
     resetPagination();
-    _recomputeFiltered();
+    fetchLabelsFromApi(targetPage: 1);
   }
 
   void setSort(LabelSortOption option) {
@@ -187,11 +119,24 @@ class LabelPrintingController extends GetxController {
   }
 
   void nextPage() {
-    if (pageIndex.value < totalPages - 1) pageIndex.value++;
+    if (pageIndex.value < totalPages - 1) {
+      pageIndex.value++;
+      fetchLabelsFromApi(targetPage: pageIndex.value + 1);
+    }
   }
 
   void prevPage() {
-    if (pageIndex.value > 0) pageIndex.value--;
+    if (pageIndex.value > 0) {
+      pageIndex.value--;
+      fetchLabelsFromApi(targetPage: pageIndex.value + 1);
+    }
+  }
+
+  void goToPage(int p) {
+    if (p >= 0 && p < totalPages) {
+      pageIndex.value = p;
+      fetchLabelsFromApi(targetPage: p + 1);
+    }
   }
 
   void toggleSelect(String id) {
@@ -217,18 +162,33 @@ class LabelPrintingController extends GetxController {
     selectedIds.refresh();
   }
 
-  void markPrinted(LabelBundleItem item) {
+  Future<void> markPrinted(LabelBundleItem item) async {
+    final reqId = item.realMongoId.isNotEmpty ? item.realMongoId : item.id;
+    _service.printLabel([reqId]);
     final idx = bundles.indexWhere((b) => b.id == item.id);
     if (idx >= 0) {
-      bundles[idx] = item.copyWith(status: LabelPrintStatus.printed);
+      bundles[idx] = item.copyWith(
+        status: LabelPrintStatus.printed,
+        statusText: 'PRINTED',
+      );
       _recomputeFiltered();
     }
   }
 
-  void markSelectedAsPrinted() {
+  Future<void> markSelectedAsPrinted() async {
+    if (selectedIds.isNotEmpty) {
+      final realIds = bundles
+          .where((b) => selectedIds.contains(b.id))
+          .map((b) => b.realMongoId.isNotEmpty ? b.realMongoId : b.id)
+          .toList();
+      _service.printLabel(realIds);
+    }
     for (var i = 0; i < bundles.length; i++) {
       if (selectedIds.contains(bundles[i].id)) {
-        bundles[i] = bundles[i].copyWith(status: LabelPrintStatus.printed);
+        bundles[i] = bundles[i].copyWith(
+          status: LabelPrintStatus.printed,
+          statusText: 'PRINTED',
+        );
       }
     }
     selectedIds.clear();
@@ -236,14 +196,31 @@ class LabelPrintingController extends GetxController {
     _recomputeFiltered();
   }
 
+  final selectedStatus = 'All Statuses'.obs;
+
+  void setStatusFilter(String status) {
+    selectedStatus.value = status;
+    pageIndex.value = 0;
+    _recomputeFiltered();
+  }
+
   void _recomputeFiltered() {
-    final q = searchQuery.value.toLowerCase();
+    final q = searchQuery.value.trim().toLowerCase();
     var list = bundles.where((b) {
+      if (selectedStatus.value != 'All Statuses') {
+        final filterText = selectedStatus.value.toUpperCase();
+        if (!b.statusText.toUpperCase().contains(filterText) &&
+            !b.status.name.toUpperCase().contains(filterText)) {
+          return false;
+        }
+      }
       if (q.isEmpty) return true;
       return b.id.toLowerCase().contains(q) ||
           b.loadId.toLowerCase().contains(q) ||
           b.part.toLowerCase().contains(q) ||
-          b.project.toLowerCase().contains(q);
+          b.project.toLowerCase().contains(q) ||
+          b.shipper.toLowerCase().contains(q) ||
+          b.statusText.toLowerCase().contains(q);
     }).toList();
 
     switch (sortOption.value) {

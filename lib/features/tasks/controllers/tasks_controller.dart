@@ -11,7 +11,7 @@ import '../widgets/task_success_dialog.dart';
 
 class TasksController extends GetxController {
   TasksController({TasksService? tasksService})
-      : _tasksService = tasksService ?? Get.put(TasksService());
+    : _tasksService = tasksService ?? Get.put(TasksService());
 
   final TasksService _tasksService;
 
@@ -24,7 +24,8 @@ class TasksController extends GetxController {
   final overdueCountStat = 0.obs;
 
   int get todoCount => tasks.where((t) => t.column == TaskColumn.todo).length;
-  int get inProgressCount => tasks.where((t) => t.column == TaskColumn.inProgress).length;
+  int get inProgressCount =>
+      tasks.where((t) => t.column == TaskColumn.inProgress).length;
   int get doneCount => tasks.where((t) => t.column == TaskColumn.done).length;
 
   List<TaskBoardItem> itemsFor(TaskColumn column) =>
@@ -39,16 +40,16 @@ class TasksController extends GetxController {
   Future<void> fetchTasksAndStats() async {
     isLoading.value = true;
     try {
-      final statsData = await _tasksService.getTaskStats();
-      if (statsData != null && statsData['stats'] is Map) {
-        final st = statsData['stats'] as Map;
+      // Match the web panel: this endpoint returns both `stats` and `tasks`.
+      final tasksData = await _tasksService.getTasks();
+      if (tasksData != null && tasksData['stats'] is Map) {
+        final st = tasksData['stats'] as Map;
         totalTasksCount.value = (st['total'] as num?)?.toInt() ?? 0;
-        completedCountStat.value = (st['completed'] as num?)?.toInt() ?? 0;
+        completedCountStat.value = (st['done'] as num?)?.toInt() ?? 0;
         inProgressCountStat.value = (st['inProgress'] as num?)?.toInt() ?? 0;
         overdueCountStat.value = (st['overdue'] as num?)?.toInt() ?? 0;
       }
 
-      final tasksData = await _tasksService.getTasks();
       if (tasksData != null && tasksData['tasks'] is List) {
         final list = tasksData['tasks'] as List;
         final parsed = <TaskBoardItem>[];
@@ -58,9 +59,16 @@ class TasksController extends GetxController {
           }
         }
         tasks.assignAll(parsed);
+      } else {
+        tasks.clear();
       }
     } catch (e, stackTrace) {
-      AppLogger.e('fetchTasksAndStats Error', error: e, stackTrace: stackTrace, tag: 'TASKS_CTRL');
+      AppLogger.e(
+        'fetchTasksAndStats Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'TASKS_CTRL',
+      );
     } finally {
       isLoading.value = false;
     }
@@ -83,31 +91,61 @@ class TasksController extends GetxController {
         apiStatus = 'done';
       }
 
-      final success = await _tasksService.updateTask(old.id, {'status': apiStatus});
+      final success = await _tasksService.updateTask(old.id, {
+        'status': apiStatus,
+      });
       if (!success) {
         tasks[index] = old;
         tasks.refresh();
-        AppToast.showError(title: 'Update Failed', description: 'Failed to update task status on server.');
+        AppToast.showError(
+          title: 'Update Failed',
+          description: 'Failed to update task status on server.',
+        );
       } else {
         fetchTasksAndStats();
       }
     }
   }
 
+  Future<bool> deleteTask(TaskBoardItem item) async {
+    final success = await _tasksService.deleteTask(item.id);
+    if (success) {
+      tasks.removeWhere((task) => task.id == item.id);
+      await fetchTasksAndStats();
+    }
+    return success;
+  }
+
   Future<void> openDailyWorkLog(BuildContext context) async {
-    final created = await showDialog<bool>(
+    final created = await showDialog<WorkLogDraft>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const DailyWorkLogDialog(),
+      builder: (_) => DailyWorkLogDialog(tasks: tasks.toList()),
     );
-    if (created == true && context.mounted) {
-      fetchTasksAndStats();
+    if (created != null) {
+      final success = await _tasksService.createWorkLog({
+        'leadId': created.leadId,
+        'taskId': created.taskId.isEmpty ? null : created.taskId,
+        'date': created.date.toIso8601String().split('T')[0],
+        'progress': created.progress,
+        'description': created.description,
+        'photos': const [],
+        'issues': created.issues,
+      });
+      if (!success) {
+        AppToast.showError(
+          title: 'Create Failed',
+          description: 'Failed to create work log on server.',
+        );
+        return;
+      }
+      await fetchTasksAndStats();
+      if (!context.mounted) return;
       await showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const TaskSuccessDialog(
-          title: 'Work Log added Successfully',
-        ),
+        builder: (_) =>
+            const TaskSuccessDialog(title: 'Work Log added Successfully'),
       );
     }
   }
@@ -116,17 +154,41 @@ class TasksController extends GetxController {
     final created = await showDialog<TaskBoardItem>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AddTaskDialog(),
+      builder: (_) => AddTaskDialog(projects: tasks.toList()),
     );
     if (created != null) {
-      fetchTasksAndStats();
-      if (context.mounted) {
+      if (created.leadId.isEmpty) {
+        AppToast.showError(
+          title: 'Project Required',
+          description: 'Select a live project before creating the task.',
+        );
+        return;
+      }
+      final success = await _tasksService.createTask({
+        'title': created.title,
+        'description': created.description,
+        'leadId': created.leadId,
+        'assignedTo': null,
+        'priority': created.priority.toLowerCase(),
+        'status': created.column == TaskColumn.inProgress
+            ? 'in_progress'
+            : created.column == TaskColumn.done
+            ? 'done'
+            : 'todo',
+        'dueDate': created.dueDate.toIso8601String().split('T')[0],
+      });
+      if (success) await fetchTasksAndStats();
+      if (success && context.mounted) {
         await showDialog<void>(
           context: context,
           barrierDismissible: false,
-          builder: (_) => const TaskSuccessDialog(
-            title: 'Task added Successfully',
-          ),
+          builder: (_) =>
+              const TaskSuccessDialog(title: 'Task added Successfully'),
+        );
+      } else if (!success) {
+        AppToast.showError(
+          title: 'Create Failed',
+          description: 'Failed to create task on server.',
         );
       }
     }

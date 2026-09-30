@@ -6,6 +6,7 @@ import 'package:toastification/toastification.dart';
 
 import 'app/routes/app_pages.dart';
 import 'app/services/api_client.dart';
+import 'app/services/construction_socket_service.dart';
 import 'app/shell/app_shell_controller.dart';
 import 'app/theme/app_colors.dart';
 import 'features/auth/services/auth_service.dart';
@@ -32,6 +33,11 @@ Future<void> main() async {
   final apiClient = ApiClient();
   await apiClient.init();
   Get.put(apiClient, permanent: true);
+
+  final socketService = Get.put(ConstructionSocketService(), permanent: true);
+  if (apiClient.token != null && apiClient.token!.isNotEmpty) {
+    socketService.connect();
+  }
 
   Get.put(AuthService(), permanent: true);
   Get.put(AppShellController(), permanent: true);

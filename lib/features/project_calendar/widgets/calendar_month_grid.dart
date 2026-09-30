@@ -68,7 +68,10 @@ class CalendarMonthGrid extends GetView<ProjectCalendarController> {
                   ),
                   const Spacer(),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
                     decoration: BoxDecoration(
                       border: Border.all(color: AppColors.cardBorder),
                       borderRadius: BorderRadius.circular(8),
@@ -82,7 +85,11 @@ class CalendarMonthGrid extends GetView<ProjectCalendarController> {
                             color: AppColors.textSecondary,
                           ),
                         ),
-                        const Icon(Icons.keyboard_arrow_down, size: 16, color: AppColors.textSecondary),
+                        const Icon(
+                          Icons.keyboard_arrow_down,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
                       ],
                     ),
                   ),
@@ -181,7 +188,9 @@ class CalendarMonthGrid extends GetView<ProjectCalendarController> {
                                     .take(3)
                                     .map(
                                       (e) => Padding(
-                                        padding: const EdgeInsets.only(bottom: 2),
+                                        padding: const EdgeInsets.only(
+                                          bottom: 2,
+                                        ),
                                         child: Text(
                                           e.title,
                                           maxLines: 1,

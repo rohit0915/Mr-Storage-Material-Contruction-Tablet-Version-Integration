@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/project_calendar_controller.dart';
 import '../models/project_calendar_models.dart';
 
@@ -18,12 +19,15 @@ class ProjectTabBody extends StatelessWidget {
     return GetBuilder<ProjectCalendarController>(
       id: AppGetIds.projectCards,
       builder: (controller) {
-        final list = controller.projectCards;
         if (controller.isLoadingProjects) {
-          return const SizedBox(
-            height: 200,
-            child: Center(child: CircularProgressIndicator()),
-          );
+          return const AppShimmerGrid(itemCount: 6, crossAxisCount: 3);
+        }
+        var list = controller.projectCards;
+        if (controller.selectedProjectId.value.isNotEmpty) {
+          final sel = controller.selectedProjectId.value;
+          list = list
+              .where((p) => p.projectId == sel || p.realLeadId == sel)
+              .toList();
         }
         if (list.isEmpty) {
           return const SizedBox(
@@ -36,23 +40,30 @@ class ProjectTabBody extends StatelessWidget {
             ),
           );
         }
-        return LayoutBuilder(
-          builder: (context, constraints) {
-            final cols = constraints.maxWidth < 850 ? 2 : 3;
-            final cardWidth = (constraints.maxWidth - (gap * (cols - 1))) / cols;
-            return Wrap(
-              spacing: gap,
-              runSpacing: gap,
-              children: list
-                  .map(
-                    (p) => SizedBox(
-                      width: cardWidth,
-                      child: _ProjectCard(item: p),
-                    ),
-                  )
-                  .toList(),
-            );
-          },
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final cols = constraints.maxWidth < 850 ? 2 : 3;
+                final cardWidth =
+                    (constraints.maxWidth - (gap * (cols - 1))) / cols;
+                return Wrap(
+                  spacing: gap,
+                  runSpacing: gap,
+                  children: list
+                      .map(
+                        (p) => SizedBox(
+                          width: cardWidth,
+                          child: _ProjectCard(item: p),
+                        ),
+                      )
+                      .toList(),
+                );
+              },
+            ),
+            _ProjectPaginationBar(controller: controller),
+          ],
         );
       },
     );
@@ -147,8 +158,10 @@ class _ProjectCard extends StatelessWidget {
                     SizedBox(height: size.height * 0.008),
                     _MetaRow(
                       label: 'Status',
-                      trailing:
-                          _Pill(text: item.status, color: item.statusColor),
+                      trailing: _Pill(
+                        text: item.status,
+                        color: item.statusColor,
+                      ),
                     ),
                     SizedBox(height: size.height * 0.008),
                     _MetaRow(
@@ -165,7 +178,9 @@ class _ProjectCard extends StatelessWidget {
                         onPressed: () => Get.toNamed(
                           AppRoutes.projectDetails,
                           arguments: {
-                            'id': item.realLeadId.isNotEmpty ? item.realLeadId : item.projectId,
+                            'id': item.realLeadId.isNotEmpty
+                                ? item.realLeadId
+                                : item.projectId,
                             'title': item.title,
                             'location': item.location,
                             'buildingType': item.buildingType,
@@ -201,11 +216,7 @@ class _ProjectCard extends StatelessWidget {
 }
 
 class _MetaRow extends StatelessWidget {
-  const _MetaRow({
-    required this.label,
-    this.value,
-    this.trailing,
-  });
+  const _MetaRow({required this.label, this.value, this.trailing});
 
   final String label;
   final String? value;
@@ -220,10 +231,7 @@ class _MetaRow extends StatelessWidget {
       children: [
         Text(
           label,
-          style: TextStyle(
-            fontSize: fontSize,
-            color: AppColors.textSecondary,
-          ),
+          style: TextStyle(fontSize: fontSize, color: AppColors.textSecondary),
         ),
         const Spacer(),
         if (value != null)
@@ -261,10 +269,7 @@ class _Pill extends StatelessWidget {
           Container(
             width: 5,
             height: 5,
-            decoration: BoxDecoration(
-              color: color,
-              shape: BoxShape.circle,
-            ),
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
           ),
           const SizedBox(width: 4),
           Text(
@@ -274,6 +279,148 @@ class _Pill extends StatelessWidget {
               fontWeight: FontWeight.w700,
               fontSize: 11,
             ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectPaginationBar extends StatelessWidget {
+  const _ProjectPaginationBar({required this.controller});
+
+  final ProjectCalendarController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final currPage = controller.projectPage;
+    final totalPages = controller.projectTotalPages;
+    final currLimit = controller.projectLimit;
+
+    return Container(
+      margin: const EdgeInsets.only(top: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder, width: 1.2),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          // Left side: SHOWING 10 RESULTS
+          Row(
+            children: [
+              const Text(
+                'SHOWING',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF1F5F9),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: [10, 20, 50].contains(currLimit) ? currLimit : 10,
+                    isDense: true,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.textPrimary,
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 10, child: Text('10')),
+                      DropdownMenuItem(value: 20, child: Text('20')),
+                      DropdownMenuItem(value: 50, child: Text('50')),
+                    ],
+                    onChanged: (val) {
+                      if (val != null) {
+                        controller.changeProjectLimit(val);
+                      }
+                    },
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text(
+                'RESULTS',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ],
+          ),
+
+          // Right side: < 1 2 3 >
+          Row(
+            children: [
+              IconButton(
+                icon: const Icon(Icons.chevron_left_rounded, size: 20),
+                color: currPage > 1
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary.withValues(alpha: 0.4),
+                onPressed: currPage > 1
+                    ? () => controller.changeProjectPage(currPage - 1)
+                    : null,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: EdgeInsets.zero,
+              ),
+              const SizedBox(width: 4),
+              for (int p = 1; p <= totalPages; p++) ...[
+                InkWell(
+                  onTap: () => controller.changeProjectPage(p),
+                  borderRadius: BorderRadius.circular(8),
+                  child: Container(
+                    width: 32,
+                    height: 32,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: p == currPage
+                          ? AppColors.primaryBlue
+                          : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '$p',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w700,
+                        color: p == currPage
+                            ? Colors.white
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 4),
+              ],
+              IconButton(
+                icon: const Icon(Icons.chevron_right_rounded, size: 20),
+                color: currPage < totalPages
+                    ? AppColors.textPrimary
+                    : AppColors.textSecondary.withValues(alpha: 0.4),
+                onPressed: currPage < totalPages
+                    ? () => controller.changeProjectPage(currPage + 1)
+                    : null,
+                constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                padding: EdgeInsets.zero,
+              ),
+            ],
           ),
         ],
       ),

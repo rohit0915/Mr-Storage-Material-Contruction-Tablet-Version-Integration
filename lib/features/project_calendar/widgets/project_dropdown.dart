@@ -49,7 +49,11 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
 
   Widget _buildProjectIcon(String imageAsset) {
     if (imageAsset.isEmpty) {
-      return const Icon(Icons.business_rounded, size: 22, color: AppColors.textSecondary);
+      return const Icon(
+        Icons.business_rounded,
+        size: 22,
+        color: AppColors.textSecondary,
+      );
     }
     return ClipRRect(
       borderRadius: BorderRadius.circular(2),
@@ -58,8 +62,11 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
         width: 30,
         height: 20,
         fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) =>
-            const Icon(Icons.business_rounded, size: 22, color: AppColors.textSecondary),
+        errorBuilder: (context, error, stackTrace) => const Icon(
+          Icons.business_rounded,
+          size: 22,
+          color: AppColors.textSecondary,
+        ),
       ),
     );
   }
@@ -111,7 +118,9 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
                               const SizedBox(width: 10),
                               Expanded(
                                 child: Text(
-                                  p.id.isEmpty ? p.name : '${p.name} (${p.code})',
+                                  p.id.isEmpty
+                                      ? p.name
+                                      : '${p.name} (${p.code})',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(

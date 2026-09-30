@@ -12,12 +12,28 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
   const DeliveryCardsSection({super.key});
 
   static const List<String> _months = [
-    'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
 
   static const List<String> _weekdays = [
-    'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'
+    'Monday',
+    'Tuesday',
+    'Wednesday',
+    'Thursday',
+    'Friday',
+    'Saturday',
+    'Sunday',
   ];
 
   @override
@@ -32,7 +48,11 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
       builder: (controller) {
         final day = controller.selectedDay.value;
         final focused = controller.focusedMonth.value;
-        final selectedDate = DateTime(focused.year, focused.month, day.clamp(1, 31));
+        final selectedDate = DateTime(
+          focused.year,
+          focused.month,
+          day.clamp(1, 31),
+        );
         final monthName = _months[focused.month - 1];
         final weekdayName = _weekdays[selectedDate.weekday - 1];
         final dateHeaderStr = '$weekdayName, $monthName $day, ${focused.year}';
@@ -73,10 +93,15 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
                     ),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryBlue.withValues(alpha: 0.1),
+                    backgroundColor: AppColors.primaryBlue.withValues(
+                      alpha: 0.1,
+                    ),
                     foregroundColor: AppColors.primaryBlue,
                     elevation: 0,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(8),
                     ),
@@ -108,10 +133,12 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
             else
               Column(
                 children: dayDeliveries
-                    .map((d) => Padding(
-                          padding: EdgeInsets.only(bottom: gap),
-                          child: _DeliveryCard(item: d),
-                        ))
+                    .map(
+                      (d) => Padding(
+                        padding: EdgeInsets.only(bottom: gap),
+                        child: _DeliveryCard(item: d),
+                      ),
+                    )
                     .toList(),
               ),
             SizedBox(height: size.height * 0.014),
@@ -130,7 +157,11 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
                       ),
                     ),
                     const SizedBox(width: 6),
-                    const Icon(Icons.arrow_forward, size: 16, color: AppColors.primaryBlue),
+                    const Icon(
+                      Icons.arrow_forward,
+                      size: 16,
+                      color: AppColors.primaryBlue,
+                    ),
                   ],
                 ),
               ),
@@ -261,7 +292,10 @@ class _DeliveryCard extends StatelessWidget {
                     ),
                     const SizedBox(height: 2),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 4,
+                      ),
                       decoration: BoxDecoration(
                         color: item.statusColor.withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(12),

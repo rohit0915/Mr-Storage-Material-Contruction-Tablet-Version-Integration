@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/dispatch_verification_controller.dart';
 import '../models/dispatch_verification_models.dart';
 import '../widgets/dispatch_verification_dialogs.dart';
@@ -34,6 +35,26 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
             Row(
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
+                if (Navigator.of(context).canPop()) ...[
+                  InkWell(
+                    onTap: Get.back,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: 38,
+                      height: 38,
+                      margin: const EdgeInsets.only(right: 12),
+                      decoration: BoxDecoration(
+                        color: AppColors.primaryBlue,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.arrow_back,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                    ),
+                  ),
+                ],
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -82,7 +103,8 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
                 ),
                 SizedBox(width: size.width * 0.007),
                 ElevatedButton(
-                  onPressed: () => showSuccess('Dispatch Confirmed\nsuccessfully'),
+                  onPressed: () =>
+                      showSuccess('Dispatch Confirmed\nsuccessfully'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C3AED), // Vibrant purple
                     foregroundColor: Colors.white,
@@ -105,7 +127,8 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
                 ),
                 SizedBox(width: size.width * 0.007),
                 ElevatedButton(
-                  onPressed: () => showSuccess('Load Marked Verified\nsuccessfully'),
+                  onPressed: () =>
+                      showSuccess('Load Marked Verified\nsuccessfully'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF7C3AED), // Vibrant purple
                     foregroundColor: Colors.white,
@@ -130,78 +153,80 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
             ),
             SizedBox(height: gap),
 
-            // Summary cards section with Wave Background
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final isLandscape = constraints.maxWidth > 700;
-                const card1 = _StatCard(
-                  label: 'Leads Ready for Dispatch',
-                  value: '5',
-                  subtitle: '↑ 5.62% from last month',
-                  subtitleColor: AppColors.success,
-                  bgColor: Color(0xFF7C3AED),
-                  icon: Icons.qr_code_rounded,
-                );
-                const card2 = _StatCard(
-                  label: 'Bundles Verified',
-                  value: '22',
-                  subtitle: '↑ 11.4% from last month',
-                  subtitleColor: AppColors.success,
-                  bgColor: Color(0xFF22C55E),
-                  icon: Icons.check_circle_outline_rounded,
-                );
-                const card3 = _StatCard(
-                  label: 'Bundles Missing',
-                  value: '1',
-                  subtitle: '↑ 8.52% from last month',
-                  subtitleColor: AppColors.success,
-                  bgColor: Color(0xFFEAB308),
-                  icon: Icons.hourglass_empty_rounded,
-                );
-                const card4 = _StatCard(
-                  label: 'Leads Dispatched Today',
-                  value: '3',
-                  subtitle: '↓ 7.45% from last month',
-                  subtitleColor: Color(0xFFEF4444),
-                  bgColor: Color(0xFFEF4444),
-                  icon: Icons.speed_rounded,
-                );
+            // Summary cards section with Wave Background matching Web Panel
+            Obx(() {
+              final card1 = _StatCard(
+                label: 'Loads Ready for Dispatch',
+                value: '${controller.loadsReadyCount.value}',
+                subtitle: '↑ 5.62% from last month',
+                subtitleColor: AppColors.success,
+                bgColor: const Color(0xFF7C3AED),
+                icon: Icons.qr_code_rounded,
+              );
+              final card2 = _StatCard(
+                label: 'Bundles Verified',
+                value: '${controller.bundlesVerifiedCount.value}',
+                subtitle: '↑ 11.4% from last month',
+                subtitleColor: AppColors.success,
+                bgColor: const Color(0xFF22C55E),
+                icon: Icons.check_circle_outline_rounded,
+              );
+              final card3 = _StatCard(
+                label: 'Bundles Missing',
+                value: '${controller.bundlesMissingCount.value}',
+                subtitle: '↑ 8.52% from last month',
+                subtitleColor: AppColors.success,
+                bgColor: const Color(0xFFEAB308),
+                icon: Icons.hourglass_empty_rounded,
+              );
+              final card4 = _StatCard(
+                label: 'Leads Dispatched Today',
+                value: '${controller.dispatchedTodayCount.value}',
+                subtitle: '↓ 7.45% from last month',
+                subtitleColor: const Color(0xFFEF4444),
+                bgColor: const Color(0xFFEF4444),
+                icon: Icons.speed_rounded,
+              );
 
-                if (isLandscape) {
-                  return Row(
-                    children: const [
-                      Expanded(child: card1),
-                      SizedBox(width: 8),
-                      Expanded(child: card2),
-                      SizedBox(width: 8),
-                      Expanded(child: card3),
-                      SizedBox(width: 8),
-                      Expanded(child: card4),
-                    ],
-                  );
-                }
-
-                return Column(
-                  children: const [
-                    Row(
+              return LayoutBuilder(
+                builder: (context, constraints) {
+                  final isLandscape = constraints.maxWidth > 700;
+                  if (isLandscape) {
+                    return Row(
                       children: [
                         Expanded(child: card1),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Expanded(child: card2),
-                      ],
-                    ),
-                    SizedBox(height: 8),
-                    Row(
-                      children: [
+                        const SizedBox(width: 8),
                         Expanded(child: card3),
-                        SizedBox(width: 8),
+                        const SizedBox(width: 8),
                         Expanded(child: card4),
                       ],
-                    ),
-                  ],
-                );
-              },
-            ),
+                    );
+                  }
+
+                  return Column(
+                    children: [
+                      Row(
+                        children: [
+                          Expanded(child: card1),
+                          const SizedBox(width: 8),
+                          Expanded(child: card2),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(child: card3),
+                          const SizedBox(width: 8),
+                          Expanded(child: card4),
+                        ],
+                      ),
+                    ],
+                  );
+                },
+              );
+            }),
             SizedBox(height: gap),
 
             // Search + Filter + Sort Row
@@ -251,26 +276,46 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
                   ),
                 ),
                 const SizedBox(width: 8),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.filter_list_rounded, size: 14),
-                  label: Text(
-                    'Filter',
-                    style: TextStyle(
-                      fontSize: btnSize,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(color: AppColors.cardBorder),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 14,
-                      vertical: 10,
-                    ),
-                    shape: RoundedRectangleBorder(
+                Obx(
+                  () => Container(
+                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
                       borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: controller.selectedStatus.value,
+                        icon: const Icon(
+                          Icons.filter_list_rounded,
+                          size: 16,
+                          color: AppColors.textSecondary,
+                        ),
+                        style: TextStyle(
+                          fontSize: subSize,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
+                        items: const [
+                          DropdownMenuItem(
+                            value: 'All Statuses',
+                            child: Text('All Statuses'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'verified',
+                            child: Text('VERIFIED'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'pending',
+                            child: Text('PENDING'),
+                          ),
+                        ],
+                        onChanged: (val) {
+                          if (val != null) controller.setStatusFilter(val);
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -297,6 +342,9 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
 
             // Data Table Container matching Image 1
             Obx(() {
+              if (controller.isLoading.value) {
+                return const AppShimmerTable(rowCount: 6);
+              }
               final rows = controller.pageItems;
               return Container(
                 decoration: BoxDecoration(
@@ -306,7 +354,10 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
                 ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final minTableWidth = constraints.maxWidth.clamp(720.0, 2000.0);
+                    final minTableWidth = constraints.maxWidth.clamp(
+                      720.0,
+                      2000.0,
+                    );
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
                       child: SizedBox(
@@ -334,31 +385,39 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
                                       value: false,
                                       onChanged: null,
                                       activeColor: AppColors.primaryBlue,
-                                      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                      materialTapTargetSize:
+                                          MaterialTapTargetSize.shrinkWrap,
                                       visualDensity: VisualDensity.compact,
                                     ),
                                   ),
                                   const SizedBox(width: 16),
-                                  _headCell('Load ID', 3, subSize),
-                                  _headCell('Truck', 3, subSize),
-                                  _headCell('Driver', 3, subSize),
-                                  _headCell('Bundles ↑↓', 2, subSize),
-                                  _headCell('Total Weight ↑↓', 3, subSize),
-                                  _headCell('Destination', 3, subSize),
-                                  _headCell('Status', 3, subSize),
-                                  _headCell('Action', 2, subSize, align: TextAlign.end),
+                                  _headCell('LOAD ID', 4, subSize),
+                                  _headCell('TRUCK', 3, subSize),
+                                  _headCell('DRIVER', 2, subSize),
+                                  _headCell('BUNDLES ⇅', 2, subSize),
+                                  _headCell('TOTAL WEIGHT ⇅', 3, subSize),
+                                  _headCell('DESTINATION', 3, subSize),
+                                  _headCell('STATUS', 2, subSize),
+                                  _headCell(
+                                    'ACTION',
+                                    2,
+                                    subSize,
+                                    align: TextAlign.end,
+                                  ),
                                 ],
                               ),
                             ),
                             // Table Rows
-                            ...rows.map((item) => _DispatchRow(
-                                  item: item,
-                                  fontSize: subSize,
-                                  onView: () => Get.toNamed(
-                                    AppRoutes.dispatchVerificationDetail,
-                                    arguments: item,
-                                  ),
-                                )),
+                            ...rows.map(
+                              (item) => _DispatchRow(
+                                item: item,
+                                fontSize: subSize,
+                                onView: () => Get.toNamed(
+                                  AppRoutes.dispatchVerificationDetail,
+                                  arguments: item,
+                                ),
+                              ),
+                            ),
                             if (rows.isEmpty)
                               Padding(
                                 padding: const EdgeInsets.all(24),
@@ -391,20 +450,25 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
     );
   }
 
-  static Widget _headCell(String text, int flex, double size, {TextAlign align = TextAlign.start}) => Expanded(
-        flex: flex,
-        child: Text(
-          text,
-          textAlign: align,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            fontSize: size,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textSecondary,
-          ),
-        ),
-      );
+  static Widget _headCell(
+    String text,
+    int flex,
+    double size, {
+    TextAlign align = TextAlign.start,
+  }) => Expanded(
+    flex: flex,
+    child: Text(
+      text,
+      textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
+      ),
+    ),
+  );
 }
 
 class _StatCard extends StatelessWidget {
@@ -445,9 +509,7 @@ class _StatCard extends StatelessWidget {
       child: Stack(
         children: [
           Positioned.fill(
-            child: CustomPaint(
-              painter: _CardWavePainter(color: bgColor),
-            ),
+            child: CustomPaint(painter: _CardWavePainter(color: bgColor)),
           ),
           Padding(
             padding: EdgeInsets.symmetric(
@@ -509,7 +571,11 @@ class _StatCard extends StatelessWidget {
                       ),
                     ],
                   ),
-                  child: Icon(icon, color: Colors.white, size: circleSize * 0.55),
+                  child: Icon(
+                    icon,
+                    color: Colors.white,
+                    size: circleSize * 0.55,
+                  ),
                 ),
               ],
             ),
@@ -534,9 +600,12 @@ class _CardWavePainter extends CustomPainter {
       ..moveTo(0, size.height)
       ..lineTo(size.width * 0.3, size.height)
       ..cubicTo(
-        size.width * 0.5, size.height * 0.95,
-        size.width * 0.7, size.height * 0.6,
-        size.width, size.height * 0.68,
+        size.width * 0.5,
+        size.height * 0.95,
+        size.width * 0.7,
+        size.height * 0.6,
+        size.width,
+        size.height * 0.68,
       )
       ..lineTo(size.width, size.height)
       ..close();
@@ -551,9 +620,12 @@ class _CardWavePainter extends CustomPainter {
       ..moveTo(0, size.height)
       ..lineTo(size.width * 0.5, size.height)
       ..cubicTo(
-        size.width * 0.7, size.height * 0.8,
-        size.width * 0.85, size.height * 0.4,
-        size.width, size.height * 0.45,
+        size.width * 0.7,
+        size.height * 0.8,
+        size.width * 0.85,
+        size.height * 0.4,
+        size.width,
+        size.height * 0.45,
       )
       ..lineTo(size.width, size.height)
       ..close();
@@ -612,14 +684,28 @@ class _DispatchRowState extends State<_DispatchRow> {
           ),
           const SizedBox(width: 16),
           Expanded(
-            flex: 3,
-            child: Text(
-              widget.item.loadId,
-              style: TextStyle(
-                fontSize: widget.fontSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
+            flex: 4,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.item.loadId,
+                  style: TextStyle(
+                    fontSize: widget.fontSize,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  'PACKING LIST: ${widget.item.packingListNo}',
+                  style: TextStyle(
+                    fontSize: (widget.fontSize - 2).clamp(10.0, 12.0),
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
@@ -633,7 +719,7 @@ class _DispatchRowState extends State<_DispatchRow> {
             ),
           ),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Text(
               widget.item.driver,
               style: TextStyle(
@@ -664,16 +750,31 @@ class _DispatchRowState extends State<_DispatchRow> {
           ),
           Expanded(
             flex: 3,
-            child: Text(
-              widget.item.destination,
-              style: TextStyle(
-                fontSize: widget.fontSize,
-                color: AppColors.textSecondary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  widget.item.destination,
+                  style: TextStyle(
+                    fontSize: widget.fontSize,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${widget.item.project.toUpperCase()} (${widget.item.jobId})',
+                  style: TextStyle(
+                    fontSize: (widget.fontSize - 2).clamp(10.0, 12.0),
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
           Expanded(
-            flex: 3,
+            flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
               child: _StatusBadge(status: widget.item.status),
@@ -686,13 +787,15 @@ class _DispatchRowState extends State<_DispatchRow> {
               child: ElevatedButton(
                 onPressed: widget.onView,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
+                  backgroundColor: const Color(
+                    0xFF4F46E5,
+                  ), // Purple matching Web Panel Image 1
                   foregroundColor: Colors.white,
                   elevation: 0,
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
+                    horizontal: 14,
                     vertical: 8,
                   ),
                   shape: RoundedRectangleBorder(
@@ -700,9 +803,9 @@ class _DispatchRowState extends State<_DispatchRow> {
                   ),
                 ),
                 child: Text(
-                  'View Load',
+                  'VIEW LOAD',
                   style: TextStyle(
-                    fontSize: widget.fontSize,
+                    fontSize: (widget.fontSize - 1).clamp(11.0, 13.0),
                     fontWeight: FontWeight.w700,
                   ),
                 ),
@@ -723,15 +826,15 @@ class _StatusBadge extends StatelessWidget {
   Widget build(BuildContext context) {
     final (label, bg, fg) = switch (status) {
       DispatchStatus.pending => (
-          'Pending ⌛',
-          const Color(0xFFFEF3C7),
-          const Color(0xFF92400E),
-        ),
+        'Pending ⌛',
+        const Color(0xFFFEF3C7),
+        const Color(0xFF92400E),
+      ),
       DispatchStatus.verified => (
-          'Verified ⊙',
-          const Color(0xFFDCFCE7),
-          const Color(0xFF166534),
-        ),
+        'Verified ⊙',
+        const Color(0xFFDCFCE7),
+        const Color(0xFF166534),
+      ),
     };
 
     return Container(
@@ -742,11 +845,7 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontSize: 11,
-          fontWeight: FontWeight.w700,
-          color: fg,
-        ),
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: fg),
       ),
     );
   }
@@ -806,9 +905,7 @@ class _PaginationBar extends StatelessWidget {
                       style: TextStyle(
                         fontSize: fontSize,
                         fontWeight: FontWeight.w700,
-                        color: i == page
-                            ? Colors.white
-                            : AppColors.textPrimary,
+                        color: i == page ? Colors.white : AppColors.textPrimary,
                       ),
                     ),
                   ),
@@ -870,22 +967,22 @@ class _PageBtn extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => InkWell(
-        onTap: enabled ? onTap : null,
+    onTap: enabled ? onTap : null,
+    borderRadius: BorderRadius.circular(6),
+    child: Container(
+      width: 28,
+      height: 28,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        border: Border.all(color: AppColors.cardBorder),
         borderRadius: BorderRadius.circular(6),
-        child: Container(
-          width: 28,
-          height: 28,
-          alignment: Alignment.center,
-          decoration: BoxDecoration(
-            border: Border.all(color: AppColors.cardBorder),
-            borderRadius: BorderRadius.circular(6),
-            color: Colors.white,
-          ),
-          child: Icon(
-            icon,
-            size: 18,
-            color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
-          ),
-        ),
-      );
+        color: Colors.white,
+      ),
+      child: Icon(
+        icon,
+        size: 18,
+        color: enabled ? AppColors.textPrimary : AppColors.textSecondary,
+      ),
+    ),
+  );
 }

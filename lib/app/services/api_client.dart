@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
@@ -7,6 +8,7 @@ import '../constants/api_constants.dart';
 import '../routes/app_routes.dart';
 import '../utils/app_logger.dart';
 import '../utils/app_toast.dart';
+import 'construction_socket_service.dart';
 
 class ApiClient extends GetxService {
   static const String _tokenKey = 'access_token';
@@ -17,7 +19,7 @@ class ApiClient extends GetxService {
   String? _token;
   String? _refreshToken;
   bool _isHandlingUnauthorized = false;
-  bool _isRefreshingToken = false;
+  Completer<bool>? _refreshCompleter;
 
   String get baseUrl => ApiConstants.baseUrl;
 
@@ -25,12 +27,16 @@ class ApiClient extends GetxService {
     _prefs = await SharedPreferences.getInstance();
     _token = _prefs?.getString(_tokenKey);
     _refreshToken = _prefs?.getString(_refreshTokenKey);
-    AppLogger.i('ApiClient initialized. Saved token present: ${_token != null && _token!.isNotEmpty}', tag: 'API');
+    AppLogger.i(
+      'ApiClient initialized. Saved token present: ${_token != null && _token!.isNotEmpty}',
+      tag: 'API',
+    );
     return this;
   }
 
   String? get token => _token;
-  String? get refreshToken => _refreshToken ?? _prefs?.getString(_refreshTokenKey);
+  String? get refreshToken =>
+      _refreshToken ?? _prefs?.getString(_refreshTokenKey);
 
   Future<void> saveToken(String token) async {
     _token = token;
@@ -67,68 +73,142 @@ class ApiClient extends GetxService {
     await _prefs?.remove(_tokenKey);
     await _prefs?.remove(_refreshTokenKey);
     await _prefs?.remove(_userKey);
+
+    if (Get.isRegistered<ConstructionSocketService>()) {
+      Get.find<ConstructionSocketService>().disconnect();
+    }
   }
 
   Future<bool> tryRefreshToken() async {
-    final rToken = refreshToken;
+    final rToken = (refreshToken != null && refreshToken!.isNotEmpty)
+        ? refreshToken
+        : _token;
     if (rToken == null || rToken.isEmpty) {
-      AppLogger.w('No refresh token available in storage.', tag: 'API');
-      return false;
-    }
-    if (_isRefreshingToken) {
-      AppLogger.w('Token refresh already in progress.', tag: 'API');
+      AppLogger.w(
+        'No refresh token or current token available for refresh.',
+        tag: 'API',
+      );
       return false;
     }
 
-    _isRefreshingToken = true;
+    if (_refreshCompleter != null && !_refreshCompleter!.isCompleted) {
+      AppLogger.i(
+        'Token refresh already in progress. Waiting for ongoing refresh...',
+        tag: 'API',
+      );
+      return _refreshCompleter!.future;
+    }
+
+    _refreshCompleter = Completer<bool>();
+
     try {
-      AppLogger.i('Attempting automatic token refresh via POST /auth/refresh...', tag: 'API');
-      final uri = Uri.parse('$baseUrl${ApiConstants.refreshToken}');
-      final response = await http.post(
-        uri,
-        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-        body: jsonEncode({'refreshToken': rToken, 'token': rToken}),
-      ).timeout(const Duration(seconds: 15));
+      final endpoints = [ApiConstants.refreshToken, '/auth/refresh-token'];
+      for (final ep in endpoints) {
+        try {
+          AppLogger.i(
+            'Attempting automatic token refresh via POST $ep...',
+            tag: 'API',
+          );
+          final uri = Uri.parse('$baseUrl$ep');
+          final headers = {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            if (rToken.isNotEmpty) 'Authorization': 'Bearer $rToken',
+          };
+          final bodyMap = {
+            'refreshToken': rToken,
+            'token': rToken,
+            'access_token': rToken,
+          };
 
-      AppLogger.i('Refresh Token Response [${response.statusCode}]: ${response.body}', tag: 'API');
+          final response = await http
+              .post(uri, headers: headers, body: jsonEncode(bodyMap))
+              .timeout(const Duration(seconds: 15));
 
-      if (response.statusCode >= 200 && response.statusCode < 300) {
-        final body = jsonDecode(response.body);
-        if (body is Map) {
-          final data = body['data'] ?? body;
-          if (data is Map) {
-            final newAccessToken = data['accessToken'] ?? data['token'];
-            final newRefreshToken = data['refreshToken'] ?? data['refresh_token'];
-            if (newAccessToken != null && newAccessToken.toString().isNotEmpty) {
-              await saveToken(newAccessToken.toString());
-              if (newRefreshToken != null && newRefreshToken.toString().isNotEmpty) {
-                await saveRefreshToken(newRefreshToken.toString());
+          AppLogger.i(
+            'Refresh Token Response [$ep -> ${response.statusCode}]',
+            tag: 'API',
+          );
+
+          if (response.statusCode >= 200 && response.statusCode < 300) {
+            final body = jsonDecode(response.body);
+            if (body is Map) {
+              final data = body['data'] ?? body;
+              if (data is Map) {
+                final newAccessToken =
+                    data['accessToken'] ??
+                    data['token'] ??
+                    data['jwt'] ??
+                    body['accessToken'] ??
+                    body['token'];
+                final newRefreshToken =
+                    data['refreshToken'] ??
+                    data['refresh_token'] ??
+                    body['refreshToken'];
+
+                if (newAccessToken != null &&
+                    newAccessToken.toString().isNotEmpty) {
+                  await saveToken(newAccessToken.toString());
+                  if (newRefreshToken != null &&
+                      newRefreshToken.toString().isNotEmpty) {
+                    await saveRefreshToken(newRefreshToken.toString());
+                  }
+                  AppLogger.i(
+                    'Token refreshed successfully via $ep! New token saved.',
+                    tag: 'API',
+                  );
+
+                  if (Get.isRegistered<ConstructionSocketService>()) {
+                    Get.find<ConstructionSocketService>()
+                        .reconnectWithLatestToken();
+                  }
+
+                  if (!(_refreshCompleter?.isCompleted ?? true)) {
+                    _refreshCompleter?.complete(true);
+                  }
+                  return true;
+                }
               }
-              AppLogger.i('Token refreshed successfully! New token saved.', tag: 'API');
-              return true;
             }
           }
+        } catch (subErr) {
+          AppLogger.w('Refresh attempt for $ep failed: $subErr', tag: 'API');
         }
       }
-      AppLogger.w('Token refresh failed with status: ${response.statusCode}', tag: 'API');
+      AppLogger.w('All token refresh endpoints failed.', tag: 'API');
+      if (!(_refreshCompleter?.isCompleted ?? true)) {
+        _refreshCompleter?.complete(false);
+      }
     } catch (e, stackTrace) {
-      AppLogger.e('Token refresh exception', error: e, stackTrace: stackTrace, tag: 'API');
+      AppLogger.e(
+        'Token refresh exception',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'API',
+      );
+      if (!(_refreshCompleter?.isCompleted ?? true)) {
+        _refreshCompleter?.complete(false);
+      }
     } finally {
-      _isRefreshingToken = false;
+      _refreshCompleter = null;
     }
     return false;
   }
 
   void _handleUnauthorized() {
     if (_isHandlingUnauthorized) return;
+    if (Get.currentRoute == AppRoutes.login) return;
     _isHandlingUnauthorized = true;
 
+    final hadToken = _token != null && _token!.isNotEmpty;
     clearAuthData();
 
-    AppToast.showError(
-      title: 'Session Expired',
-      description: 'Your session has expired. Please login again.',
-    );
+    if (hadToken) {
+      AppToast.showError(
+        title: 'Session Expired',
+        description: 'Your session has expired. Please login again.',
+      );
+    }
 
     Get.offAllNamed(AppRoutes.login);
 
@@ -155,7 +235,9 @@ class ApiClient extends GetxService {
     final urlStr = endpoint.startsWith('http') ? endpoint : '$baseUrl$endpoint';
     final uri = Uri.parse(urlStr);
     if (queryParams != null && queryParams.isNotEmpty) {
-      return uri.replace(queryParameters: {...uri.queryParameters, ...queryParams});
+      return uri.replace(
+        queryParameters: {...uri.queryParameters, ...queryParams},
+      );
     }
     return uri;
   }
@@ -171,15 +253,23 @@ class ApiClient extends GetxService {
       final reqHeaders = _buildHeaders(customHeaders: headers);
       AppLogger.i('GET $uri', tag: 'API');
 
-      final response = await http.get(uri, headers: reqHeaders).timeout(
-        const Duration(seconds: 25),
-      );
+      final response = await http
+          .get(uri, headers: reqHeaders)
+          .timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 401 && !isRetry) {
-        AppLogger.w('GET $endpoint returned 401. Triggering auto token refresh...', tag: 'API');
+        AppLogger.w(
+          'GET $endpoint returned 401. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
-          return get(endpoint, queryParams: queryParams, headers: headers, isRetry: true);
+          return get(
+            endpoint,
+            queryParams: queryParams,
+            headers: headers,
+            isRetry: true,
+          );
         } else {
           _handleUnauthorized();
           throw ApiException('Unauthorized', 401);
@@ -189,17 +279,30 @@ class ApiClient extends GetxService {
       return _processResponse(response);
     } on ApiException catch (e) {
       if (e.statusCode == 401 && !isRetry) {
-        AppLogger.w('ApiException 401 for GET $endpoint. Triggering auto token refresh...', tag: 'API');
+        AppLogger.w(
+          'ApiException 401 for GET $endpoint. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
-          return get(endpoint, queryParams: queryParams, headers: headers, isRetry: true);
+          return get(
+            endpoint,
+            queryParams: queryParams,
+            headers: headers,
+            isRetry: true,
+          );
         } else {
           _handleUnauthorized();
         }
       }
       rethrow;
     } catch (e, stackTrace) {
-      AppLogger.e('ApiClient GET Exception for $endpoint', error: e, stackTrace: stackTrace, tag: 'API');
+      AppLogger.e(
+        'ApiClient GET Exception for $endpoint',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'API',
+      );
       rethrow;
     }
   }
@@ -214,14 +317,20 @@ class ApiClient extends GetxService {
       final uri = _buildUri(endpoint);
       final reqHeaders = _buildHeaders(customHeaders: headers);
       final encodedBody = body != null ? jsonEncode(body) : null;
-      AppLogger.i('POST $uri | Body: $encodedBody', tag: 'API');
+      AppLogger.i('POST $uri', tag: 'API');
 
       final response = await http
           .post(uri, headers: reqHeaders, body: encodedBody)
           .timeout(const Duration(seconds: 25));
 
-      if (response.statusCode == 401 && !isRetry && !endpoint.contains('/auth/login') && !endpoint.contains('/auth/refresh')) {
-        AppLogger.w('POST $endpoint returned 401. Triggering auto token refresh...', tag: 'API');
+      if (response.statusCode == 401 &&
+          !isRetry &&
+          !endpoint.contains('/auth/login') &&
+          !endpoint.contains('/auth/refresh')) {
+        AppLogger.w(
+          'POST $endpoint returned 401. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
           return post(endpoint, body: body, headers: headers, isRetry: true);
@@ -233,8 +342,14 @@ class ApiClient extends GetxService {
 
       return _processResponse(response);
     } on ApiException catch (e) {
-      if (e.statusCode == 401 && !isRetry && !endpoint.contains('/auth/login') && !endpoint.contains('/auth/refresh')) {
-        AppLogger.w('ApiException 401 for POST $endpoint. Triggering auto token refresh...', tag: 'API');
+      if (e.statusCode == 401 &&
+          !isRetry &&
+          !endpoint.contains('/auth/login') &&
+          !endpoint.contains('/auth/refresh')) {
+        AppLogger.w(
+          'ApiException 401 for POST $endpoint. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
           return post(endpoint, body: body, headers: headers, isRetry: true);
@@ -244,7 +359,12 @@ class ApiClient extends GetxService {
       }
       rethrow;
     } catch (e, stackTrace) {
-      AppLogger.e('ApiClient POST Exception for $endpoint', error: e, stackTrace: stackTrace, tag: 'API');
+      AppLogger.e(
+        'ApiClient POST Exception for $endpoint',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'API',
+      );
       rethrow;
     }
   }
@@ -266,7 +386,10 @@ class ApiClient extends GetxService {
           .timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 401 && !isRetry) {
-        AppLogger.w('PUT $endpoint returned 401. Triggering auto token refresh...', tag: 'API');
+        AppLogger.w(
+          'PUT $endpoint returned 401. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
           return put(endpoint, body: body, headers: headers, isRetry: true);
@@ -279,7 +402,10 @@ class ApiClient extends GetxService {
       return _processResponse(response);
     } on ApiException catch (e) {
       if (e.statusCode == 401 && !isRetry) {
-        AppLogger.w('ApiException 401 for PUT $endpoint. Triggering auto token refresh...', tag: 'API');
+        AppLogger.w(
+          'ApiException 401 for PUT $endpoint. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
           return put(endpoint, body: body, headers: headers, isRetry: true);
@@ -289,7 +415,12 @@ class ApiClient extends GetxService {
       }
       rethrow;
     } catch (e, stackTrace) {
-      AppLogger.e('ApiClient PUT Exception for $endpoint', error: e, stackTrace: stackTrace, tag: 'API');
+      AppLogger.e(
+        'ApiClient PUT Exception for $endpoint',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'API',
+      );
       rethrow;
     }
   }
@@ -304,12 +435,15 @@ class ApiClient extends GetxService {
       final reqHeaders = _buildHeaders(customHeaders: headers);
       AppLogger.i('DELETE $uri', tag: 'API');
 
-      final response = await http.delete(uri, headers: reqHeaders).timeout(
-        const Duration(seconds: 25),
-      );
+      final response = await http
+          .delete(uri, headers: reqHeaders)
+          .timeout(const Duration(seconds: 25));
 
       if (response.statusCode == 401 && !isRetry) {
-        AppLogger.w('DELETE $endpoint returned 401. Triggering auto token refresh...', tag: 'API');
+        AppLogger.w(
+          'DELETE $endpoint returned 401. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
           return delete(endpoint, headers: headers, isRetry: true);
@@ -322,7 +456,10 @@ class ApiClient extends GetxService {
       return _processResponse(response);
     } on ApiException catch (e) {
       if (e.statusCode == 401 && !isRetry) {
-        AppLogger.w('ApiException 401 for DELETE $endpoint. Triggering auto token refresh...', tag: 'API');
+        AppLogger.w(
+          'ApiException 401 for DELETE $endpoint. Triggering auto token refresh...',
+          tag: 'API',
+        );
         final refreshed = await tryRefreshToken();
         if (refreshed) {
           return delete(endpoint, headers: headers, isRetry: true);
@@ -332,13 +469,21 @@ class ApiClient extends GetxService {
       }
       rethrow;
     } catch (e, stackTrace) {
-      AppLogger.e('ApiClient DELETE Exception for $endpoint', error: e, stackTrace: stackTrace, tag: 'API');
+      AppLogger.e(
+        'ApiClient DELETE Exception for $endpoint',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'API',
+      );
       rethrow;
     }
   }
 
   dynamic _processResponse(http.Response response) {
-    AppLogger.i('API Response [${response.statusCode}] ${response.request?.url}', tag: 'API');
+    AppLogger.i(
+      'API Response [${response.statusCode}] ${response.request?.url}',
+      tag: 'API',
+    );
 
     dynamic bodyJson;
     if (response.body.isNotEmpty) {
@@ -357,13 +502,17 @@ class ApiClient extends GetxService {
             lowerMsg.contains('jwt expired') ||
             lowerMsg.contains('invalid token') ||
             lowerMsg.contains('unauthorized')) {
-          AppLogger.w('API returned 200 with expired token payload: $msg', tag: 'API');
+          AppLogger.w(
+            'API returned 200 with expired token payload: $msg',
+            tag: 'API',
+          );
           throw ApiException(msg, 401, bodyJson);
         }
       }
       return bodyJson;
     } else {
-      String errorMessage = 'Request failed with status: ${response.statusCode}';
+      String errorMessage =
+          'Request failed with status: ${response.statusCode}';
       if (bodyJson is Map) {
         if (bodyJson.containsKey('message') && bodyJson['message'] != null) {
           errorMessage = bodyJson['message'].toString();
@@ -371,7 +520,10 @@ class ApiClient extends GetxService {
           errorMessage = bodyJson['error'].toString();
         }
       }
-      AppLogger.w('API Error [${response.statusCode}]: $errorMessage', tag: 'API');
+      AppLogger.w(
+        'API Error [${response.statusCode}]: $errorMessage',
+        tag: 'API',
+      );
       throw ApiException(errorMessage, response.statusCode, bodyJson);
     }
   }
@@ -387,5 +539,3 @@ class ApiException implements Exception {
   @override
   String toString() => 'ApiException [$statusCode]: $message';
 }
-
-

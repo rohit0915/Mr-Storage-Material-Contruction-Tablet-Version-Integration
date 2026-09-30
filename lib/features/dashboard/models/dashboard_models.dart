@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
@@ -59,23 +60,44 @@ class SiteRow {
   final Color barColor;
 
   factory SiteRow.fromJson(Map<String, dynamic> json) {
-    final statusStr = json['status'] ?? json['lifecycleStatus'] ?? 'On Track';
+    final statusStr =
+        json['deliveryStatus'] ??
+        json['status'] ??
+        json['lifecycleStatus'] ??
+        'On Track';
     Color sColor = AppColors.badgeGreen;
     if (statusStr.toString().toLowerCase().contains('delay')) {
       sColor = AppColors.badgeRed;
-    } else if (statusStr.toString().toLowerCase().contains('transit') || statusStr.toString().toLowerCase().contains('progress')) {
+    } else if (statusStr.toString().toLowerCase().contains('transit') ||
+        statusStr.toString().toLowerCase().contains('progress')) {
       sColor = AppColors.badgePink;
     }
 
-    final double prog = (json['progress'] is num)
-        ? (json['progress'] as num).toDouble()
-        : ((json['completionPct'] is num) ? (json['completionPct'] as num).toDouble() / 100.0 : 0.5);
+    final rawProgress =
+        json['progressPct'] ?? json['completionPct'] ?? json['progress'] ?? 0;
+    final progress = rawProgress is num
+        ? rawProgress.toDouble()
+        : double.tryParse(rawProgress.toString()) ?? 0;
+    final site = (json['site'] ?? json['location'] ?? 'N/A').toString();
+    final jobId = json['jobId']?.toString();
+    final buildingType = json['buildingType']?.toString();
+    final location = [
+      site,
+      if (jobId != null && jobId.isNotEmpty) jobId,
+      if (buildingType != null && buildingType.isNotEmpty) buildingType,
+    ].join(' • ');
 
     return SiteRow(
-      project: json['projectName'] ?? json['project'] ?? json['title'] ?? 'Project',
-      location: json['location'] ?? json['siteLocation'] ?? 'Site A',
-      progress: prog,
-      deadline: json['deadline'] ?? json['targetDate'] ?? json['dueDate'] ?? '',
+      project:
+          json['projectName'] ?? json['project'] ?? json['title'] ?? 'Project',
+      location: location,
+      progress:
+          (json.containsKey('progressPct') || json.containsKey('completionPct'))
+          ? progress / 100
+          : progress,
+      deadline: _formatDashboardDate(
+        json['deadline'] ?? json['targetDate'] ?? json['dueDate'],
+      ),
       status: statusStr.toString(),
       statusColor: sColor,
       barColor: const Color(0xFFF97316),
@@ -98,10 +120,19 @@ class DeadlineItem {
 
   factory DeadlineItem.fromJson(Map<String, dynamic> json) {
     return DeadlineItem(
-      project: json['projectName'] ?? json['project'] ?? json['title'] ?? 'Project',
-      location: json['location'] ?? json['siteLocation'] ?? 'Site A',
-      date: json['date'] ?? json['targetDate'] ?? json['dueDate'] ?? '',
-      daysLeft: json['daysLeft'] != null ? '${json['daysLeft']} Days Left' : 'Upcoming',
+      project:
+          json['projectName'] ?? json['project'] ?? json['title'] ?? 'Project',
+      location:
+          json['site'] ?? json['location'] ?? json['siteLocation'] ?? 'Site A',
+      date: _formatDashboardDate(
+        json['endDate'] ??
+            json['date'] ??
+            json['targetDate'] ??
+            json['dueDate'],
+      ),
+      daysLeft: json['daysLeft'] != null
+          ? '${json['daysLeft']} Days Left'
+          : 'Upcoming',
     );
   }
 }
@@ -125,12 +156,19 @@ class TimelineStep {
 
   factory TimelineStep.fromJson(Map<String, dynamic> json) {
     final statusStr = json['status'] ?? 'Upcoming';
-    final isDone = statusStr.toString().toLowerCase() == 'completed' || json['done'] == true;
-    final isInProg = statusStr.toString().toLowerCase() == 'inprogress' || statusStr.toString().toLowerCase() == 'in_progress';
+    final isDone =
+        statusStr.toString().toLowerCase() == 'completed' ||
+        json['done'] == true;
+    final isInProg =
+        statusStr.toString().toLowerCase() == 'inprogress' ||
+        statusStr.toString().toLowerCase() == 'in_progress';
 
     return TimelineStep(
-      title: json['title'] ?? json['name'] ?? 'Step',
-      date: json['date'] ?? json['targetDate'] ?? '',
+      title: json['label'] ?? json['title'] ?? json['name'] ?? 'Step',
+      date: _formatDashboardDate(
+        json['date'] ?? json['targetDate'],
+        pattern: 'dd/MM/yyyy',
+      ),
       status: statusStr.toString(),
       statusColor: isDone ? AppColors.badgeGreen : AppColors.badgePink,
       done: isDone,
@@ -161,8 +199,14 @@ class CarrierRow {
     final isDelayed = statusStr.toString().toLowerCase().contains('delay');
 
     return CarrierRow(
-      carrier: json['carrier'] ?? json['name'] ?? json['transporter'] ?? 'Carrier',
-      loadsToday: json['loadsToday']?.toString() ?? json['loads']?.toString() ?? '0',
+      carrier:
+          json['carrierName'] ??
+          json['carrier'] ??
+          json['name'] ??
+          json['transporter'] ??
+          'Carrier',
+      loadsToday:
+          json['loadsToday']?.toString() ?? json['loads']?.toString() ?? '0',
       onTime: json['onTime']?.toString() ?? '0',
       delayed: json['delayed']?.toString() ?? '0',
       priority: statusStr.toString(),
@@ -183,12 +227,64 @@ class ActivityItem {
   final String iconAsset;
 
   factory ActivityItem.fromJson(Map<String, dynamic> json) {
+    final project = json['project'] is Map ? json['project'] as Map : const {};
+    final projectName = project['projectName']?.toString();
+    final jobId = project['jobId']?.toString() ?? '-';
+    final rawStatus =
+        json['status']?.toString().replaceAll('_', ' ') ?? 'unknown';
+    final deliveryTitle = projectName == null || projectName.isEmpty
+        ? 'Delivery ($rawStatus) [$jobId]'
+        : 'Delivery ($rawStatus) for $projectName [$jobId]';
+    var displayTime =
+        (json['time'] ??
+                json['timestamp'] ??
+                json['occurredAt'] ??
+                json['createdAt'] ??
+                '')
+            .toString();
+    final occurredAt = DateTime.tryParse(displayTime);
+    if (occurredAt != null) {
+      displayTime = DateFormat('hh:mm:ss a').format(occurredAt.toLocal());
+    }
+    final rawDate = json['deliveryDate'];
+    if (rawDate != null) {
+      final parsed = DateTime.tryParse(rawDate.toString());
+      if (parsed != null) {
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec',
+        ];
+        displayTime = '${months[parsed.month - 1]} ${parsed.day}';
+      }
+    }
     return ActivityItem(
-      title: json['title'] ?? json['description'] ?? json['message'] ?? 'Activity',
-      time: json['time'] ?? json['timestamp'] ?? json['createdAt'] ?? '',
+      title: json['deliveryId'] != null
+          ? deliveryTitle
+          : (json['title'] ??
+                    json['description'] ??
+                    json['message'] ??
+                    'Activity')
+                .toString(),
+      time: displayTime,
       iconAsset: AppAssets.iconDocBlue,
     );
   }
+}
+
+String _formatDashboardDate(dynamic value, {String pattern = 'MMM d, yyyy'}) {
+  if (value == null || value.toString().isEmpty) return '';
+  final parsed = DateTime.tryParse(value.toString());
+  return parsed == null ? value.toString() : DateFormat(pattern).format(parsed);
 }
 
 class FreightSummary {

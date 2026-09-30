@@ -6,29 +6,33 @@ import '../../../app/utils/app_logger.dart';
 
 class DashboardService extends GetxService {
   DashboardService({ApiClient? apiClient})
-      : _apiClient = apiClient ?? Get.find<ApiClient>();
+    : _apiClient = apiClient ?? Get.find<ApiClient>();
 
   final ApiClient _apiClient;
 
   Future<Map<String, dynamic>?> getDashboardData({
-    String? project,
-    String? building,
+    String? projectId,
+    String? buildingId,
     String? status,
-    String? dateRange,
+    String? fromDate,
+    String? toDate,
   }) async {
     try {
       final queryParams = <String, String>{};
-      if (project != null && project.isNotEmpty && project != 'All Projects') {
-        queryParams['project'] = project;
+      if (projectId != null && projectId.isNotEmpty) {
+        queryParams['projectId'] = projectId;
       }
-      if (building != null && building.isNotEmpty && building != 'All Buildings') {
-        queryParams['building'] = building;
+      if (buildingId != null && buildingId.isNotEmpty) {
+        queryParams['buildingId'] = buildingId;
       }
-      if (status != null && status.isNotEmpty && status != 'All Status') {
+      if (status != null && status.isNotEmpty) {
         queryParams['status'] = status;
       }
-      if (dateRange != null && dateRange.isNotEmpty) {
-        queryParams['dateRange'] = dateRange;
+      if (fromDate != null && fromDate.isNotEmpty) {
+        queryParams['fromDate'] = fromDate;
+      }
+      if (toDate != null && toDate.isNotEmpty) {
+        queryParams['toDate'] = toDate;
       }
 
       final response = await _apiClient.get(
@@ -47,10 +51,13 @@ class DashboardService extends GetxService {
       }
       return null;
     } catch (e, stackTrace) {
-      AppLogger.e('Dashboard API Exception', error: e, stackTrace: stackTrace, tag: 'DASHBOARD');
+      AppLogger.e(
+        'Dashboard API Exception',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'DASHBOARD',
+      );
       rethrow;
     }
   }
 }
-
-
