@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:get/get.dart';
+import '../../../app/constants/get_builder_ids.dart';
+import '../controllers/dashboard_controller.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../models/dashboard_models.dart';
@@ -37,26 +40,41 @@ class DashboardOverviewTitle extends StatelessWidget {
             ],
           ),
         ),
-        ElevatedButton.icon(
-          onPressed: () {},
-          icon: const Icon(Icons.download_rounded, size: 18),
-          label: Text(
-            'Export Report',
-            style: TextStyle(
-              fontSize: (size.width * 0.011).clamp(12.0, 14.0),
-              fontWeight: FontWeight.w600,
+        GetBuilder<DashboardController>(
+          id: AppGetIds.dashboardMetrics,
+          builder: (controller) => ElevatedButton.icon(
+            onPressed:
+                controller.isLoading ||
+                    controller.isExporting ||
+                    !controller.hasLoadedData ||
+                    controller.errorMessage.isNotEmpty
+                ? null
+                : controller.exportReport,
+            icon: controller.isExporting
+                ? const SizedBox(
+                    width: 18,
+                    height: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.download_rounded, size: 18),
+            label: Text(
+              controller.isExporting ? 'Exporting…' : 'Export Report',
+              style: TextStyle(
+                fontSize: (size.width * 0.011).clamp(12.0, 14.0),
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: AppColors.primaryBlue,
-            foregroundColor: Colors.white,
-            elevation: 0,
-            padding: EdgeInsets.symmetric(
-              horizontal: size.width * 0.014,
-              vertical: size.height * 0.014,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(DashboardGap.radius),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primaryBlue,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width * 0.014,
+                vertical: size.height * 0.014,
+              ),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(DashboardGap.radius),
+              ),
             ),
           ),
         ),

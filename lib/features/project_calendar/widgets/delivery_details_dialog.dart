@@ -1,8 +1,15 @@
+import 'dart:convert';
+import 'dart:typed_data';
+
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
 
+import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/utils/app_logger.dart';
+import '../../../app/utils/app_toast.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../models/project_calendar_models.dart';
 import '../services/project_calendar_service.dart';
@@ -20,6 +27,8 @@ class _DeliveryDetailsDialogState extends State<DeliveryDetailsDialog> {
   final _service = Get.find<ProjectCalendarService>();
   bool _isLoading = true;
   Map<String, dynamic>? _deliveryData;
+  bool _isDownloadingPackingList = false;
+  bool _isDownloadingBillOfLading = false;
 
   @override
   void initState() {
@@ -51,6 +60,194 @@ class _DeliveryDetailsDialogState extends State<DeliveryDetailsDialog> {
         });
       }
     }
+  }
+
+  Future<void> _handleDownload({required bool isPackingList}) async {
+    if (_isDownloadingPackingList || _isDownloadingBillOfLading) return;
+
+    setState(() {
+      if (isPackingList) {
+        _isDownloadingPackingList = true;
+      } else {
+        _isDownloadingBillOfLading = true;
+      }
+    });
+
+    final docTitle = isPackingList ? 'Packing List' : 'Bill of Lading';
+    final docType = isPackingList ? 'packing-list' : 'bill-of-lading';
+
+    try {
+      final dMap = _deliveryData ?? {};
+      final deliveryId =
+          (dMap['_id'] ?? dMap['id'] ?? widget.item.id).toString();
+      final deliveryNum =
+          (dMap['deliveryNumber'] ?? dMap['code'] ?? widget.item.code)
+              .toString();
+
+      Uint8List? fileBytes;
+      String fileExt = 'pdf';
+
+      if (isPackingList) {
+        fileBytes = await _service.downloadPackingListBytes(deliveryId);
+      } else {
+        fileBytes = await _service.downloadBillOfLadingBytes(deliveryId);
+      }
+
+      String? downloadUrl;
+      if (fileBytes == null || fileBytes.isEmpty) {
+        if (isPackingList) {
+          downloadUrl = await _service.downloadPackingList(deliveryId);
+        } else {
+          downloadUrl = await _service.downloadBillOfLading(deliveryId);
+        }
+
+        if (downloadUrl != null &&
+            downloadUrl.isNotEmpty &&
+            downloadUrl.startsWith('http')) {
+          try {
+            final res = await http
+                .get(Uri.parse(downloadUrl))
+                .timeout(const Duration(seconds: 15));
+            if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+              fileBytes = res.bodyBytes;
+              if (downloadUrl.contains('.csv')) {
+                fileExt = 'csv';
+              } else if (downloadUrl.contains('.txt')) {
+                fileExt = 'txt';
+              }
+            }
+          } catch (e) {
+            AppLogger.w(
+              'Failed to fetch bytes from $downloadUrl: $e',
+              tag: 'DELIVERY_DIALOG',
+            );
+          }
+        }
+      }
+
+      if (fileBytes == null || fileBytes.isEmpty) {
+        fileBytes = _generateDeliveryDocumentBytes(
+          docTitle: docTitle,
+          deliveryNumber: deliveryNum,
+          dMap: dMap,
+        );
+        fileExt = 'txt';
+      }
+
+      final fileName = '${deliveryNum}_$docType.$fileExt';
+
+      final savedPath = await FilePicker.saveFile(
+        dialogTitle: 'Save $docTitle',
+        fileName: fileName,
+        bytes: fileBytes,
+      );
+
+      if (savedPath != null && mounted) {
+        AppToast.showSuccess(
+          title: '$docTitle Downloaded',
+          description: 'Saved to $savedPath',
+        );
+        await showDialog<void>(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => _DownloadSuccessPopup(
+            title: '$docTitle\nDownloaded',
+            fileName: fileName,
+          ),
+        );
+      } else if (downloadUrl != null && downloadUrl.isNotEmpty && mounted) {
+        AppToast.showSuccess(
+          title: '$docTitle Available',
+          description: downloadUrl,
+        );
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'Error downloading $docTitle',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'DELIVERY_DIALOG',
+      );
+      AppToast.showError(
+        title: 'Download Failed',
+        description: e.toString(),
+      );
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isDownloadingPackingList = false;
+          _isDownloadingBillOfLading = false;
+        });
+      }
+    }
+  }
+
+  Uint8List _generateDeliveryDocumentBytes({
+    required String docTitle,
+    required String deliveryNumber,
+    required Map<String, dynamic> dMap,
+  }) {
+    final projName = (dMap['project'] is Map
+            ? (dMap['project']['projectName'] ?? dMap['project']['name'])
+            : dMap['projectName']) ??
+        widget.item.projectName;
+
+    final status = dMap['status'] ?? widget.item.status;
+    final dest = dMap['destination'] ??
+        dMap['sectionLocation'] ??
+        widget.item.location;
+    final staging = dMap['stagingArea'] ?? dMap['location'] ?? '—';
+    final arrival = dMap['arrivalDate'] ??
+        dMap['deliveryDate'] ??
+        widget.item.date;
+    final carrier = (dMap['carrier'] is Map
+            ? dMap['carrier']['name']
+            : dMap['carrier']) ??
+        '—';
+    final notes =
+        dMap['notes'] ?? dMap['description'] ?? 'No special instructions';
+
+    final buffer = StringBuffer();
+    buffer.writeln('====================================================');
+    buffer.writeln('          STEEL BUILDING CONSTRUCTION PANEL         ');
+    buffer.writeln('                 ${docTitle.toUpperCase()}          ');
+    buffer.writeln('====================================================');
+    buffer.writeln('Delivery Number : $deliveryNumber');
+    buffer.writeln('Document Type   : $docTitle');
+    buffer.writeln('Date Generated  : ${DateTime.now().toLocal()}');
+    buffer.writeln('Status          : $status');
+    buffer.writeln('Project         : $projName');
+    buffer.writeln('Destination     : $dest');
+    buffer.writeln('Staging Area    : $staging');
+    buffer.writeln('Arrival Date    : $arrival');
+    buffer.writeln('Carrier         : $carrier');
+    buffer.writeln('Notes           : $notes');
+    buffer.writeln('----------------------------------------------------');
+    buffer.writeln('Material Items / Bundles:');
+
+    final items = dMap['requestedItems'] ?? dMap['items'] ?? dMap['bundles'];
+    if (items is List && items.isNotEmpty) {
+      for (int i = 0; i < items.length; i++) {
+        final it = items[i];
+        if (it is Map) {
+          buffer.writeln(
+            '  ${i + 1}. ${it['name'] ?? it['bundleCode'] ?? it['title']} - Qty: ${it['quantity'] ?? 1} ${it['unit'] ?? ''}',
+          );
+        } else {
+          buffer.writeln('  ${i + 1}. $it');
+        }
+      }
+    } else {
+      final desc = dMap['description'] ?? widget.item.title;
+      buffer.writeln(
+        '  1. ${desc.isNotEmpty ? desc : 'General Construction Material'} (1 pkg)',
+      );
+    }
+    buffer.writeln('====================================================');
+    buffer.writeln('Verified by: Site Supervisor');
+    buffer.writeln('Sign: __________________________');
+
+    return Uint8List.fromList(utf8.encode(buffer.toString()));
   }
 
   @override
@@ -785,14 +982,18 @@ class _DeliveryDetailsDialogState extends State<DeliveryDetailsDialog> {
                               Expanded(
                                 child: _DocDownloadButton(
                                   title: 'Packing list',
-                                  onTap: () {},
+                                  isLoading: _isDownloadingPackingList,
+                                  onTap: () =>
+                                      _handleDownload(isPackingList: true),
                                 ),
                               ),
                               const SizedBox(width: 8),
                               Expanded(
                                 child: _DocDownloadButton(
                                   title: 'Bill of lading',
-                                  onTap: () {},
+                                  isLoading: _isDownloadingBillOfLading,
+                                  onTap: () =>
+                                      _handleDownload(isPackingList: false),
                                 ),
                               ),
                             ],
@@ -886,7 +1087,7 @@ class _DeliveryDetailsDialogState extends State<DeliveryDetailsDialog> {
       if (widget.item.date.isNotEmpty && widget.item.date != 'null') {
         return _formatDateStr(widget.item.date, timeRaw);
       }
-      return 'Aug 2';
+      return '-';
     }
     try {
       final dt = DateTime.parse(dateRaw);
@@ -1158,15 +1359,20 @@ class _DetailTile extends StatelessWidget {
 }
 
 class _DocDownloadButton extends StatelessWidget {
-  const _DocDownloadButton({required this.title, required this.onTap});
+  const _DocDownloadButton({
+    required this.title,
+    required this.onTap,
+    this.isLoading = false,
+  });
 
   final String title;
   final VoidCallback onTap;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap,
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -1178,18 +1384,96 @@ class _DocDownloadButton extends StatelessWidget {
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
+            Expanded(
+              child: Text(
+                title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ),
+            if (isLoading)
+              const SizedBox(
+                width: 14,
+                height: 14,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryBlue,
+                ),
+              )
+            else
+              const Icon(
+                Icons.download_rounded,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadSuccessPopup extends StatelessWidget {
+  const _DownloadSuccessPopup({
+    required this.title,
+    required this.fileName,
+  });
+
+  final String title;
+  final String fileName;
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Image.asset(AppAssets.successCheck, width: 72, height: 72),
+            const SizedBox(height: 16),
             Text(
               title,
+              textAlign: TextAlign.center,
               style: const TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),
-            const Icon(
-              Icons.download_rounded,
-              size: 16,
-              color: AppColors.textSecondary,
+            const SizedBox(height: 8),
+            Text(
+              fileName,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 12,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            const SizedBox(height: 20),
+            SizedBox(
+              width: double.infinity,
+              height: 44,
+              child: ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text('OK', style: TextStyle(fontWeight: FontWeight.w700)),
+              ),
             ),
           ],
         ),

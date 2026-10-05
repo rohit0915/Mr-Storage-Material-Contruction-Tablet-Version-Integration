@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 
 import '../../../app/theme/app_colors.dart';
@@ -25,13 +26,17 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
   @override
   void initState() {
     super.initState();
+    _date = DateTime.now();
     final projects = widget.tasks
         .map((e) => e.project)
         .where((e) => e.isNotEmpty)
         .toSet();
-    _project = projects.isEmpty ? '' : projects.first;
+    if (projects.isEmpty) {
+      projects.addAll(TaskStaticData.projects);
+    }
+    _project = projects.isEmpty ? 'Storage 0011' : projects.first;
     final matching = widget.tasks.where((e) => e.project == _project).toList();
-    _task = matching.isEmpty ? '' : matching.first.title;
+    _task = matching.isEmpty ? 'General Progress' : matching.first.title;
   }
 
   @override
@@ -45,10 +50,22 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
   Future<void> _pickDate() async {
     final picked = await pickTaskDate(
       context,
-      initialDate: _date ?? DateTime(2025, 5, 18),
+      initialDate: _date ?? DateTime.now(),
       title: 'Select Date',
     );
     if (picked != null) setState(() => _date = picked);
+  }
+
+  Future<void> _pickPhoto() async {
+    try {
+      final file = await FilePicker.pickFile(
+        type: FileType.custom,
+        allowedExtensions: const ['jpg', 'jpeg', 'png', 'webp'],
+      );
+      if (file != null) {
+        setState(() => _photoName = file.name);
+      }
+    } catch (_) {}
   }
 
   @override
@@ -177,8 +194,7 @@ class _DailyWorkLogDialogState extends State<DailyWorkLogDialog> {
                       const SizedBox(height: 16),
                       _label('Upload Photos'),
                       InkWell(
-                        onTap: () =>
-                            setState(() => _photoName = 'site_photo.jpg'),
+                        onTap: _pickPhoto,
                         borderRadius: BorderRadius.circular(10),
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 20),

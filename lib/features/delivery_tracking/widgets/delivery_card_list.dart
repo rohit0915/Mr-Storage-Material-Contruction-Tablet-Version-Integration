@@ -17,8 +17,8 @@ class DeliveryCardList extends GetView<DeliveryTrackingController> {
       if (controller.isLoading.value) {
         return const AppShimmerTable(rowCount: 4);
       }
-      final items = controller.filteredDeliveries;
-      if (items.isEmpty) {
+      final items = controller.paginatedDeliveries;
+      if (items.isEmpty && controller.filteredDeliveries.isEmpty) {
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(40),
@@ -30,11 +30,154 @@ class DeliveryCardList extends GetView<DeliveryTrackingController> {
             ),
           ),
         );
+      } else if (items.isEmpty) {
+        // Edge case where current page is empty but filtered list is not.
+        return const SizedBox.shrink();
       }
+
+      final page = controller.pageIndex.value;
+      final pages = controller.totalPages;
+      final fontSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(12.0, 14.0);
+
       return Column(
-        children: items.map((item) => _DeliveryCard(item: item)).toList(),
+        children: [
+          ...items.map((item) => _DeliveryCard(item: item)),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Row(
+              children: [
+                Text(
+                  'Showing ${controller.filteredDeliveries.length} Results',
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const Spacer(),
+                _PageBtn(
+                  icon: Icons.chevron_left_rounded,
+                  enabled: page > 0,
+                  onTap: controller.prevPage,
+                ),
+                const SizedBox(width: 4),
+                ...List.generate(pages.clamp(0, 3), (i) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: InkWell(
+                      onTap: () => controller.goToPage(i),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: i == page
+                              ? AppColors.primaryBlue
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: i == page
+                              ? null
+                              : Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Text(
+                          '${i + 1}',
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.w700,
+                            color: i == page ? Colors.white : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                if (pages > 3) ...[
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 4),
+                    child: Text('...', style: TextStyle(color: AppColors.textSecondary)),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 2),
+                    child: InkWell(
+                      onTap: () => controller.goToPage(pages - 1),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: (pages - 1) == page
+                              ? AppColors.primaryBlue
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(6),
+                          border: (pages - 1) == page
+                              ? null
+                              : Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: Text(
+                          '$pages',
+                          style: TextStyle(
+                            fontSize: fontSize,
+                            fontWeight: FontWeight.w700,
+                            color: (pages - 1) == page
+                                ? Colors.white
+                                : AppColors.textPrimary,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+                const SizedBox(width: 4),
+                _PageBtn(
+                  icon: Icons.chevron_right_rounded,
+                  enabled: page < pages - 1,
+                  onTap: controller.nextPage,
+                ),
+              ],
+            ),
+          ),
+        ],
       );
     });
+  }
+}
+
+class _PageBtn extends StatelessWidget {
+  const _PageBtn({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        width: 28,
+        height: 28,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: enabled ? AppColors.cardBorder : const Color(0xFFF3F4F6),
+          ),
+        ),
+        child: Icon(
+          icon,
+          size: 16,
+          color: enabled ? AppColors.textPrimary : const Color(0xFFD1D5DB),
+        ),
+      ),
+    );
   }
 }
 
@@ -75,16 +218,21 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
               size.height * 0.008,
             ),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  width: 38,
-                  height: 38,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF3B6FD8),
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF3B6FD8), Color(0xFF1D51A4)],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
                     borderRadius: BorderRadius.circular(10),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.12),
+                        color: const Color(0xFF3B6FD8).withValues(alpha: 0.25),
                         blurRadius: 8,
                         offset: const Offset(0, 2),
                       ),
@@ -96,12 +244,16 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                     color: Colors.white,
                   ),
                 ),
-                const SizedBox(width: 10),
+                const SizedBox(width: 12),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Row(
+                      Wrap(
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           Text(
                             item.title,
@@ -111,59 +263,98 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                               color: AppColors.textPrimary,
                             ),
                           ),
-                          const SizedBox(width: 8),
                           _StatusBadge(status: item.status),
-                          if (item.priority != null) ...[
-                            const SizedBox(width: 6),
+                          if (item.priority != null)
                             _PriorityBadge(priority: item.priority!),
-                          ],
-                          if (item.bundleCount > 0) ...[
-                            const SizedBox(width: 6),
+                          if (item.bundleCount > 0)
                             _EtaBadge(
                               text: '${item.bundleCount} Bundles',
                               color: const Color(0xFF7539FF),
                             ),
-                          ],
                         ],
                       ),
-                      Text(
-                        '@ ${item.location}',
-                        style: TextStyle(
-                          fontSize: labelSize,
-                          color: AppColors.textSecondary,
-                        ),
+                      const SizedBox(height: 3),
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              item.location.isNotEmpty
+                                  ? item.location
+                                  : 'No location specified',
+                              style: TextStyle(
+                                fontSize: labelSize,
+                                color: AppColors.textSecondary,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
                       ),
                     ],
                   ),
                 ),
-                Text(
-                  'Delivery ID: ${item.id}',
-                  style: TextStyle(
-                    fontSize: labelSize,
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(width: 10),
-                InkWell(
-                  onTap: () => ViewDetailsDialog.show(context, item),
-                  child: Row(
-                    children: [
-                      Icon(
-                        Icons.remove_red_eye_outlined,
-                        size: 14,
-                        color: AppColors.link,
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
                       ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'View Details',
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Text(
+                        'Delivery ID: ${item.id}',
                         style: TextStyle(
-                          fontSize: labelSize,
-                          color: AppColors.link,
-                          fontWeight: FontWeight.w600,
+                          fontSize: (labelSize - 1).clamp(10.0, 12.0),
+                          fontWeight: FontWeight.w700,
+                          color: const Color(0xFF475569),
                         ),
                       ),
-                    ],
-                  ),
+                    ),
+                    const SizedBox(height: 5),
+                    InkWell(
+                      onTap: () => ViewDetailsDialog.show(context, item),
+                      borderRadius: BorderRadius.circular(6),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 4,
+                          vertical: 2,
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.remove_red_eye_outlined,
+                              size: 14,
+                              color: AppColors.link,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              'View Details',
+                              style: TextStyle(
+                                fontSize: labelSize,
+                                color: AppColors.link,
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
@@ -283,7 +474,7 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                       onTap: () => MarkPartialDialog.show(
                         context,
                         item,
-                        () => controller.markPartialReceived(item.id),
+                        (notes) => controller.markPartialReceived(item.id, notes),
                       ),
                     ),
                   ),
@@ -476,6 +667,8 @@ class _InfoBlock extends StatelessWidget {
                       ),
                       Text(
                         r.$3,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: labelSize,
                           fontWeight: FontWeight.w700,
@@ -501,6 +694,7 @@ class _NotesBox extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final hasNotes = notes.trim().isNotEmpty;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -514,17 +708,21 @@ class _NotesBox extends StatelessWidget {
         ),
         const SizedBox(height: 8),
         Container(
-          padding: const EdgeInsets.all(10),
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           decoration: BoxDecoration(
-            color: const Color(0xFFFEFCE8),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: const Color(0xFFFDE68A)),
+            color: hasNotes ? const Color(0xFFFEFCE8) : const Color(0xFFF8FAFC),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: hasNotes ? const Color(0xFFFDE68A) : const Color(0xFFE2E8F0),
+            ),
           ),
           child: Text(
-            notes,
+            hasNotes ? notes : 'No notes provided',
             style: TextStyle(
               fontSize: labelSize - 1,
-              color: const Color(0xFF92400E),
+              color: hasNotes ? const Color(0xFF92400E) : AppColors.textSecondary,
+              fontStyle: hasNotes ? FontStyle.normal : FontStyle.italic,
             ),
             maxLines: 3,
             overflow: TextOverflow.ellipsis,

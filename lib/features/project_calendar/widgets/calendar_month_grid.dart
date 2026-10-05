@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/project_calendar_controller.dart';
+import 'day_events_dialog.dart';
 
 class CalendarMonthGrid extends GetView<ProjectCalendarController> {
   const CalendarMonthGrid({super.key});
@@ -67,30 +68,104 @@ class CalendarMonthGrid extends GetView<ProjectCalendarController> {
                     icon: const Icon(Icons.chevron_right),
                   ),
                   const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
-                    ),
-                    decoration: BoxDecoration(
-                      border: Border.all(color: AppColors.cardBorder),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: Row(
-                      children: [
-                        Text(
-                          'Month',
-                          style: TextStyle(
-                            fontSize: cellFont,
+                  PopupMenuButton<String>(
+                    tooltip: 'Calendar View Options',
+                    onSelected: (value) async {
+                      if (value == 'month') {
+                        controller.calendarViewMode.value = 'Month';
+                      } else if (value == 'today') {
+                        controller.goToday();
+                      } else if (value == 'pick_month') {
+                        final picked = await showDatePicker(
+                          context: context,
+                          initialDate: controller.focusedMonth.value,
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2030),
+                          helpText: 'Select Month & Year',
+                          initialDatePickerMode: DatePickerMode.year,
+                        );
+                        if (picked != null) {
+                          controller.selectMonthYear(picked);
+                        }
+                      }
+                    },
+                    itemBuilder: (context) => [
+                      PopupMenuItem(
+                        value: 'month',
+                        child: Row(
+                          children: const [
+                            Icon(
+                              Icons.calendar_month,
+                              size: 18,
+                              color: AppColors.primaryBlue,
+                            ),
+                            SizedBox(width: 8),
+                            Text(
+                              'Month View',
+                              style: TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'today',
+                        child: Row(
+                          children: const [
+                            Icon(
+                              Icons.today,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            SizedBox(width: 8),
+                            Text('Jump to Today'),
+                          ],
+                        ),
+                      ),
+                      PopupMenuItem(
+                        value: 'pick_month',
+                        child: Row(
+                          children: const [
+                            Icon(
+                              Icons.date_range,
+                              size: 18,
+                              color: AppColors.textSecondary,
+                            ),
+                            SizedBox(width: 8),
+                            Text('Pick Month & Year...'),
+                          ],
+                        ),
+                      ),
+                    ],
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        border: Border.all(color: AppColors.cardBorder),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        children: [
+                          Obx(
+                            () => Text(
+                              controller.calendarViewMode.value,
+                              style: TextStyle(
+                                fontSize: cellFont,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.keyboard_arrow_down,
+                            size: 16,
                             color: AppColors.textSecondary,
                           ),
-                        ),
-                        const Icon(
-                          Icons.keyboard_arrow_down,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ],
@@ -138,10 +213,28 @@ class CalendarMonthGrid extends GetView<ProjectCalendarController> {
                   }
 
                   final events = controller.monthEvents[dayNum] ?? const [];
+                  final deliveries =
+                      controller.dayDeliveriesMap[dayNum] ?? const [];
                   final isSelected = dayNum == selectedDay;
+                  final hasExtra = events.length > 3;
 
                   return InkWell(
                     onTap: () => controller.selectDay(dayNum),
+                    onLongPress: events.isNotEmpty
+                        ? () {
+                            controller.selectDay(dayNum);
+                            DayEventsDialog.show(
+                              context,
+                              date: DateTime(
+                                month.year,
+                                month.month,
+                                dayNum,
+                              ),
+                              events: events,
+                              deliveries: deliveries,
+                            );
+                          }
+                        : null,
                     borderRadius: BorderRadius.circular(6),
                     child: Container(
                       padding: const EdgeInsets.all(6),
@@ -181,29 +274,94 @@ class CalendarMonthGrid extends GetView<ProjectCalendarController> {
                           ),
                           const SizedBox(height: 4),
                           Expanded(
-                            child: ClipRect(
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                children: events
-                                    .take(3)
-                                    .map(
-                                      (e) => Padding(
-                                        padding: const EdgeInsets.only(
-                                          bottom: 2,
-                                        ),
-                                        child: Text(
-                                          e.title,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            fontSize: eventFont,
-                                            color: e.color,
-                                            fontWeight: FontWeight.w600,
+                                children: [
+                                  ...events.take(3).map(
+                                    (e) => Padding(
+                                      padding: const EdgeInsets.only(
+                                        bottom: 2,
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Container(
+                                            width: 5,
+                                            height: 5,
+                                            margin: const EdgeInsets.only(
+                                              right: 4,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: e.color,
+                                              shape: BoxShape.circle,
+                                            ),
+                                          ),
+                                          Expanded(
+                                            child: Text(
+                                              e.title,
+                                              maxLines: 1,
+                                              overflow:
+                                                  TextOverflow.ellipsis,
+                                              style: TextStyle(
+                                                fontSize: eventFont,
+                                                color: AppColors.textPrimary,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                  if (hasExtra)
+                                    InkWell(
+                                      onTap: () {
+                                        controller.selectDay(dayNum);
+                                        DayEventsDialog.show(
+                                          context,
+                                          date: DateTime(
+                                            month.year,
+                                            month.month,
+                                            dayNum,
+                                          ),
+                                          events: events,
+                                          deliveries: deliveries,
+                                        );
+                                      },
+                                      borderRadius: BorderRadius.circular(4),
+                                      child: Tooltip(
+                                        message: events
+                                            .skip(3)
+                                            .map((e) => e.title)
+                                            .join(', '),
+                                        child: Padding(
+                                          padding:
+                                              const EdgeInsets.only(top: 2),
+                                          child: Row(
+                                            mainAxisSize: MainAxisSize.min,
+                                            children: [
+                                              Text(
+                                                '+${events.length - 3} more',
+                                                style: TextStyle(
+                                                  fontSize: eventFont,
+                                                  color: AppColors.primaryBlue,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              const SizedBox(width: 2),
+                                              Icon(
+                                                Icons.arrow_forward_ios_rounded,
+                                                size: (eventFont - 2)
+                                                    .clamp(7.0, 9.0),
+                                                color: AppColors.primaryBlue,
+                                              ),
+                                            ],
                                           ),
                                         ),
                                       ),
-                                    )
-                                    .toList(),
+                                    ),
+                                ],
                               ),
                             ),
                           ),

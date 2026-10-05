@@ -15,8 +15,10 @@ class ProjectDropdown extends StatefulWidget {
 class _ProjectDropdownState extends State<ProjectDropdown> {
   final _link = LayerLink();
   final _controller = Get.find<ProjectCalendarController>();
+  final _searchController = TextEditingController();
   OverlayEntry? _entry;
   Worker? _closeWorker;
+  String _searchQuery = '';
 
   @override
   void initState() {
@@ -30,12 +32,14 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
   void dispose() {
     _closeWorker?.dispose();
     _removeOverlay();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _removeOverlay() {
     _entry?.remove();
     _entry = null;
+    _searchQuery = '';
   }
 
   void _toggle() {
@@ -47,99 +51,172 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
     _showOverlay();
   }
 
-  Widget _buildProjectIcon(String imageAsset) {
-    if (imageAsset.isEmpty) {
-      return const Icon(
-        Icons.business_rounded,
-        size: 22,
-        color: AppColors.textSecondary,
-      );
-    }
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(2),
-      child: Image.asset(
-        imageAsset,
-        width: 30,
-        height: 20,
-        fit: BoxFit.cover,
-        errorBuilder: (context, error, stackTrace) => const Icon(
-          Icons.business_rounded,
-          size: 22,
-          color: AppColors.textSecondary,
-        ),
-      ),
-    );
-  }
-
   void _showOverlay() {
+    _searchQuery = '';
+    _searchController.clear();
     final size = MediaQuery.sizeOf(context);
     final menuWidth = (size.width * 0.28).clamp(240.0, 320.0);
-    final valueSize = (size.width * 0.010).clamp(11.0, 13.0);
 
     _entry = OverlayEntry(
       builder: (context) {
-        return Stack(
-          children: [
-            Positioned.fill(
-              child: GestureDetector(
-                behavior: HitTestBehavior.translucent,
-                onTap: _controller.closeDropdown,
-              ),
-            ),
-            CompositedTransformFollower(
-              link: _link,
-              showWhenUnlinked: false,
-              offset: Offset(0, size.height * 0.052),
-              child: Material(
-                elevation: 10,
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: menuWidth,
-                  constraints: BoxConstraints(maxHeight: size.height * 0.38),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFD9D9D9)),
+        return StatefulBuilder(
+          builder: (context, setOverlayState) {
+            final filteredProjects = _controller.projects.where((p) {
+              if (_searchQuery.isEmpty) return true;
+              final title = p.id.isEmpty
+                  ? p.name.toLowerCase()
+                  : '${p.name} (${p.code})'.toLowerCase();
+              return title.contains(_searchQuery) ||
+                  p.name.toLowerCase().contains(_searchQuery) ||
+                  p.code.toLowerCase().contains(_searchQuery);
+            }).toList();
+
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(
+                    behavior: HitTestBehavior.translucent,
+                    onTap: _controller.closeDropdown,
                   ),
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    children: _controller.projects.map((p) {
-                      return InkWell(
-                        onTap: () => _controller.selectProject(p.id),
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 8,
-                          ),
-                          child: Row(
-                            children: [
-                              _buildProjectIcon(p.imageAsset),
-                              const SizedBox(width: 10),
-                              Expanded(
-                                child: Text(
-                                  p.id.isEmpty
-                                      ? p.name
-                                      : '${p.name} (${p.code})',
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: valueSize,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
+                ),
+                CompositedTransformFollower(
+                  link: _link,
+                  showWhenUnlinked: false,
+                  offset: const Offset(0, 44),
+                  child: Material(
+                    elevation: 8,
+                    shadowColor: Colors.black.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      width: menuWidth,
+                      constraints: BoxConstraints(maxHeight: size.height * 0.38),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Top Search Bar
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: SizedBox(
+                              height: 36,
+                              child: TextField(
+                                controller: _searchController,
+                                onChanged: (val) {
+                                  setOverlayState(() {
+                                    _searchQuery = val.trim().toLowerCase();
+                                  });
+                                },
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textPrimary,
+                                ),
+                                decoration: InputDecoration(
+                                  hintText: 'Search...',
+                                  hintStyle: const TextStyle(
+                                    color: AppColors.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  filled: true,
+                                  fillColor: const Color(0xFFF8FAFC),
+                                  border: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  enabledBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                    borderSide: const BorderSide(
+                                      color: Color(0xFFE2E8F0),
+                                    ),
+                                  ),
+                                  focusedBorder: OutlineInputBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                    borderSide: const BorderSide(
+                                      color: AppColors.primaryBlue,
+                                    ),
                                   ),
                                 ),
                               ),
-                            ],
+                            ),
                           ),
-                        ),
-                      );
-                    }).toList(),
+                          const Divider(height: 1, color: Color(0xFFF1F5F9)),
+                          // Items List
+                          Flexible(
+                            child: ListView(
+                              padding: EdgeInsets.zero,
+                              shrinkWrap: true,
+                              children: filteredProjects.map((p) {
+                                final title = p.id.isEmpty
+                                    ? p.name
+                                    : (p.code.isNotEmpty
+                                        ? '${p.name} (${p.code})'
+                                        : p.name);
+                                final isSelected =
+                                    (_controller.selectedProject?.id == p.id) ||
+                                        (_controller.selectedProjectId.value
+                                                .isEmpty &&
+                                            p.id.isEmpty);
+
+                                return InkWell(
+                                  onTap: () {
+                                    _controller.selectProject(p.id);
+                                    _controller.closeDropdown();
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    color: isSelected
+                                        ? const Color(0xFFF8FAFC)
+                                        : Colors.white,
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            title,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              color: AppColors.textPrimary,
+                                            ),
+                                          ),
+                                        ),
+                                        if (isSelected)
+                                          const Icon(
+                                            Icons.check,
+                                            size: 16,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                      ],
+                                    ),
+                                  ),
+                                );
+                              }).toList(),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -150,8 +227,6 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final labelSize = (size.width * 0.009).clamp(10.0, 12.0);
-    final valueSize = (size.width * 0.010).clamp(11.0, 13.0);
     final menuWidth = (size.width * 0.28).clamp(240.0, 320.0);
 
     return GetBuilder<ProjectCalendarController>(
@@ -161,64 +236,50 @@ class _ProjectDropdownState extends State<ProjectDropdown> {
         final open = _controller.dropdownOpen.value;
         final displayTitle = (selected == null || selected.id.isEmpty)
             ? 'All Projects'
-            : '${selected.name} (${selected.code})';
+            : (selected.code.isNotEmpty
+                ? '${selected.name} (${selected.code})'
+                : selected.name);
 
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          children: [
-            Text(
-              'Select Project',
-              style: TextStyle(
-                fontSize: labelSize,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
+        return CompositedTransformTarget(
+          link: _link,
+          child: GestureDetector(
+            onTap: _toggle,
+            child: Container(
+              width: menuWidth,
+              padding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 8,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      displayTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                  Icon(
+                    open
+                        ? Icons.keyboard_arrow_up_rounded
+                        : Icons.keyboard_arrow_down_rounded,
+                    color: AppColors.textSecondary,
+                    size: 18,
+                  ),
+                ],
               ),
             ),
-            SizedBox(height: size.height * 0.006),
-            CompositedTransformTarget(
-              link: _link,
-              child: GestureDetector(
-                onTap: _toggle,
-                child: Container(
-                  width: menuWidth,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 8,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: Row(
-                    children: [
-                      _buildProjectIcon(selected?.imageAsset ?? ''),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          displayTitle,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            fontSize: valueSize,
-                            fontWeight: FontWeight.w600,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                      ),
-                      Icon(
-                        open
-                            ? Icons.keyboard_arrow_up_rounded
-                            : Icons.keyboard_arrow_down_rounded,
-                        color: AppColors.textSecondary,
-                        size: 20,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
+          ),
         );
       },
     );

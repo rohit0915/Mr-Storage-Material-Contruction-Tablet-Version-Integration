@@ -18,6 +18,7 @@ class MaterialRequestCard extends StatelessWidget {
     final linkSize = (size.width * 0.009).clamp(10.0, 12.0);
 
     return SectionCard(
+      height: 400,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,41 +45,36 @@ class MaterialRequestCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          GetBuilder<DashboardController>(
-            id: AppGetIds.materialOverview,
-            builder: (controller) {
-              final pendingSlice = controller.materialSlices.firstWhere(
-                (s) => s.label == 'Pending Approval',
-                orElse: () => const ChartSlice(
-                  label: 'Pending Approval',
-                  percent: 0,
-                  color: Colors.transparent,
-                ),
-              );
-              final pendingCount = pendingSlice.percent.round();
-              
-              final totalCount = controller.materialSlices
-                  .where((s) => s.label != 'Urgent Requests')
-                  .fold<double>(0, (sum, s) => sum + s.percent)
-                  .round();
+          Expanded(
+            child: GetBuilder<DashboardController>(
+              id: AppGetIds.materialOverview,
+              builder: (controller) {
+                if (controller.materialSlices.isEmpty) {
+                  return const Center(child: Text('No overview data available'));
+                }
+                final pendingCount = controller.materialPending.round();
+                final totalCount = controller.materialTotal.round();
 
-              return Column(
-                children: [
-                  Center(
-                    child: DonutChart(
-                      slices: controller.materialSlices,
-                      centerTitle: '$pendingCount Pending',
-                      centerValue: '$totalCount',
+                return Column(
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: DonutChart(
+                          slices: controller.materialSlices,
+                          centerTitle: '$pendingCount Pending',
+                          centerValue: '$totalCount',
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: DashboardGap.section(context)),
-                  ChartLegend(
-                    slices: controller.materialSlices,
-                    totalOverride: totalCount.toDouble(),
-                  ),
-                ],
-              );
-            },
+                    SizedBox(height: DashboardGap.section(context)),
+                    ChartLegend(
+                      slices: controller.materialSlices,
+                      totalOverride: totalCount.toDouble(),
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),

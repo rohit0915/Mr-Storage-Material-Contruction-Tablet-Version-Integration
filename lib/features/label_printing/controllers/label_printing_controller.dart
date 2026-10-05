@@ -1,5 +1,11 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+
+import '../../../app/utils/app_logger.dart';
+import '../../../app/utils/app_toast.dart';
 
 import '../models/label_printing_models.dart';
 import '../services/label_printing_service.dart';
@@ -49,11 +55,12 @@ class LabelPrintingController extends GetxController {
 
   List<LabelBundleItem> get pageBundles {
     if (filteredBundles.isEmpty) return [];
-    return filteredBundles;
+    final startIndex = pageIndex.value * pageSize;
+    return filteredBundles.skip(startIndex).take(pageSize).toList();
   }
 
   int get totalPages {
-    final total = totalBundles;
+    final total = filteredBundles.length;
     if (total == 0) return 1;
     return (total / pageSize).ceil();
   }
@@ -68,21 +75,19 @@ class LabelPrintingController extends GetxController {
   void onInit() {
     super.onInit();
     searchController.addListener(_onSearchChanged);
-    _recomputeFiltered();
-    fetchLabelsFromApi();
+    fetchLabelsFromApi(targetPage: 1, limit: 1000); // Fetch all for local filter/pagination
   }
 
-  Future<void> fetchLabelsFromApi({int? targetPage}) async {
-    final pageToFetch = targetPage ?? (pageIndex.value + 1);
+  Future<void> fetchLabelsFromApi({int? targetPage, int? limit}) async {
     isLoading.value = true;
     try {
       final resMap = await _service.fetchLabelsData(
-        page: pageToFetch,
-        limit: pageSize,
+        page: 1,
+        limit: limit ?? 1000,
       );
       final List<LabelBundleItem> apiList = resMap['items'] ?? [];
       final Map<String, dynamic> stats = resMap['stats'] ?? {};
-      final int totalCount = resMap['total'] ?? stats['total'] ?? 222;
+      final int totalCount = resMap['total'] ?? stats['total'] ?? 0;
 
       if (stats.isNotEmpty || totalCount > 0) {
         hasApiStats.value = true;
@@ -105,7 +110,7 @@ class LabelPrintingController extends GetxController {
   void _onSearchChanged() {
     searchQuery.value = searchController.text.trim();
     resetPagination();
-    fetchLabelsFromApi(targetPage: 1);
+    _recomputeFiltered();
   }
 
   void setSort(LabelSortOption option) {
@@ -121,21 +126,18 @@ class LabelPrintingController extends GetxController {
   void nextPage() {
     if (pageIndex.value < totalPages - 1) {
       pageIndex.value++;
-      fetchLabelsFromApi(targetPage: pageIndex.value + 1);
     }
   }
 
   void prevPage() {
     if (pageIndex.value > 0) {
       pageIndex.value--;
-      fetchLabelsFromApi(targetPage: pageIndex.value + 1);
     }
   }
 
   void goToPage(int p) {
     if (p >= 0 && p < totalPages) {
       pageIndex.value = p;
-      fetchLabelsFromApi(targetPage: p + 1);
     }
   }
 
@@ -205,36 +207,91 @@ class LabelPrintingController extends GetxController {
   }
 
   void _recomputeFiltered() {
-    final q = searchQuery.value.trim().toLowerCase();
-    var list = bundles.where((b) {
-      if (selectedStatus.value != 'All Statuses') {
-        final filterText = selectedStatus.value.toUpperCase();
-        if (!b.statusText.toUpperCase().contains(filterText) &&
-            !b.status.name.toUpperCase().contains(filterText)) {
-          return false;
-        }
-      }
-      if (q.isEmpty) return true;
-      return b.id.toLowerCase().contains(q) ||
-          b.loadId.toLowerCase().contains(q) ||
-          b.part.toLowerCase().contains(q) ||
-          b.project.toLowerCase().contains(q) ||
-          b.shipper.toLowerCase().contains(q) ||
-          b.statusText.toLowerCase().contains(q);
-    }).toList();
-
-    switch (sortOption.value) {
-      case LabelSortOption.latest:
-        list = list.reversed.toList();
-      case LabelSortOption.oldest:
-        break;
-      case LabelSortOption.weightHigh:
-        list.sort((a, b) => b.totalWeightLbs.compareTo(a.totalWeightLbs));
-      case LabelSortOption.weightLow:
-        list.sort((a, b) => a.totalWeightLbs.compareTo(b.totalWeightLbs));
+    var filtered = bundles.toList();
+    
+    if (selectedStatus.value != 'All Statuses') {
+      final status = selectedStatus.value.toLowerCase();
+      filtered = filtered.where((b) => b.statusText.toLowerCase() == status || b.status.name.toLowerCase() == status).toList();
+    }
+    
+    if (searchQuery.value.isNotEmpty) {
+      final q = searchQuery.value.toLowerCase();
+      filtered = filtered.where((b) => 
+        b.id.toLowerCase().contains(q) || 
+        b.project.toLowerCase().contains(q) ||
+        b.loadId.toLowerCase().contains(q) ||
+        b.part.toLowerCase().contains(q)
+      ).toList();
     }
 
-    filteredBundles.value = list;
+    if (sortOption.value == LabelSortOption.weightHigh) {
+      filtered.sort((a, b) => b.totalWeightLbs.compareTo(a.totalWeightLbs));
+    } else if (sortOption.value == LabelSortOption.weightLow) {
+      filtered.sort((a, b) => a.totalWeightLbs.compareTo(b.totalWeightLbs));
+    } else if (sortOption.value == LabelSortOption.oldest) {
+      filtered.sort((a, b) => a.id.compareTo(b.id));
+    } else {
+      filtered.sort((a, b) => b.id.compareTo(a.id));
+    }
+
+    filteredBundles.value = filtered;
+  }
+
+  Future<void> exportReport() async {
+    try {
+      final rows = <List<Object?>>[
+        [
+          'Bundle ID',
+          'Project',
+          'Load ID',
+          'Part#',
+          'Weight (lbs)',
+          'Length (ft)',
+          'Status',
+        ],
+        ...bundles.map((b) => [
+              b.id,
+              b.project,
+              b.loadId,
+              b.part,
+              b.totalWeightLbs,
+              b.lengthFt,
+              b.statusText,
+            ]),
+      ];
+      final saved = await file_picker.FilePicker.saveFile(
+        dialogTitle: 'Save Label Printing',
+        fileName: 'label_printing.csv',
+        type: file_picker.FileType.custom,
+        allowedExtensions: ['csv'],
+        bytes: _encodeCsv(rows),
+      );
+      if (saved != null) {
+        AppToast.showSuccess(
+          title: 'Exported',
+          description: 'Label printing exported successfully.',
+        );
+      }
+    } catch (e, st) {
+      AppLogger.e('Export error', error: e, stackTrace: st, tag: 'LABEL_CTRL');
+      AppToast.showError(
+        title: 'Export failed',
+        description: 'An error occurred while exporting.',
+      );
+    }
+  }
+
+  Uint8List _encodeCsv(List<List<Object?>> rows) {
+    String cell(Object? value) {
+      var text = value?.toString() ?? '';
+      if (value is String && RegExp(r'^\s*[=+\-@]').hasMatch(text)) {
+        text = "'$text";
+      }
+      return '"${text.replaceAll('"', '""')}"';
+    }
+
+    final csv = rows.map((row) => row.map(cell).join(',')).join('\r\n');
+    return Uint8List.fromList(utf8.encode('\uFEFF$csv\r\n'));
   }
 
   @override

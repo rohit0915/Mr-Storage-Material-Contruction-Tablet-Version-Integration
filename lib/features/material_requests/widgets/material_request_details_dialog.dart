@@ -344,60 +344,63 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                     const SizedBox(height: 24),
 
                     // Bottom Cancel Request Button
-                    Center(
-                      child: OutlinedButton(
-                        onPressed: () async {
-                          final confirm = await showDialog<bool>(
-                            context: context,
-                            builder: (ctx) => AlertDialog(
-                              title: const Text('Cancel Material Request'),
-                              content: Text(
-                                'Are you sure you want to cancel request ${item.id}?',
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.of(ctx).pop(false),
-                                  child: const Text('No'),
+                    if (item.status == MaterialRequestStatus.pending)
+                      Center(
+                        child: OutlinedButton(
+                          onPressed: () async {
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: const Text('Cancel Material Request'),
+                                content: Text(
+                                  'Are you sure you want to cancel request ${item.id}?',
                                 ),
-                                ElevatedButton(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFFEF4444),
-                                    foregroundColor: Colors.white,
+                                actions: [
+                                  TextButton(
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(false),
+                                    child: const Text('No'),
                                   ),
-                                  onPressed: () => Navigator.of(ctx).pop(true),
-                                  child: const Text('Yes, Cancel'),
-                                ),
-                              ],
-                            ),
-                          );
+                                  ElevatedButton(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: const Color(0xFFEF4444),
+                                      foregroundColor: Colors.white,
+                                    ),
+                                    onPressed: () =>
+                                        Navigator.of(ctx).pop(true),
+                                    child: const Text('Yes, Cancel'),
+                                  ),
+                                ],
+                              ),
+                            );
 
-                          if (confirm == true && context.mounted) {
-                            Navigator.of(context).pop();
-                            if (Get.isRegistered<
-                              MaterialRequestsController
-                            >()) {
-                              Get.find<MaterialRequestsController>()
-                                  .cancelRequest(item.id);
+                            if (confirm == true && context.mounted) {
+                              Navigator.of(context).pop();
+                              if (Get.isRegistered<
+                                MaterialRequestsController
+                              >()) {
+                                Get.find<MaterialRequestsController>()
+                                    .cancelRequest(item.id, item.databaseId);
+                              }
                             }
-                          }
-                        },
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: const Color(0xFFEF4444),
-                          side: const BorderSide(color: Color(0xFFEF4444)),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 48,
-                            vertical: 14,
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: const Color(0xFFEF4444),
+                            side: const BorderSide(color: Color(0xFFEF4444)),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 48,
+                              vertical: 14,
+                            ),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
                           ),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                          child: const Text(
+                            'Cancel Request',
+                            style: TextStyle(fontWeight: FontWeight.w700),
                           ),
-                        ),
-                        child: const Text(
-                          'Cancel Request',
-                          style: TextStyle(fontWeight: FontWeight.w700),
                         ),
                       ),
-                    ),
                   ],
                 ),
               ),

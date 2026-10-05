@@ -1,7 +1,7 @@
 class ApiConstants {
   ApiConstants._();
 
-    /// Primary base URL from live web panel environment
+  /// Primary base URL from live web panel environment
   static const String baseUrl =
       'https://mr-storage-backend-025k.onrender.com/api';
 
@@ -18,6 +18,9 @@ class ApiConstants {
     }
   }
 
+  /// Socket.io namespace for staff/construction panels
+  static const String socketNamespace = '/admin';
+
   // Auth & User Settings
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
@@ -33,6 +36,10 @@ class ApiConstants {
       '/construction/projects/$leadId';
   static String projectBOM(String leadId) =>
       '/construction/projects/$leadId/bom';
+  static String consolidatedBOM(String leadId) =>
+      '/construction/projects/$leadId/consolidated-bom';
+  static String bomFiles(String leadId) =>
+      '/construction/projects/$leadId/bom-files';
   static const String projectCalendar = '/construction/projects/calendar';
 
   // Drawings & Attachments
@@ -101,6 +108,7 @@ class ApiConstants {
   static String bundleScanUrl({int page = 1, int limit = 10}) =>
       '/construction/bundle-scan?page=$page&limit=$limit';
   static const String bundleScanSubmit = '/construction/bundle-scan/scan';
+  static const String bundleScanExport = '/construction/bundle-scan/export';
   static String bundleDetail(String id) => '/construction/bundles/$id';
   static String bundleVerify(String id) => '/construction/bundles/$id/verify';
   static String bundleStaged(String id) =>
@@ -154,7 +162,8 @@ class ApiConstants {
   static String chatUsersUrl(String search) =>
       '/team-chat/users?search=${Uri.encodeComponent(search)}';
   static const String chatConversations = '/team-chat/conversations';
-  static const String chatUnreadCount = '/team-chat/unread-count';
+  static const String chatUnreadCount =
+      '/team-chat/unread-count'; // Assuming this exists, fallback
   static String chatDirectMessages(
     String userId, {
     int page = 1,

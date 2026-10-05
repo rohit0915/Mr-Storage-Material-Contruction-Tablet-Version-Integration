@@ -13,6 +13,7 @@ class AppDrawer extends GetView<AppShellController> {
     _DrawerItem('Project & Calendar', Icons.calendar_month_outlined),
     _DrawerItem('Drawings & Attachments', Icons.architecture_outlined),
     _DrawerItem('Tasks', Icons.checklist_rounded),
+    _DrawerItem('Daily Work Logs', Icons.menu_book_outlined),
     _DrawerItem('Material Request', Icons.grid_view_rounded),
     _DrawerItem('Delivery Tracking', Icons.local_shipping_outlined),
     _DrawerItem('Label Printing', Icons.local_offer_outlined),

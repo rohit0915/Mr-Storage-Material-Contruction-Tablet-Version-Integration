@@ -9,11 +9,13 @@ class SectionCard extends StatelessWidget {
     required this.child,
     this.padding,
     this.height,
+    this.minHeight,
   });
 
   final Widget child;
   final EdgeInsetsGeometry? padding;
   final double? height;
+  final double? minHeight;
 
   @override
   Widget build(BuildContext context) {
@@ -21,6 +23,9 @@ class SectionCard extends StatelessWidget {
 
     return Container(
       height: height,
+      constraints: minHeight != null
+          ? BoxConstraints(minHeight: minHeight!)
+          : null,
       padding:
           padding ?? EdgeInsets.all((size.width * 0.012).clamp(12.0, 16.0)),
       decoration: BoxDecoration(

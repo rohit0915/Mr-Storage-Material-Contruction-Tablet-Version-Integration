@@ -3,7 +3,6 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
-import '../../tasks/widgets/task_success_dialog.dart';
 import '../controllers/material_requests_controller.dart';
 import '../widgets/add_material_request_dialog.dart';
 import '../widgets/material_request_filters_row.dart';
@@ -78,15 +77,7 @@ class MaterialRequestsView extends GetView<MaterialRequestsController> {
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () async {
-                    await showDialog<void>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const TaskSuccessDialog(
-                        title: 'File exported Successfully',
-                      ),
-                    );
-                  },
+                  onPressed: controller.exportReport,
                   icon: const Icon(Icons.download_rounded, size: 18),
                   label: Text(
                     'Export',

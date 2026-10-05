@@ -1,3 +1,4 @@
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -11,6 +12,7 @@ import '../../../app/utils/app_logger.dart';
 import '../../../app/utils/app_toast.dart';
 import '../models/dashboard_models.dart';
 import '../services/dashboard_service.dart';
+import '../services/dashboard_report.dart';
 
 class DashboardController extends GetxController {
   DashboardController({
@@ -28,9 +30,10 @@ class DashboardController extends GetxController {
   final selectedProject = 'All Projects'.obs;
   final selectedBuilding = 'All Buildings'.obs;
   final selectedStatus = 'All Status'.obs;
-  final dateRange = 'Date: Default (Today)'.obs;
+  final dateRange = 'All dates'.obs;
 
   final _projectIds = <String, String>{'All Projects': ''};
+  final _allBuildings = <Map<String, dynamic>>[];
   final _buildingIds = <String, String>{'All Buildings': ''};
   final _statusValues = <String, String>{'All Status': ''};
   String? _fromDate;
@@ -41,7 +44,13 @@ class DashboardController extends GetxController {
   final statusOptions = <String>['All Status'].obs;
 
   bool isLoading = false;
+  bool isExporting = false;
+  bool hasLoadedData = false;
   String errorMessage = '';
+  int _requestVersion = 0;
+  double deliveryTotal = 0;
+  double materialTotal = 0;
+  double materialPending = 0;
 
   void selectMenu(String title) {
     selectedMenu.value = title;
@@ -50,6 +59,8 @@ class DashboardController extends GetxController {
 
   void setProjectFilter(String value) {
     selectedProject.value = value;
+    selectedBuilding.value = 'All Buildings';
+    _refreshBuildingOptions();
     update([AppGetIds.dashboardFilters]);
     fetchDashboardData();
   }
@@ -66,7 +77,15 @@ class DashboardController extends GetxController {
     fetchDashboardData();
   }
 
-  void setDateRangeFilter(DateTimeRange value) {
+  void setDateRangeFilter(DateTimeRange? value) {
+    if (value == null) {
+      dateRange.value = 'All dates';
+      _fromDate = null;
+      _toDate = null;
+      update([AppGetIds.dashboardFilters]);
+      fetchDashboardData();
+      return;
+    }
     dateRange.value =
         '${DateFormat('dd MMM yyyy').format(value.start)} - '
         '${DateFormat('dd MMM yyyy').format(value.end)}';
@@ -186,7 +205,6 @@ class DashboardController extends GetxController {
       if (res is Map && res['data'] is Map) {
         final data = res['data'] as Map;
         final pOpts = <String>['All Projects'];
-        final bOpts = <String>['All Buildings'];
         final sOpts = <String>['All Status'];
         _projectIds
           ..clear()
@@ -204,30 +222,28 @@ class DashboardController extends GetxController {
             final jId = item['jobId']?.toString().trim();
             final id = item['_id']?.toString();
             if (pName != null && pName.isNotEmpty && id != null) {
-              final label = jId == null || jId.isEmpty
+              final baseLabel = jId == null || jId.isEmpty
                   ? pName
                   : '$pName ($jId)';
+              var label = baseLabel;
+              var duplicate = 2;
+              while (_projectIds.containsKey(label)) {
+                label = '$baseLabel ($duplicate)';
+                duplicate++;
+              }
               pOpts.add(label);
               _projectIds[label] = id;
             }
           }
         }
 
-        for (final item in data['buildings'] as List? ?? const []) {
-          if (item is Map && item['_id'] != null) {
-            final name = item['name']?.toString().trim().isNotEmpty == true
-                ? item['name'].toString().trim()
-                : 'Building ${item['buildingNumber'] ?? ''}'.trim();
-            var label = name;
-            var duplicate = 2;
-            while (_buildingIds.containsKey(label)) {
-              label = '$name ($duplicate)';
-              duplicate++;
-            }
-            bOpts.add(label);
-            _buildingIds[label] = item['_id'].toString();
-          }
-        }
+        _allBuildings
+          ..clear()
+          ..addAll(
+            (data['buildings'] as List? ?? []).whereType<Map>().map(
+              (b) => Map<String, dynamic>.from(b),
+            ),
+          );
 
         for (final value in data['statuses'] as List? ?? const []) {
           final raw = value.toString();
@@ -244,7 +260,7 @@ class DashboardController extends GetxController {
         }
 
         projectOptions.assignAll(pOpts);
-        buildingOptions.assignAll(bOpts);
+        _refreshBuildingOptions();
         statusOptions.assignAll(sOpts);
         update([AppGetIds.dashboardFilters]);
       }
@@ -256,7 +272,31 @@ class DashboardController extends GetxController {
     }
   }
 
+  void _refreshBuildingOptions() {
+    final projectId = _projectIds[selectedProject.value] ?? '';
+    _buildingIds
+      ..clear()
+      ..['All Buildings'] = '';
+    for (final item in _allBuildings) {
+      if (projectId.isNotEmpty && item['leadId']?.toString() != projectId) {
+        continue;
+      }
+      final id = item['_id']?.toString() ?? '';
+      if (id.isEmpty) continue;
+      final name = (item['name'] ?? 'Building ${item['buildingNumber'] ?? ''}')
+          .toString();
+      var label = name;
+      var suffix = 2;
+      while (_buildingIds.containsKey(label)) {
+        label = '$name (${suffix++})';
+      }
+      _buildingIds[label] = id;
+    }
+    buildingOptions.assignAll(_buildingIds.keys);
+  }
+
   Future<void> fetchDashboardData() async {
+    final requestVersion = ++_requestVersion;
     isLoading = true;
     errorMessage = '';
     update([
@@ -277,9 +317,10 @@ class DashboardController extends GetxController {
         fromDate: _fromDate,
         toDate: _toDate,
       );
-      if (data != null) {
-        _populateDataFromApi(data);
-      }
+      if (requestVersion != _requestVersion) return;
+      if (data == null) throw const FormatException('Missing dashboard data');
+      _populateDataFromApi(data);
+      hasLoadedData = true;
     } catch (e, stackTrace) {
       AppLogger.e(
         'Dashboard fetch error',
@@ -287,19 +328,22 @@ class DashboardController extends GetxController {
         stackTrace: stackTrace,
         tag: 'DASHBOARD_CTRL',
       );
-      errorMessage = 'Failed to load API data.';
+      if (requestVersion != _requestVersion) return;
+      errorMessage = 'Unable to load dashboard. Please retry.';
     } finally {
-      isLoading = false;
-      update([
-        AppGetIds.dashboardMetrics,
-        AppGetIds.deliveryOverview,
-        AppGetIds.materialOverview,
-        AppGetIds.activeSites,
-        AppGetIds.upcomingDeadlines,
-        AppGetIds.projectTimeline,
-        AppGetIds.recentActivities,
-        AppGetIds.freightCarriers,
-      ]);
+      if (requestVersion == _requestVersion) {
+        isLoading = false;
+        update([
+          AppGetIds.dashboardMetrics,
+          AppGetIds.deliveryOverview,
+          AppGetIds.materialOverview,
+          AppGetIds.activeSites,
+          AppGetIds.upcomingDeadlines,
+          AppGetIds.projectTimeline,
+          AppGetIds.recentActivities,
+          AppGetIds.freightCarriers,
+        ]);
+      }
     }
   }
 
@@ -310,6 +354,13 @@ class DashboardController extends GetxController {
   }
 
   void _populateDataFromApi(Map<String, dynamic> data) {
+    // Clear sections before applying a new API snapshot.
+    metrics = [];
+    deliverySlices = [];
+    materialSlices = [];
+    deliveryTotal = 0;
+    materialTotal = 0;
+    materialPending = 0;
     // 1. projectStats -> metrics
     if (data['projectStats'] is Map) {
       final ps = Map<String, dynamic>.from(data['projectStats'] as Map);
@@ -395,6 +446,11 @@ class DashboardController extends GetxController {
       final inTransit = _parseNum(doMap['inTransit']);
       final outForDelivery = _parseNum(doMap['outForDelivery']);
       final delayed = _parseNum(doMap['delayed']);
+      deliveryTotal = _parseNum(
+        doMap['total'] ??
+            doMap['totalDeliveries'] ??
+            (delivered + inTransit + outForDelivery + delayed),
+      );
 
       deliverySlices = [
         ChartSlice(
@@ -442,6 +498,12 @@ class DashboardController extends GetxController {
       );
       final rejected = _parseNum(moMap['rejected']);
       final urgent = _parseNum(moMap['urgentRequests'] ?? moMap['urgent']);
+      materialPending = pending;
+      materialTotal = _parseNum(
+        moMap['total'] ??
+            moMap['totalRequests'] ??
+            (approved + pending + rejected),
+      );
 
       materialSlices = [
         ChartSlice(
@@ -466,7 +528,17 @@ class DashboardController extends GetxController {
         ),
       ];
       update([AppGetIds.materialOverview]);
-    } else {
+    } else if ([
+      'pendingApproval',
+      'pendingRequests',
+      'pending',
+      'approvedRequests',
+      'approved',
+      'rejectedRequests',
+      'rejected',
+      'urgentRequests',
+      'urgent',
+    ].any(data.containsKey)) {
       final rootPending = _parseNum(
         data['pendingApproval'] ?? data['pendingRequests'] ?? data['pending'],
       );
@@ -477,6 +549,8 @@ class DashboardController extends GetxController {
         data['rejectedRequests'] ?? data['rejected'],
       );
       final rootUrgent = _parseNum(data['urgentRequests'] ?? data['urgent']);
+      materialPending = rootPending;
+      materialTotal = rootApproved + rootPending + rootRejected;
 
       materialSlices = [
         ChartSlice(
@@ -501,9 +575,6 @@ class DashboardController extends GetxController {
         ),
       ];
       update([AppGetIds.materialOverview]);
-
-      // Asynchronously query material-requests API to count exact pending approval items
-      _fetchMaterialRequestsSummary();
     }
 
     // 4. upcomingDeadlines List
@@ -515,9 +586,9 @@ class DashboardController extends GetxController {
           parsed.add(DeadlineItem.fromJson(Map<String, dynamic>.from(item)));
         }
       }
-      deadlines = parsed.isEmpty ? _webFallbackDeadlines : parsed;
+      deadlines = parsed;
     } else {
-      deadlines = _webFallbackDeadlines;
+      deadlines = [];
       update([AppGetIds.upcomingDeadlines]);
     }
 
@@ -585,9 +656,9 @@ class DashboardController extends GetxController {
           parsed.add(CarrierRow.fromJson(Map<String, dynamic>.from(item)));
         }
       }
-      carriers = parsed.isEmpty ? _webFallbackCarriers : parsed;
+      carriers = parsed;
     } else {
-      carriers = _webFallbackCarriers;
+      carriers = [];
     }
     final totals = data['freightCarriers'] is Map
         ? data['freightCarriers']['totals']
@@ -618,95 +689,108 @@ class DashboardController extends GetxController {
     update([AppGetIds.freightCarriers]);
   }
 
-  Future<void> _fetchMaterialRequestsSummary() async {
-    try {
-      final res = await _apiClient.get(
-        ApiConstants.materialRequests,
-        queryParams: const {'limit': '100'},
+  Future<void> exportReport() async {
+    if (isExporting || isLoading) return;
+    if (!hasLoadedData || errorMessage.isNotEmpty) {
+      AppToast.showWarning(
+        title: 'Report unavailable',
+        description: 'Load the dashboard successfully before exporting.',
       );
-      List list = [];
-      if (res is List) {
-        list = res;
-      } else if (res is Map) {
-        if (res['data'] is List) {
-          list = res['data'];
-        } else if (res['data'] is Map && res['data']['requests'] is List) {
-          list = res['data']['requests'];
-        } else if (res['requests'] is List) {
-          list = res['requests'];
-        }
+      return;
+    }
+    isExporting = true;
+    update([AppGetIds.dashboardMetrics]);
+    try {
+      // Capture the displayed API snapshot and its filters before opening the dialog.
+      final rows = <List<Object?>>[
+        ['Construction Dashboard Report'],
+        ['Generated', DateFormat('yyyy-MM-dd HH:mm:ss').format(DateTime.now())],
+        ['Project', selectedProject.value],
+        ['Building', selectedBuilding.value],
+        ['Status', selectedStatus.value],
+        ['Date range', dateRange.value],
+        [],
+        ['Project Metrics'],
+        ['Metric', 'Value', 'Details'],
+        ...metrics.map((m) => [m.title, m.value, m.subtitle]),
+        [],
+        ['Delivery Overview'],
+        ['Total deliveries', deliveryTotal],
+        ['Status', 'Count'],
+        ...deliverySlices.map((s) => [s.label, s.percent]),
+        [],
+        ['Material Request Overview'],
+        ['Total requests', materialTotal],
+        ['Status / Priority', 'Count'],
+        ...materialSlices.map((s) => [s.label, s.percent]),
+        [],
+        ['Active Construction Sites'],
+        ['Project', 'Location', 'Progress (%)', 'Deadline', 'Delivery Status'],
+        ...sites.map(
+          (s) => [
+            s.project,
+            s.location,
+            (s.progress * 100).toStringAsFixed(1),
+            s.deadline,
+            s.status,
+          ],
+        ),
+        [],
+        ['Upcoming Project Deadlines'],
+        ['Project', 'Location', 'Deadline', 'Days Left'],
+        ...deadlines.map((d) => [d.project, d.location, d.date, d.daysLeft]),
+        [],
+        ['Project Timeline'],
+        ['Stage', 'Date', 'Status'],
+        ...timeline.map((t) => [t.title, t.date, t.status]),
+        [],
+        ['Freight Carriers & Deliveries'],
+        ['Carrier', 'Loads Today', 'On Time', 'Delayed', 'Priority'],
+        ...carriers.map(
+          (c) => [c.carrier, c.loadsToday, c.onTime, c.delayed, c.priority],
+        ),
+        ...freightSummaries.map((s) => [s.label, s.value]),
+        [],
+        ['Recent Activity'],
+        ['Activity', 'Time'],
+        ...activities.map((a) => [a.title, a.time]),
+      ];
+      final saved = await FilePicker.saveFile(
+        dialogTitle: 'Save dashboard report',
+        fileName:
+            'construction_dashboard_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.csv',
+        mimeType: 'text/csv',
+        bytes: encodeDashboardCsv(rows),
+      );
+      if (saved != null) {
+        AppToast.showSuccess(
+          title: 'Report exported',
+          description: 'Dashboard CSV report saved successfully.',
+        );
       }
-
-      double pendingCount = 0;
-      double approvedCount = 0;
-      double rejectedCount = 0;
-      double urgentCount = 0;
-
-      for (final item in list) {
-        if (item is Map) {
-          final st = (item['status'] ?? item['requestStatus'] ?? '')
-              .toString()
-              .toLowerCase();
-          final prio = (item['priority'] ?? item['priorityLevel'] ?? '')
-              .toString()
-              .toLowerCase();
-          if (prio.contains('urgent') || prio.contains('high')) {
-            urgentCount++;
-          }
-          if (st.contains('pend') ||
-              st.contains('submit') ||
-              st.contains('review') ||
-              st == 'pending') {
-            pendingCount++;
-          } else if (st.contains('appr') || st == 'approved') {
-            approvedCount++;
-          } else if (st.contains('rej') || st == 'rejected') {
-            rejectedCount++;
-          }
-        }
-      }
-
-      if (pendingCount > 0 ||
-          approvedCount > 0 ||
-          rejectedCount > 0 ||
-          urgentCount > 0) {
-        materialSlices = [
-          ChartSlice(
-            label: 'Approved',
-            percent: approvedCount,
-            color: const Color(0xFF0D5C75),
-          ),
-          ChartSlice(
-            label: 'Pending Approval',
-            percent: pendingCount,
-            color: const Color(0xFFFFB800),
-          ),
-          ChartSlice(
-            label: 'Rejected',
-            percent: rejectedCount,
-            color: const Color(0xFFE91E63),
-          ),
-          ChartSlice(
-            label: 'Urgent Requests',
-            percent: urgentCount,
-            color: const Color(0xFF0F2C59),
-          ),
-        ];
-        update([AppGetIds.materialOverview]);
-      }
-    } catch (e) {
-      AppLogger.w(
-        'Failed to fetch material requests summary: $e',
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'Dashboard export failed',
+        error: e,
+        stackTrace: stackTrace,
         tag: 'DASHBOARD_CTRL',
       );
+      AppToast.showError(
+        title: 'Export failed',
+        description: 'Unable to save the report. Please try again.',
+      );
+    } finally {
+      isExporting = false;
+      update([AppGetIds.dashboardMetrics]);
     }
   }
 
   void resetFilters() {
     selectedProject.value = 'All Projects';
     selectedBuilding.value = 'All Buildings';
+    _refreshBuildingOptions();
     selectedStatus.value = 'All Status';
-    dateRange.value = 'Date: Default (Today)';
+    dateRange.value = 'All dates';
     _fromDate = null;
     _toDate = null;
     update([AppGetIds.dashboardFilters]);
@@ -723,79 +807,3 @@ class DashboardController extends GetxController {
     super.onClose();
   }
 }
-
-const _webFallbackDeadlines = <DeadlineItem>[
-  DeadlineItem(
-    project: 'Downtown Office Complex',
-    location: 'Site A',
-    date: 'May 25, 2025',
-    daysLeft: '6 Days Left',
-  ),
-  DeadlineItem(
-    project: 'Residential Tower A',
-    location: 'Site A',
-    date: 'May 25, 2025',
-    daysLeft: '6 Days Left',
-  ),
-  DeadlineItem(
-    project: 'Downtown Office Complex',
-    location: 'Site A',
-    date: 'May 25, 2025',
-    daysLeft: '6 Days Left',
-  ),
-  DeadlineItem(
-    project: 'Residential Tower A',
-    location: 'Site A',
-    date: 'May 25, 2025',
-    daysLeft: '6 Days Left',
-  ),
-  DeadlineItem(
-    project: 'Downtown Office Complex',
-    location: 'Site A',
-    date: 'May 25, 2025',
-    daysLeft: '6 Days Left',
-  ),
-];
-
-const _webFallbackCarriers = <CarrierRow>[
-  CarrierRow(
-    carrier: 'Roadking Logistics',
-    loadsToday: '12',
-    onTime: '10',
-    delayed: '2',
-    priority: 'On Time',
-    priorityColor: AppColors.badgeGreen,
-  ),
-  CarrierRow(
-    carrier: 'Swift Transport',
-    loadsToday: '8',
-    onTime: '8',
-    delayed: '0',
-    priority: 'On Time',
-    priorityColor: AppColors.badgeGreen,
-  ),
-  CarrierRow(
-    carrier: 'Global Freight Lines',
-    loadsToday: '5',
-    onTime: '3',
-    delayed: '2',
-    priority: 'Delayed',
-    priorityColor: AppColors.badgeRed,
-  ),
-  CarrierRow(
-    carrier: 'Eagle Freight',
-    loadsToday: '6',
-    onTime: '6',
-    delayed: '2',
-    priority: 'On Time',
-    priorityColor: AppColors.badgeGreen,
-  ),
-  CarrierRow(
-    carrier: 'Prime Freight',
-    loadsToday: '3',
-    onTime: '3',
-    delayed: '1',
-    priority: 'Delayed',
-    priorityColor: AppColors.badgeRed,
-  ),
-];

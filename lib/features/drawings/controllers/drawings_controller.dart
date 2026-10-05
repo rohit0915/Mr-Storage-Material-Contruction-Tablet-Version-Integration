@@ -9,6 +9,9 @@ import '../services/drawings_service.dart';
 import '../widgets/drawing_preview_dialog.dart';
 import '../widgets/upload_media_dialog.dart';
 
+enum DrawingTabType { allFiles, photosVideos, drawings }
+enum MediaFilterType { allMedia, photos, videos }
+
 class DrawingsController extends GetxController {
   DrawingsController({DrawingsService? service})
     : _service = service ?? Get.put(DrawingsService());
@@ -20,6 +23,34 @@ class DrawingsController extends GetxController {
   final localSearchController = TextEditingController();
   final projectList = <DrawingProjectItem>[].obs;
   String scopedLeadId = '';
+
+  // Tab & Media Filter Observables
+  final selectedTab = DrawingTabType.photosVideos.obs;
+  final selectedMediaFilter = MediaFilterType.allMedia.obs;
+
+  void setTab(DrawingTabType tab) {
+    selectedTab.value = tab;
+    if (tab == DrawingTabType.drawings) {
+      selectedMediaFilter.value = MediaFilterType.allMedia;
+    }
+  }
+
+  void setMediaFilter(MediaFilterType filter) {
+    selectedMediaFilter.value = filter;
+    if (filter != MediaFilterType.allMedia &&
+        selectedTab.value == DrawingTabType.drawings) {
+      selectedTab.value = DrawingTabType.photosVideos;
+    }
+  }
+
+  int get totalAllFilesCount =>
+      projectList.fold(0, (sum, p) => sum + p.files.length);
+
+  int get totalPhotosVideosCount =>
+      projectList.fold(0, (sum, p) => sum + p.files.where((f) => f.isMedia).length);
+
+  int get totalDrawingsCount =>
+      projectList.fold(0, (sum, p) => sum + p.files.where((f) => f.isDrawing).length);
 
   StreamSubscription<ConstructionSocketEvent>? _socketSubscription;
 
@@ -101,16 +132,66 @@ class DrawingsController extends GetxController {
 
   List<DrawingProjectItem> get filteredProjects {
     final q = searchQuery.value.trim().toLowerCase();
-    final source = projectList;
-    if (q.isEmpty) return source;
-    return source
-        .where(
-          (p) =>
-              p.name.toLowerCase().contains(q) ||
-              p.code.toLowerCase().contains(q) ||
-              p.location.toLowerCase().contains(q),
-        )
-        .toList();
+    final tab = selectedTab.value;
+    final filter = selectedMediaFilter.value;
+
+    return projectList.where((p) {
+      final matchingFiles = getProjectFiles(p);
+      if (matchingFiles.isNotEmpty) return true;
+
+      // Keep empty projects visible only on default "All Files" + "All Media" view without search query
+      if (q.isEmpty &&
+          tab == DrawingTabType.allFiles &&
+          filter == MediaFilterType.allMedia) {
+        return true;
+      }
+
+      return false;
+    }).toList();
+  }
+
+  List<DrawingFileItem> getProjectFiles(DrawingProjectItem project) {
+    var list = project.files;
+    final q = searchQuery.value.trim().toLowerCase();
+    
+    final matchesProjectMeta = q.isNotEmpty &&
+        (project.name.toLowerCase().contains(q) ||
+            project.code.toLowerCase().contains(q) ||
+            project.location.toLowerCase().contains(q));
+
+    if (q.isNotEmpty && !matchesProjectMeta) {
+      list = list
+          .where(
+            (f) =>
+                f.name.toLowerCase().contains(q) ||
+                f.title.toLowerCase().contains(q) ||
+                f.sizeLabel.toLowerCase().contains(q),
+          )
+          .toList();
+    }
+
+    switch (selectedTab.value) {
+      case DrawingTabType.photosVideos:
+        list = list.where((f) => f.isMedia).toList();
+        if (selectedMediaFilter.value == MediaFilterType.photos) {
+          list = list.where((f) => f.isPhoto).toList();
+        } else if (selectedMediaFilter.value == MediaFilterType.videos) {
+          list = list.where((f) => f.isVideo).toList();
+        }
+        break;
+      case DrawingTabType.drawings:
+        list = list.where((f) => f.isDrawing).toList();
+        break;
+      case DrawingTabType.allFiles:
+        if (selectedMediaFilter.value == MediaFilterType.photos) {
+          list = list.where((f) => f.isPhoto).toList();
+        } else if (selectedMediaFilter.value == MediaFilterType.videos) {
+          list = list.where((f) => f.isVideo).toList();
+        }
+        break;
+    }
+
+    return list;
   }
 
   void onSearchChanged(String value) => searchQuery.value = value;
@@ -126,11 +207,11 @@ class DrawingsController extends GetxController {
     );
   }
 
-  Future<void> openUpload(BuildContext context) async {
+  Future<void> openUpload(BuildContext context, {String? projectId}) async {
     final submitted = await showDialog<bool>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const UploadMediaDialog(),
+      builder: (_) => UploadMediaDialog(initialProjectId: projectId),
     );
     if (submitted == true && context.mounted) {
       await fetchDrawings(leadId: scopedLeadId);

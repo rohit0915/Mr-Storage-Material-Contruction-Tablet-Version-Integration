@@ -7,6 +7,7 @@ class AppRoutes {
   static const String deliveryDetails = '/delivery-details';
   static const String drawings = '/drawings';
   static const String tasks = '/tasks';
+  static const String dailyWorkLogs = '/daily-work-logs';
   static const String materialRequests = '/material-requests';
   static const String labelPrinting = '/label-printing';
   static const String deliveryTracking = '/delivery-tracking';

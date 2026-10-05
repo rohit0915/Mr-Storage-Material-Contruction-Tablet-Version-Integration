@@ -93,8 +93,8 @@ class SiteRow {
       location: location,
       progress:
           (json.containsKey('progressPct') || json.containsKey('completionPct'))
-          ? progress / 100
-          : progress,
+          ? (progress / 100).clamp(0.0, 1.0)
+          : (progress > 1 ? progress / 100 : progress).clamp(0.0, 1.0),
       deadline: _formatDashboardDate(
         json['deadline'] ?? json['targetDate'] ?? json['dueDate'],
       ),
@@ -122,10 +122,10 @@ class DeadlineItem {
     return DeadlineItem(
       project:
           json['projectName'] ?? json['project'] ?? json['title'] ?? 'Project',
-      location:
-          json['site'] ?? json['location'] ?? json['siteLocation'] ?? 'Site A',
+      location: json['site'] ?? json['location'] ?? json['siteLocation'] ?? '—',
       date: _formatDashboardDate(
         json['endDate'] ??
+            json['deadline'] ??
             json['date'] ??
             json['targetDate'] ??
             json['dueDate'],
@@ -310,9 +310,9 @@ class DashboardGap {
   DashboardGap._();
 
   static double page(BuildContext context) =>
-      MediaQuery.sizeOf(context).width * 0.012;
+      (MediaQuery.sizeOf(context).width * 0.012).clamp(12.0, 24.0);
   static double section(BuildContext context) =>
-      MediaQuery.sizeOf(context).height * 0.014;
+      (MediaQuery.sizeOf(context).height * 0.014).clamp(12.0, 20.0);
   static double item(BuildContext context) =>
       MediaQuery.sizeOf(context).height * 0.01;
   static const double radius = 5;

@@ -3,12 +3,84 @@ import 'package:get/get.dart';
 import '../../../app/constants/api_constants.dart';
 import '../../../app/services/api_client.dart';
 import '../../../app/utils/app_logger.dart';
+import '../models/task_models.dart';
 
 class TasksService extends GetxService {
   TasksService({ApiClient? apiClient})
-    : _apiClient = apiClient ?? Get.find<ApiClient>();
+    : _apiClient = apiClient ??
+          (Get.isRegistered<ApiClient>()
+              ? Get.find<ApiClient>()
+              : ApiClient());
 
   final ApiClient _apiClient;
+
+  Future<List<TaskProjectOption>> getProjects() async {
+    try {
+      final res = await _apiClient.get(ApiConstants.projects);
+      List items = [];
+      if (res is Map && res['data'] is List) {
+        items = res['data'] as List;
+      } else if (res is List) {
+        items = res;
+      }
+      final list = <TaskProjectOption>[];
+      for (final item in items) {
+        if (item is Map) {
+          final id = (item['_id'] ?? item['id'] ?? '').toString();
+          final name = (item['projectName'] ?? item['name'] ?? '').toString();
+          final jobId = (item['jobId'] ?? item['code'] ?? '').toString();
+          if (id.isNotEmpty && name.isNotEmpty) {
+            list.add(TaskProjectOption(id: id, name: name, jobId: jobId));
+          }
+        }
+      }
+      if (list.isNotEmpty) return list;
+    } catch (_) {}
+
+    // Fallback: try dashboardFilters
+    try {
+      final res = await _apiClient.get(ApiConstants.dashboardFilters);
+      if (res is Map && res['data'] is Map && res['data']['projects'] is List) {
+        final pList = res['data']['projects'] as List;
+        final list = <TaskProjectOption>[];
+        for (final item in pList) {
+          if (item is Map) {
+            final id = (item['_id'] ?? item['id'] ?? '').toString();
+            final name = (item['projectName'] ?? item['name'] ?? '').toString();
+            final jobId = (item['jobId'] ?? '').toString();
+            if (id.isNotEmpty && name.isNotEmpty) {
+              list.add(TaskProjectOption(id: id, name: name, jobId: jobId));
+            }
+          }
+        }
+        if (list.isNotEmpty) return list;
+      }
+    } catch (_) {}
+
+    return TaskProjectOption.defaultProjects();
+  }
+
+  Future<List<String>> getAssignees() async {
+    final assignees = <String>{...TaskStaticData.assignees};
+    try {
+      final res = await _apiClient.get(ApiConstants.chatUsersUrl(''));
+      List rawList = [];
+      if (res is Map && res['data'] is List) {
+        rawList = res['data'] as List;
+      } else if (res is List) {
+        rawList = res;
+      }
+      for (final item in rawList) {
+        if (item is Map) {
+          final name = item['name'] ?? item['fullName'];
+          if (name != null && name.toString().trim().isNotEmpty) {
+            assignees.add(name.toString().trim());
+          }
+        }
+      }
+    } catch (_) {}
+    return assignees.toList();
+  }
 
   Future<Map<String, dynamic>?> getTaskStats() async {
     try {
@@ -55,9 +127,19 @@ class TasksService extends GetxService {
 
   Future<bool> createTask(Map<String, dynamic> payload) async {
     try {
-      final res = await _apiClient.post(ApiConstants.tasks, body: payload);
+      final cleanPayload = Map<String, dynamic>.from(payload)
+        ..removeWhere(
+          (key, value) =>
+              value == null ||
+              (value is String && value.trim().isEmpty && key == 'assignedTo'),
+        );
+      final res = await _apiClient.post(ApiConstants.tasks, body: cleanPayload);
       return res != null &&
-          (res['success'] == true || res['_id'] != null || res['data'] != null);
+          (res['success'] == true ||
+              res['_id'] != null ||
+              res['data'] != null ||
+              res['task'] != null ||
+              res['title'] != null);
     } catch (e, stackTrace) {
       AppLogger.e(
         'createTask Error',

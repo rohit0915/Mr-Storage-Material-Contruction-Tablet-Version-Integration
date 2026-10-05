@@ -136,7 +136,10 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
                     .map(
                       (d) => Padding(
                         padding: EdgeInsets.only(bottom: gap),
-                        child: _DeliveryCard(item: d),
+                        child: _DeliveryCard(
+                          item: d,
+                          fallbackDate: dateHeaderStr,
+                        ),
                       ),
                     )
                     .toList(),
@@ -174,9 +177,10 @@ class DeliveryCardsSection extends GetView<ProjectCalendarController> {
 }
 
 class _DeliveryCard extends StatelessWidget {
-  const _DeliveryCard({required this.item});
+  const _DeliveryCard({required this.item, this.fallbackDate = ''});
 
   final DeliveryItem item;
+  final String fallbackDate;
 
   @override
   Widget build(BuildContext context) {
@@ -184,6 +188,10 @@ class _DeliveryCard extends StatelessWidget {
     final codeSize = (size.width * 0.012).clamp(13.0, 15.0);
     final labelSize = (size.width * 0.008).clamp(9.0, 11.0);
     final valueSize = (size.width * 0.010).clamp(11.0, 13.0);
+
+    final displayDate = item.date.isNotEmpty && item.date != 'N/A'
+        ? item.date
+        : (fallbackDate.isNotEmpty ? fallbackDate : 'N/A');
 
     return InkWell(
       onTap: () => showDialog<void>(
@@ -211,105 +219,102 @@ class _DeliveryCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              item.description.isNotEmpty ? item.description : item.code,
+              item.title.isNotEmpty
+                  ? item.title
+                  : (item.description.isNotEmpty
+                      ? item.description
+                      : item.code),
               style: TextStyle(
                 fontSize: codeSize,
                 fontWeight: FontWeight.w800,
                 color: AppColors.textPrimary,
               ),
             ),
-            SizedBox(height: size.height * 0.008),
-            Text(
-              'Project / Job ID',
-              style: TextStyle(
-                fontSize: labelSize,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              item.projectName,
-              style: TextStyle(
-                fontSize: valueSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: size.height * 0.008),
-            Text(
-              'Location',
-              style: TextStyle(
-                fontSize: labelSize,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              item.location.isNotEmpty ? item.location : 'N/A',
-              style: TextStyle(
-                fontSize: valueSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
-              ),
-            ),
-            SizedBox(height: size.height * 0.012),
+            SizedBox(height: size.height * 0.010),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: CrossAxisAlignment.end,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Delivery Date',
-                      style: TextStyle(
-                        fontSize: labelSize,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      item.date,
-                      style: TextStyle(
-                        fontSize: valueSize,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Status',
-                      style: TextStyle(
-                        fontSize: labelSize,
-                        color: AppColors.textSecondary,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
-                      ),
-                      decoration: BoxDecoration(
-                        color: item.statusColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        item.status,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Section/Location',
                         style: TextStyle(
                           fontSize: labelSize,
-                          fontWeight: FontWeight.w700,
-                          color: item.statusColor,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
                         ),
                       ),
+                      const SizedBox(height: 2),
+                      Text(
+                        item.location.isNotEmpty ? item.location : 'N/A',
+                        style: TextStyle(
+                          fontSize: valueSize,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Delivery Date',
+                        style: TextStyle(
+                          fontSize: labelSize,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        displayDate,
+                        style: TextStyle(
+                          fontSize: valueSize,
+                          fontWeight: FontWeight.w700,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: size.height * 0.010),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Status',
+                  style: TextStyle(
+                    fontSize: labelSize,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: item.statusColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    item.status,
+                    style: TextStyle(
+                      fontSize: labelSize,
+                      fontWeight: FontWeight.w700,
+                      color: item.statusColor,
                     ),
-                  ],
+                  ),
                 ),
               ],
             ),

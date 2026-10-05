@@ -118,7 +118,7 @@ class LabelBundleItem {
 
     return LabelBundleItem(
       id: foundBundleCode,
-      realMongoId: json['_id']?.toString() ?? json['id']?.toString() ?? '',
+      realMongoId: (json['_id'] ?? json['id'] ?? json['bundleId'] ?? '').toString(),
       loadId: json['loadId']?.toString() ?? json['load']?.toString() ?? '-',
       part:
           json['part']?.toString() ??

@@ -8,7 +8,9 @@ import '../controllers/drawings_controller.dart';
 import '../services/drawings_service.dart';
 
 class UploadMediaDialog extends StatefulWidget {
-  const UploadMediaDialog({super.key});
+  const UploadMediaDialog({super.key, this.initialProjectId});
+
+  final String? initialProjectId;
 
   @override
   State<UploadMediaDialog> createState() => _UploadMediaDialogState();
@@ -19,6 +21,12 @@ class _UploadMediaDialogState extends State<UploadMediaDialog> {
   String? _pickedFileName;
   PlatformFile? _pickedFile;
   bool _isSubmitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _projectId = widget.initialProjectId;
+  }
 
   Future<void> _onSubmit() async {
     if (_isSubmitting) return;

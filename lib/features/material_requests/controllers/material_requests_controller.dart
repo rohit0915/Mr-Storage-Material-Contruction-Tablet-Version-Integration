@@ -1,5 +1,10 @@
+import 'dart:convert';
+import 'dart:typed_data';
+import 'package:file_picker/file_picker.dart' as file_picker;
+import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/services/api_client.dart';
 import '../../../app/utils/app_logger.dart';
 import '../../../app/utils/app_toast.dart';
 import '../models/material_request_models.dart';
@@ -26,6 +31,8 @@ class MaterialRequestsController extends GetxController {
     'Pending',
     'Approved',
     'Rejected',
+    'Cancelled',
+    'Fulfilled',
   ];
 
   final requests = <MaterialRequestBoardItem>[].obs;
@@ -207,7 +214,9 @@ class MaterialRequestsController extends GetxController {
   Future<MaterialRequestBoardItem> loadDetails(
     MaterialRequestBoardItem item,
   ) async {
-    final detail = await _service.getMaterialRequestDetail(item.id);
+    final detail = await _service.getMaterialRequestDetail(
+      item.databaseId.isNotEmpty ? item.databaseId : item.id,
+    );
     return detail == null ? item : MaterialRequestBoardItem.fromJson(detail);
   }
 
@@ -287,14 +296,15 @@ class MaterialRequestsController extends GetxController {
   }
 
   Future<bool> cancelRequest(
-    String requestId, {
+    String requestId,
+    String databaseId, {
     String reason = 'Cancelled by user',
   }) async {
     isLoading.value = true;
     try {
       final success = await _service.updateMaterialRequestStatus(
-        requestId,
-        'Cancelled',
+        databaseId.isNotEmpty ? databaseId : requestId,
+        'cancelled',
         reason,
       );
       if (success) {
@@ -302,6 +312,32 @@ class MaterialRequestsController extends GetxController {
           title: 'Request Cancelled',
           description: 'Material Request #$requestId has been cancelled.',
         );
+        // Optimistically update memory list
+        final index = requests.indexWhere((r) => r.id == requestId);
+        if (index != -1) {
+          final old = requests[index];
+          requests[index] = MaterialRequestBoardItem(
+            id: old.id,
+            databaseId: old.databaseId,
+            project: old.project,
+            site: old.site,
+            department: old.department,
+            requestedBy: old.requestedBy,
+            requestDate: old.requestDate,
+            requiredBy: old.requiredBy,
+            requestedItemsCount: old.requestedItemsCount,
+            status: MaterialRequestStatus.cancelled,
+            priority: old.priority,
+            statusColor: const Color(0xFFEF4444),
+            priorityColor: old.priorityColor,
+            items: old.items,
+            itemsPreview: old.itemsPreview,
+            requestedById: old.requestedById,
+            requestedByRole: old.requestedByRole,
+            requestNotes: old.requestNotes,
+          );
+          _recomputeFiltered();
+        }
         await fetchRequests();
         return true;
       } else {
@@ -311,6 +347,9 @@ class MaterialRequestsController extends GetxController {
         );
         return false;
       }
+    } on ApiException catch (e) {
+      AppToast.showError(title: 'Action Failed', description: e.message);
+      return false;
     } catch (e) {
       AppToast.showError(
         title: 'Error',
@@ -343,40 +382,69 @@ class MaterialRequestsController extends GetxController {
   }
 
   void _recomputeFiltered() {
-    final list = requests.where((r) {
-      final matchesProject =
-          selectedProject.value == 'All Projects' ||
-          r.project == selectedProject.value;
-      final matchesDept =
-          selectedDepartment.value == 'All Departments' ||
-          r.department == selectedDepartment.value;
-      final matchesBy =
-          selectedRequestedBy.value == 'All' ||
-          r.requestedBy == selectedRequestedBy.value;
-      final matchesStatus =
-          selectedStatus.value == 'All Status' ||
-          (selectedStatus.value == 'Pending' &&
-              r.status == MaterialRequestStatus.pending) ||
-          (selectedStatus.value == 'Approved' &&
-              r.status == MaterialRequestStatus.approved) ||
-          (selectedStatus.value == 'Rejected' &&
-              r.status == MaterialRequestStatus.rejected);
+    // Backend handles filtering and pagination, so we just use the loaded requests.
+    filteredRequests.value = requests.toList();
+  }
 
-      final f = dateFrom.value;
-      final t = dateTo.value;
-      final matchesDate = (f == null || t == null)
-          ? true
-          : r.requestDate.isAfter(f.subtract(const Duration(days: 1))) &&
-                r.requestDate.isBefore(t.add(const Duration(days: 1)));
+  Future<void> exportReport() async {
+    try {
+      final rows = <List<Object?>>[
+        [
+          'Request ID',
+          'Project',
+          'Site',
+          'Department',
+          'Status',
+          'Priority',
+          'Requested By',
+          'Request Date',
+          'Required By',
+        ],
+        ...requests.map((r) => [
+              r.id,
+              r.project,
+              r.site,
+              r.department,
+              r.status.name.toUpperCase(),
+              r.priority,
+              r.requestedBy,
+              r.requestDate.toIso8601String(),
+              r.requiredBy?.toIso8601String() ?? '',
+            ]),
+      ];
+      final saved = await file_picker.FilePicker.saveFile(
+        dialogTitle: 'Save Material Requests',
+        fileName: 'material_requests.csv',
+        type: file_picker.FileType.custom,
+        allowedExtensions: ['csv'],
+        bytes: _encodeCsv(rows),
+      );
+      if (saved != null) {
+        AppToast.showSuccess(
+          title: 'Exported',
+          description: 'Material requests exported successfully.',
+        );
+      }
+    } catch (e, st) {
+      AppLogger.e('Export error', error: e, stackTrace: st, tag: 'MAT_REQ_CTRL');
+      AppToast.showError(
+        title: 'Export failed',
+        description: 'An error occurred while exporting.',
+      );
+    }
+  }
 
-      return matchesProject &&
-          matchesDept &&
-          matchesBy &&
-          matchesStatus &&
-          matchesDate;
-    }).toList();
+  Uint8List _encodeCsv(List<List<Object?>> rows) {
+    String cell(Object? value) {
+      var text = value?.toString() ?? '';
+      if (value is String && RegExp(r'^\s*[=+\-@]').hasMatch(text)) {
+        text = "'$text";
+      }
+      return '"${text.replaceAll('"', '""')}"';
+    }
 
-    filteredRequests.value = list;
+    final csv = rows.map((row) => row.map(cell).join(',')).join('\r\n');
+    return Uint8List.fromList(utf8.encode('\uFEFF$csv\r\n'));
   }
 }
 

@@ -26,7 +26,7 @@ class MaterialRequestSummaryCards extends GetView<MaterialRequestsController> {
               value: '${controller.totalRequestsStat.value}',
               subtitle: 'All Requests',
               icon: Icons.inventory_2_outlined,
-              iconBg: const Color(0xFFF97316),
+              iconBg: const Color(0xFFC084FC), // Light purple background for total requests
               iconColor: Colors.white,
             ),
           ),
@@ -88,146 +88,53 @@ class _SummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.sizeOf(context);
-    final labelSize = (size.width * 0.009).clamp(11.0, 13.0);
-    final valueSize = (size.width * 0.018).clamp(20.0, 26.0);
-    final subSize = (size.width * 0.008).clamp(10.0, 12.0);
-
     return Container(
-      clipBehavior: Clip.antiAlias,
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.cardBorder),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 4,
+            offset: const Offset(0, 2),
           ),
         ],
       ),
-      child: Stack(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Positioned.fill(
-            child: CustomPaint(painter: _CardWavePainter(color: iconBg)),
-          ),
-          Padding(
-            padding: EdgeInsets.symmetric(
-              horizontal: size.width * 0.012,
-              vertical: size.height * 0.016,
+          Container(
+            width: 32,
+            height: 32,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: iconBg.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        label,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w600,
-                          fontSize: labelSize,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        value,
-                        style: TextStyle(
-                          color: AppColors.textPrimary,
-                          fontWeight: FontWeight.w800,
-                          fontSize: valueSize,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontWeight: FontWeight.w500,
-                          fontSize: subSize,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Container(
-                  width: 38,
-                  height: 38,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    color: iconBg,
-                    borderRadius: BorderRadius.circular(8),
-                    boxShadow: [
-                      BoxShadow(
-                        color: iconBg.withValues(alpha: 0.3),
-                        blurRadius: 6,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Icon(icon, color: iconColor, size: 20),
-                ),
-              ],
+            child: Icon(icon, color: iconBg, size: 16), // Use iconBg for the icon color itself like the web
+          ),
+          const SizedBox(height: 12),
+          Text(
+            value,
+            style: const TextStyle(
+              color: AppColors.textPrimary,
+              fontWeight: FontWeight.w800,
+              fontSize: 22,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            subtitle,
+            style: const TextStyle(
+              color: AppColors.textSecondary,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
           ),
         ],
       ),
     );
   }
-}
-
-class _CardWavePainter extends CustomPainter {
-  const _CardWavePainter({required this.color});
-  final Color color;
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint1 = Paint()
-      ..color = color.withValues(alpha: 0.08)
-      ..style = PaintingStyle.fill;
-
-    final path1 = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width * 0.3, size.height)
-      ..cubicTo(
-        size.width * 0.5,
-        size.height * 0.95,
-        size.width * 0.7,
-        size.height * 0.6,
-        size.width,
-        size.height * 0.68,
-      )
-      ..lineTo(size.width, size.height)
-      ..close();
-
-    canvas.drawPath(path1, paint1);
-
-    final paint2 = Paint()
-      ..color = color.withValues(alpha: 0.05)
-      ..style = PaintingStyle.fill;
-
-    final path2 = Path()
-      ..moveTo(0, size.height)
-      ..lineTo(size.width * 0.5, size.height)
-      ..cubicTo(
-        size.width * 0.7,
-        size.height * 0.8,
-        size.width * 0.85,
-        size.height * 0.4,
-        size.width,
-        size.height * 0.45,
-      )
-      ..lineTo(size.width, size.height)
-      ..close();
-
-    canvas.drawPath(path2, paint2);
-  }
-
-  @override
-  bool shouldRepaint(covariant _CardWavePainter oldDelegate) =>
-      oldDelegate.color != color;
 }

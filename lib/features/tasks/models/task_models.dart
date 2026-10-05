@@ -122,10 +122,65 @@ class TaskSummaryItem {
   final IconData icon;
 }
 
+class TaskProjectOption {
+  const TaskProjectOption({
+    required this.id,
+    required this.name,
+    this.jobId = '',
+  });
+
+  final String id;
+  final String name;
+  final String jobId;
+
+  String get displayName => jobId.isNotEmpty ? '$name ($jobId)' : name;
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is TaskProjectOption &&
+          runtimeType == other.runtimeType &&
+          id == other.id;
+
+  @override
+  int get hashCode => id.hashCode;
+
+  static List<TaskProjectOption> defaultProjects() => const [
+    TaskProjectOption(id: 'lead-0011', name: 'Storage 0011', jobId: '2026014'),
+    TaskProjectOption(id: 'lead-002', name: 'Lucas project', jobId: 'PRO-002'),
+    TaskProjectOption(id: 'lead-042', name: 'Adam Gilchrist', jobId: 'PRO-042'),
+    TaskProjectOption(id: 'lead-003', name: 'Another Project', jobId: 'PRO-003'),
+  ];
+}
+
 class TaskStaticData {
-  static const projects = <String>[];
-  static const assignees = <String>[];
-  static const taskNames = <String>[];
-  static const priorities = <String>[];
-  static const statuses = <String>[];
+  static const projects = [
+    'Storage 0011',
+    'Lucas project',
+    'Adam Gilchrist',
+    'Another Project',
+  ];
+
+  static const assignees = [
+    'Unassigned',
+    'Construction User',
+    'Lucas1',
+    'Namra',
+    'Sarah Wilson',
+    'Mike Johnson',
+    'Robert Chen',
+    'John Miller',
+    'Adam Gilchrist',
+  ];
+
+  static const taskNames = [
+    'Foundation Excavation',
+    'Steel Frame Installation',
+    'Plumbing Installation',
+    'Electrical Wiring - Floor 1',
+  ];
+
+  static const priorities = ['High', 'Medium', 'Low', 'Urgent'];
+
+  static const statuses = ['To Do', 'In Progress', 'Done'];
 }

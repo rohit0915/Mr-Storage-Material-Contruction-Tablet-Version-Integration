@@ -36,17 +36,46 @@ class DrawingFileItem {
     final uBy = json['uploadedBy'] ?? '';
     final rOn = json['receivedOn'] ?? json['createdAt'] ?? '';
     final url = json['fileUrl'] ?? json['url'] ?? '';
+    final mType = (json['type'] ?? json['mimeType'] ?? '').toString().toLowerCase();
+    final cat = (json['category'] ?? json['documentType'] ?? '').toString().toLowerCase();
 
     DrawingFileType type = DrawingFileType.pdf;
     final lower = fName.toString().toLowerCase();
-    if (lower.endsWith('.dwg')) {
+    final lowerUrl = url.toString().toLowerCase();
+
+    if (lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.avi') ||
+        lower.endsWith('.mkv') ||
+        lower.endsWith('.webm') ||
+        lowerUrl.endsWith('.mp4') ||
+        lowerUrl.endsWith('.mov') ||
+        lowerUrl.endsWith('.avi') ||
+        lowerUrl.endsWith('.mkv') ||
+        lowerUrl.endsWith('.webm') ||
+        mType.contains('video') ||
+        cat.contains('video')) {
+      type = DrawingFileType.video;
+    } else if (lower.endsWith('.png') ||
+        lower.endsWith('.jpg') ||
+        lower.endsWith('.jpeg') ||
+        lower.endsWith('.webp') ||
+        lower.endsWith('.svg') ||
+        lower.endsWith('.gif') ||
+        lowerUrl.endsWith('.png') ||
+        lowerUrl.endsWith('.jpg') ||
+        lowerUrl.endsWith('.jpeg') ||
+        lowerUrl.endsWith('.webp') ||
+        lowerUrl.endsWith('.svg') ||
+        lowerUrl.endsWith('.gif') ||
+        mType.contains('image') ||
+        mType.contains('photo') ||
+        cat.contains('photo')) {
+      type = DrawingFileType.image;
+    } else if (lower.endsWith('.dwg') || lower.endsWith('.dxf')) {
       type = DrawingFileType.dwg;
     } else if (lower.endsWith('.doc') || lower.endsWith('.docx')) {
       type = DrawingFileType.docx;
-    } else if (lower.endsWith('.png') ||
-        lower.endsWith('.jpg') ||
-        lower.endsWith('.jpeg')) {
-      type = DrawingFileType.image;
     }
 
     return DrawingFileItem(
@@ -67,7 +96,22 @@ class DrawingFileItem {
   }
 }
 
-enum DrawingFileType { pdf, dwg, docx, image }
+enum DrawingFileType { pdf, dwg, docx, image, video }
+
+extension DrawingFileItemExt on DrawingFileItem {
+  bool get isPhoto => fileType == DrawingFileType.image;
+  bool get isVideo => fileType == DrawingFileType.video;
+  bool get isMedia => isPhoto || isVideo;
+  bool get isDrawing => !isMedia;
+
+  String get typeLabel {
+    if (isPhoto) return 'Photo';
+    if (isVideo) return 'Video';
+    if (fileType == DrawingFileType.dwg) return 'DWG';
+    if (fileType == DrawingFileType.docx) return 'DOCX';
+    return 'PDF';
+  }
+}
 
 class DrawingProjectItem {
   const DrawingProjectItem({

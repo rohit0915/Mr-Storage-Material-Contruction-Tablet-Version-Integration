@@ -116,15 +116,20 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
                             ],
                           ),
                         ),
-                        ...rows.map(
-                          (item) => _DataRow(
-                            key: ValueKey('${item.id}-$selectedCount'),
+                        ...rows.asMap().entries.map((entry) {
+                          final index = entry.key;
+                          final item = entry.value;
+                          final itemKey = item.realMongoId.isNotEmpty
+                              ? '${item.realMongoId}_${index}_$selectedCount'
+                              : '${item.id}_${index}_$selectedCount';
+                          return _DataRow(
+                            key: ValueKey(itemKey),
                             item: item,
                             cellFont: cellFont,
                             fmtWeight: _fmtWeight,
                             onPrint: () => _openPreview(context, item),
-                          ),
-                        ),
+                          );
+                        }),
                         if (rows.isEmpty)
                           Padding(
                             padding: const EdgeInsets.all(24),

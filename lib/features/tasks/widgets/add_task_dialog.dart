@@ -5,9 +5,14 @@ import '../models/task_models.dart';
 import 'task_calendar_dialog.dart';
 
 class AddTaskDialog extends StatefulWidget {
-  const AddTaskDialog({super.key, required this.projects});
+  const AddTaskDialog({
+    super.key,
+    required this.projects,
+    this.assignees = const [],
+  });
 
-  final List<TaskBoardItem> projects;
+  final List<TaskProjectOption> projects;
+  final List<String> assignees;
 
   @override
   State<AddTaskDialog> createState() => _AddTaskDialogState();
@@ -16,8 +21,8 @@ class AddTaskDialog extends StatefulWidget {
 class _AddTaskDialogState extends State<AddTaskDialog> {
   final _nameCtrl = TextEditingController();
   final _descCtrl = TextEditingController();
-  late String _project;
-  String _assignee = 'Mike Johnson';
+  late String _selectedProjectId;
+  late String _assignee;
   DateTime? _deadline;
   String _priority = 'High';
   String _status = 'To Do';
@@ -25,11 +30,21 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   @override
   void initState() {
     super.initState();
-    final names = widget.projects
-        .map((e) => e.project)
-        .where((e) => e.isNotEmpty)
-        .toSet();
-    _project = names.isEmpty ? '' : names.first;
+    _selectedProjectId =
+        widget.projects.isNotEmpty ? widget.projects.first.id : 'lead-0011';
+
+    final assigneeList = widget.assignees.isNotEmpty
+        ? widget.assignees
+        : TaskStaticData.assignees;
+    if (assigneeList.contains('Mike Johnson')) {
+      _assignee = 'Mike Johnson';
+    } else if (assigneeList.isNotEmpty) {
+      _assignee = assigneeList.first;
+    } else {
+      _assignee = 'Unassigned';
+    }
+
+    _deadline = DateTime.now();
   }
 
   @override
@@ -42,7 +57,7 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   Future<void> _pickDate() async {
     final picked = await pickTaskDate(
       context,
-      initialDate: _deadline ?? DateTime(2025, 5, 18),
+      initialDate: _deadline ?? DateTime.now(),
       title: 'New Task',
     );
     if (picked != null) setState(() => _deadline = picked);
@@ -54,33 +69,31 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
       'Done' => TaskColumn.done,
       _ => TaskColumn.todo,
     };
+
+    final selProject = widget.projects.firstWhere(
+      (p) => p.id == _selectedProjectId,
+      orElse: () => widget.projects.isNotEmpty
+          ? widget.projects.first
+          : const TaskProjectOption(
+              id: 'lead-0011',
+              name: 'Storage 0011',
+              jobId: '2026014',
+            ),
+    );
+
     Navigator.of(context).pop(
       TaskBoardItem(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
-        leadId: widget.projects
-            .firstWhere(
-              (item) => item.project == _project,
-              orElse: () => TaskBoardItem(
-                id: '',
-                title: '',
-                project: '',
-                description: '',
-                assignee: '',
-                dueDate: DateTime.now(),
-                priority: '',
-                column: TaskColumn.todo,
-              ),
-            )
-            .leadId,
+        leadId: selProject.id,
         title: _nameCtrl.text.trim().isEmpty
             ? 'New Task'
             : _nameCtrl.text.trim(),
-        project: _project,
+        project: selProject.name,
         description: _descCtrl.text.trim().isEmpty
             ? 'Task added from board'
             : _descCtrl.text.trim(),
         assignee: _assignee,
-        dueDate: _deadline ?? DateTime(2024, 2, 15),
+        dueDate: _deadline ?? DateTime.now(),
         priority: _priority,
         column: column,
         completed: column == TaskColumn.done,
@@ -92,6 +105,9 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final dialogWidth = (size.width * 0.52).clamp(520.0, 640.0);
+    final assigneeList = widget.assignees.isNotEmpty
+        ? widget.assignees
+        : TaskStaticData.assignees;
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -151,15 +167,16 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 _label('Project'),
-                                _dropdown(
-                                  value: _project,
-                                  items: widget.projects
-                                      .map((e) => e.project)
-                                      .where((e) => e.isNotEmpty)
-                                      .toSet()
-                                      .toList(),
-                                  onChanged: (v) =>
-                                      setState(() => _project = v!),
+                                _projectDropdown(
+                                  value: _selectedProjectId,
+                                  projects: widget.projects.isNotEmpty
+                                      ? widget.projects
+                                      : TaskProjectOption.defaultProjects(),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _selectedProjectId = v);
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -176,9 +193,12 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _label('Assigned To'),
                                 _dropdown(
                                   value: _assignee,
-                                  items: TaskStaticData.assignees,
-                                  onChanged: (v) =>
-                                      setState(() => _assignee = v!),
+                                  items: assigneeList,
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _assignee = v);
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -203,8 +223,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _dropdown(
                                   value: _priority,
                                   items: TaskStaticData.priorities,
-                                  onChanged: (v) =>
-                                      setState(() => _priority = v!),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _priority = v);
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -218,8 +241,11 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
                                 _dropdown(
                                   value: _status,
                                   items: TaskStaticData.statuses,
-                                  onChanged: (v) =>
-                                      setState(() => _status = v!),
+                                  onChanged: (v) {
+                                    if (v != null) {
+                                      setState(() => _status = v);
+                                    }
+                                  },
                                 ),
                               ],
                             ),
@@ -357,19 +383,57 @@ class _AddTaskDialogState extends State<AddTaskDialog> {
     ),
   );
 
+  Widget _projectDropdown({
+    required String value,
+    required List<TaskProjectOption> projects,
+    required ValueChanged<String?> onChanged,
+  }) {
+    final validValue = projects.any((p) => p.id == value)
+        ? value
+        : (projects.isNotEmpty ? projects.first.id : '');
+
+    return DropdownButtonFormField<String>(
+      key: ValueKey(validValue),
+      initialValue: validValue.isEmpty ? null : validValue,
+      isExpanded: true,
+      decoration: _inputDecoration(),
+      hint: const Text(
+        'Select Project',
+        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+      ),
+      items: projects
+          .map(
+            (p) => DropdownMenuItem<String>(
+              value: p.id,
+              child: Text(
+                p.displayName,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 13),
+              ),
+            ),
+          )
+          .toList(),
+      onChanged: onChanged,
+    );
+  }
+
   Widget _dropdown({
     required String value,
     required List<String> items,
     required ValueChanged<String?> onChanged,
   }) {
+    final validValue = items.contains(value)
+        ? value
+        : (items.isNotEmpty ? items.first : null);
+
     return DropdownButtonFormField<String>(
-      key: ValueKey(value),
-      initialValue: value,
+      key: ValueKey(validValue),
+      initialValue: validValue,
       isExpanded: true,
       decoration: _inputDecoration(),
       items: items
           .map(
-            (e) => DropdownMenuItem(
+            (e) => DropdownMenuItem<String>(
               value: e,
               child: Text(
                 e,

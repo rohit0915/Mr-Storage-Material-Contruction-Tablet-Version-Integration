@@ -5,6 +5,7 @@ import '../../../app/routes/app_routes.dart';
 import '../../../app/services/construction_socket_service.dart';
 import '../../../app/utils/app_logger.dart';
 import '../../../app/utils/app_toast.dart';
+import '../../../app/services/api_client.dart';
 import '../services/auth_service.dart';
 
 enum ForgotPasswordStep { email, otp, newPassword, success }
@@ -33,6 +34,26 @@ class LoginController extends GetxController {
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController retypePasswordController =
       TextEditingController();
+
+  @override
+  void onInit() {
+    super.onInit();
+    _loadSavedCredentials();
+  }
+
+  void _loadSavedCredentials() {
+    if (Get.isRegistered<ApiClient>()) {
+      final apiClient = Get.find<ApiClient>();
+      final creds = apiClient.getSavedLoginCredentials();
+      if (creds != null) {
+        emailController.text = creds['email'] ?? '';
+        passwordController.text = creds['password'] ?? '';
+        rememberMe.value = true;
+      } else {
+        rememberMe.value = false;
+      }
+    }
+  }
 
   void toggleRememberMe(bool? value) {
     rememberMe.value = value ?? false;
@@ -68,12 +89,24 @@ class LoginController extends GetxController {
     isLoading.value = true;
     try {
       AppLogger.i('Triggering login action in LoginController', tag: 'AUTH');
+      final email = emailController.text.trim();
+      final password = passwordController.text.trim();
+
       final errorMsg = await _authService.login(
-        email: emailController.text.trim(),
-        password: passwordController.text.trim(),
+        email: email,
+        password: password,
       );
 
       if (errorMsg == null) {
+        if (Get.isRegistered<ApiClient>()) {
+          final apiClient = Get.find<ApiClient>();
+          if (rememberMe.value) {
+            await apiClient.saveLoginCredentials(email, password);
+          } else {
+            await apiClient.clearLoginCredentials();
+          }
+        }
+
         if (Get.isRegistered<ConstructionSocketService>()) {
           Get.find<ConstructionSocketService>().connect();
         }

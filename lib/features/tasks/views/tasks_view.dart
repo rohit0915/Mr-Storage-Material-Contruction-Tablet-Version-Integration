@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
+import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/widgets/app_shimmer.dart';
@@ -61,7 +62,7 @@ class TasksView extends GetView<TasksController> {
                       ),
                       const Spacer(),
                       ElevatedButton(
-                        onPressed: () => controller.openDailyWorkLog(context),
+                        onPressed: () => Get.toNamed(AppRoutes.dailyWorkLogs),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF22C55E),
                           foregroundColor: Colors.white,
@@ -75,7 +76,7 @@ class TasksView extends GetView<TasksController> {
                           ),
                         ),
                         child: const Text(
-                          'Daily Work Log',
+                          'Daily Work Logs',
                           style: TextStyle(
                             fontWeight: FontWeight.w700,
                             fontSize: 13,
@@ -361,7 +362,6 @@ class _TaskCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final dateLabel = DateFormat('yyyy-MM-dd').format(item.dueDate);
-    final isPlumbing = item.title.contains('Plumbing');
 
     return Container(
       width: double.infinity,
@@ -404,7 +404,7 @@ class _TaskCard extends StatelessWidget {
                   size: 20,
                 )
               else
-                _PriorityBadge(priority: item.priority, isYellow: isPlumbing),
+                _PriorityBadge(priority: item.priority),
             ],
           ),
           const SizedBox(height: 4),
@@ -463,17 +463,31 @@ class _TaskCard extends StatelessWidget {
 }
 
 class _PriorityBadge extends StatelessWidget {
-  const _PriorityBadge({required this.priority, required this.isYellow});
+  const _PriorityBadge({required this.priority});
 
   final String priority;
-  final bool isYellow;
 
   @override
   Widget build(BuildContext context) {
+    Color bg = const Color(0xFFF3F4F6);
+    Color fg = const Color(0xFF4B5563);
+    
+    final lower = priority.toLowerCase();
+    if (lower.contains('low')) {
+      bg = const Color(0xFFDCFCE7); // Light green
+      fg = const Color(0xFF16A34A); // Dark green
+    } else if (lower.contains('medium')) {
+      bg = const Color(0xFFFEF9C3); // Light yellow
+      fg = const Color(0xFFD97706); // Dark yellow/orange
+    } else if (lower.contains('high') || lower.contains('urgent')) {
+      bg = const Color(0xFFFEE2E2); // Light red
+      fg = const Color(0xFFEF4444); // Dark red
+    }
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 3),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: isYellow ? const Color(0xFFFEF9C3) : const Color(0xFFFEE2E2),
+        color: bg,
         borderRadius: BorderRadius.circular(12),
       ),
       child: Text(
@@ -481,7 +495,7 @@ class _PriorityBadge extends StatelessWidget {
         style: TextStyle(
           fontWeight: FontWeight.w600,
           fontSize: 10,
-          color: isYellow ? const Color(0xFFD97706) : const Color(0xFFEF4444),
+          color: fg,
         ),
       ),
     );

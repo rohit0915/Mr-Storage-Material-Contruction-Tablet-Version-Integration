@@ -30,7 +30,9 @@ class MetricCardsRow extends StatelessWidget {
           builder: (context, constraints) {
             final isNarrow = constraints.maxWidth < 850;
             if (isNarrow) {
-              final colWidth = (constraints.maxWidth - gap * 2) / 3;
+              final columns = constraints.maxWidth < 500 ? 2 : 3;
+              final colWidth =
+                  (constraints.maxWidth - gap * (columns - 1)) / columns;
               return Wrap(
                 spacing: gap,
                 runSpacing: gap,

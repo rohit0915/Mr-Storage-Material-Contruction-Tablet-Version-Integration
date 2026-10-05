@@ -42,9 +42,11 @@ class CalendarDayEvent {
 
   factory CalendarDayEvent.fromJson(Map<String, dynamic> json) {
     String tStr = 'Event';
-    if (json['description'] != null &&
-        json['description'].toString().isNotEmpty) {
-      tStr = json['description'].toString();
+    if (json['title'] != null && json['title'].toString().trim().isNotEmpty) {
+      tStr = json['title'].toString().trim();
+    } else if (json['description'] != null &&
+        json['description'].toString().trim().isNotEmpty) {
+      tStr = json['description'].toString().trim();
     } else if (json['project'] is Map &&
         json['project']['projectName'] != null) {
       tStr = json['project']['projectName'].toString();
@@ -52,7 +54,6 @@ class CalendarDayEvent {
       tStr =
           json['code'] ??
           json['deliveryNumber'] ??
-          json['title'] ??
           json['name'] ??
           json['deliveryName'] ??
           'Event';
@@ -88,6 +89,7 @@ class DeliveryItem {
     required this.status,
     required this.statusColor,
     this.description = '',
+    this.title = '',
   });
 
   final String id;
@@ -98,6 +100,7 @@ class DeliveryItem {
   final String status;
   final Color statusColor;
   final String description;
+  final String title;
 
   factory DeliveryItem.fromJson(Map<String, dynamic> json) {
     final deliveryCode =
@@ -107,6 +110,8 @@ class DeliveryItem {
         json['deliveryId'] ??
         json['_id'] ??
         '';
+
+    final titleStr = (json['title'] ?? '').toString().trim();
 
     String pName = 'No Project';
     String loc = 'Site Location';
@@ -122,17 +127,82 @@ class DeliveryItem {
       pName = json['projectName'].toString();
     }
 
-    if (json['location'] != null && (loc == 'Site Location' || loc.isEmpty)) {
-      loc = json['location'].toString();
+    if (json['sectionLocation'] != null &&
+        json['sectionLocation'].toString().trim().isNotEmpty) {
+      loc = json['sectionLocation'].toString().trim();
+    } else if (json['section'] != null &&
+        json['section'].toString().trim().isNotEmpty) {
+      loc = json['section'].toString().trim();
+    } else if (json['location'] != null &&
+        json['location'].toString().trim().isNotEmpty &&
+        loc == 'Site Location') {
+      loc = json['location'].toString().trim();
     }
 
-    final deliveryDate =
-        json['date'] ?? json['deliveryDate'] ?? json['expectedArrival'] ?? '';
-    final statusStr = json['status'] ?? json['deliveryStatus'] ?? 'Confirmed';
-    final descStr = json['description']?.toString() ?? '';
+    final scheduleMap = json['schedule'] is Map ? json['schedule'] as Map : {};
+    final rawDate =
+        scheduleMap['deliveryDate'] ??
+        scheduleMap['arrivalDate'] ??
+        scheduleMap['pickupDate'] ??
+        json['deliveryDate'] ??
+        json['expectedDeliveryDate'] ??
+        json['scheduledDate'] ??
+        json['requiredDate'] ??
+        json['arrivalDate'] ??
+        json['expectedArrival'] ??
+        json['date'] ??
+        json['createdAt'] ??
+        json['updatedAt'] ??
+        '';
+
+    String parsedDate = rawDate.toString().trim();
+    if (parsedDate.isNotEmpty && parsedDate.toLowerCase() != 'null') {
+      try {
+        DateTime? d = DateTime.tryParse(parsedDate);
+        if (d == null && parsedDate.contains('-')) {
+          final cleanStr = parsedDate.split(' ')[0].split('T')[0];
+          final parts = cleanStr.split('-');
+          if (parts.length == 3) {
+            d = DateTime(
+              int.parse(parts[0]),
+              int.parse(parts[1]),
+              int.parse(parts[2]),
+            );
+          }
+        }
+        if (d != null) {
+          const months = [
+            'Jan',
+            'Feb',
+            'Mar',
+            'Apr',
+            'May',
+            'Jun',
+            'Jul',
+            'Aug',
+            'Sep',
+            'Oct',
+            'Nov',
+            'Dec',
+          ];
+          parsedDate = '${months[d.month - 1]} ${d.day}, ${d.year}';
+        }
+      } catch (_) {}
+    } else {
+      parsedDate = '';
+    }
+
+    final deliveryDate = parsedDate;
+    final rawStatus =
+        (json['status'] ?? json['deliveryStatus'] ?? 'Scheduled').toString();
+    final statusStr = rawStatus.isNotEmpty
+        ? rawStatus[0].toUpperCase() + rawStatus.substring(1)
+        : 'Scheduled';
+    final descStr =
+        json['description']?.toString() ?? json['notes']?.toString() ?? '';
 
     Color sColor = AppColors.badgeGreen;
-    final sLower = statusStr.toString().toLowerCase();
+    final sLower = statusStr.toLowerCase();
     if (sLower.contains('transit')) {
       sColor = const Color(0xFF8B5CF6); // Purple
     } else if (sLower.contains('schedule') || sLower.contains('pending')) {
@@ -148,10 +218,11 @@ class DeliveryItem {
     return DeliveryItem(
       id: json['_id'] ?? json['id'] ?? deliveryCode.toString(),
       code: deliveryCode.toString(),
+      title: titleStr,
       projectName: pName,
       location: loc,
       date: deliveryDate.toString(),
-      status: statusStr.toString(),
+      status: statusStr,
       statusColor: sColor,
       description: descStr,
     );

@@ -1,3 +1,4 @@
+import '../widgets/chat_attachment.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -57,8 +58,9 @@ class ChatView extends GetView<ChatController> {
 
             // ─── Right Info Panel (Drawer) ─────────────────────────────────
             Obx(() {
-              if (!controller.isInfoPanelOpen.value)
+              if (!controller.isInfoPanelOpen.value) {
                 return const SizedBox.shrink();
+              }
               return Row(
                 children: [
                   const VerticalDivider(width: 1, color: AppColors.cardBorder),
@@ -114,12 +116,12 @@ class _LeftSidebar extends StatelessWidget {
                 ],
               ),
               const SizedBox(width: 12),
-              const Expanded(
+              Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Sarah Johnson',
+                      controller.userName,
                       style: TextStyle(
                         fontWeight: FontWeight.w800,
                         fontSize: 14,
@@ -127,7 +129,7 @@ class _LeftSidebar extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      'Marketing',
+                      controller.userRole,
                       style: TextStyle(
                         fontSize: 12,
                         color: AppColors.textSecondary,
@@ -255,13 +257,30 @@ class _LeftSidebar extends StatelessWidget {
         // List View (Departments or Direct)
         Expanded(
           child: Obx(() {
+            if (controller.isLoading.value) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (controller.conversationError.value.isNotEmpty) {
+              return Center(
+                child: TextButton(
+                  onPressed: controller.fetchConversations,
+                  child: Text(controller.conversationError.value),
+                ),
+              );
+            }
             final activeTab = controller.activeTab.value;
+            final departments = controller.visibleDepartments;
+            final contacts = controller.visibleContacts;
+            if ((activeTab == ChatTab.departments ? departments : contacts)
+                .isEmpty) {
+              return const Center(child: Text('No chats found'));
+            }
             if (activeTab == ChatTab.departments) {
               return ListView.builder(
                 padding: const EdgeInsets.symmetric(vertical: 8),
-                itemCount: controller.departments.length,
+                itemCount: departments.length,
                 itemBuilder: (context, index) {
-                  final dept = controller.departments[index];
+                  final dept = departments[index];
                   return Obx(() {
                     final selected =
                         controller.selectedDepartmentId.value == dept.id;
@@ -322,9 +341,9 @@ class _LeftSidebar extends StatelessWidget {
 
             return ListView.builder(
               padding: const EdgeInsets.symmetric(vertical: 8),
-              itemCount: controller.contacts.length,
+              itemCount: contacts.length,
               itemBuilder: (context, index) {
-                final contact = controller.contacts[index];
+                final contact = contacts[index];
                 return Obx(() {
                   final selected =
                       controller.selectedContactId.value == contact.id;
@@ -338,7 +357,7 @@ class _LeftSidebar extends StatelessWidget {
                         radius: 18,
                         backgroundColor: const Color(0xFFE2E8F0),
                         child: Text(
-                          contact.name[0],
+                          contact.name.isEmpty ? '?' : contact.name[0],
                           style: const TextStyle(
                             fontWeight: FontWeight.w700,
                             color: AppColors.textPrimary,
@@ -368,7 +387,7 @@ class _LeftSidebar extends StatelessWidget {
         Padding(
           padding: const EdgeInsets.symmetric(vertical: 10),
           child: TextButton.icon(
-            onPressed: () {},
+            onPressed: controller.openNewChat,
             icon: const Icon(
               Icons.add,
               size: 16,
@@ -387,20 +406,26 @@ class _LeftSidebar extends StatelessWidget {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
           color: const Color(0xFFF8FAFC),
-          child: const Row(
-            children: [
-              Icon(Icons.circle, size: 8, color: Color(0xFF22C55E)),
-              SizedBox(width: 6),
-              Text(
-                'Online • 4 users online',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-              Spacer(),
-              Text(
-                'Last sync: just now',
-                style: TextStyle(fontSize: 11, color: AppColors.textSecondary),
-              ),
-            ],
+          child: Obx(
+            () => Row(
+              children: [
+                Icon(
+                  Icons.circle,
+                  size: 8,
+                  color: controller.isConnected ? Colors.green : Colors.grey,
+                ),
+                const SizedBox(width: 6),
+                Flexible(
+                  child: Text(
+                    controller.isConnected ? 'Connected' : 'Reconnecting…',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ],
@@ -470,7 +495,8 @@ class _CenterChatPanel extends StatelessWidget {
               ),
               const Spacer(),
               IconButton(
-                onPressed: () {},
+                onPressed: () => controller.showCallAvailability(video: false),
+                tooltip: 'Voice call',
                 icon: const Icon(
                   Icons.phone_outlined,
                   size: 20,
@@ -478,7 +504,8 @@ class _CenterChatPanel extends StatelessWidget {
                 ),
               ),
               IconButton(
-                onPressed: () {},
+                onPressed: () => controller.showCallAvailability(video: true),
+                tooltip: 'Video call',
                 icon: const Icon(
                   Icons.videocam_outlined,
                   size: 22,
@@ -502,6 +529,14 @@ class _CenterChatPanel extends StatelessWidget {
           child: Obx(() {
             if (controller.isLoadingMessages.value) {
               return const Center(child: CircularProgressIndicator());
+            }
+            if (controller.messageError.value.isNotEmpty) {
+              return Center(
+                child: TextButton(
+                  onPressed: controller.fetchMessagesForActiveChat,
+                  child: Text(controller.messageError.value),
+                ),
+              );
             }
             if (controller.messages.isEmpty) {
               return const Center(
@@ -536,8 +571,9 @@ class _CenterChatPanel extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Obx(() {
-                if (!controller.isTeamTyping.value)
+                if (!controller.isTeamTyping.value) {
                   return const SizedBox.shrink();
+                }
                 final name = controller.typingUserName.value.isNotEmpty
                     ? controller.typingUserName.value
                     : 'Someone';
@@ -567,8 +603,49 @@ class _CenterChatPanel extends StatelessWidget {
                   ),
                 );
               }),
+              Obx(
+                () => Wrap(
+                  spacing: 6,
+                  children: [
+                    ...controller.attachments.map(
+                      (file) => InputChip(
+                        label: ConstrainedBox(
+                          constraints: const BoxConstraints(maxWidth: 180),
+                          child: Text(
+                            file['name']?.toString() ?? 'Attachment',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        onDeleted: () => controller.attachments.remove(file),
+                      ),
+                    ),
+                    if (controller.isUploadingAttachment.value)
+                      const Padding(
+                        padding: EdgeInsets.all(8),
+                        child: SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               Row(
                 children: [
+                  Obx(
+                    () => IconButton(
+                      tooltip: 'Attach files',
+                      onPressed: controller.isUploadingAttachment.value
+                          ? null
+                          : controller.pickAttachment,
+                      icon: const Icon(
+                        Icons.attach_file,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
                   Expanded(
                     child: TextField(
                       controller: controller.messageController,
@@ -679,6 +756,7 @@ class _ChatMessageBubble extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        _MessageAttachments(message: msg),
                         Text(
                           msg.message,
                           style: const TextStyle(
@@ -771,6 +849,7 @@ class _ChatMessageBubble extends StatelessWidget {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      _MessageAttachments(message: msg),
                       Text(
                         msg.message,
                         style: const TextStyle(
@@ -954,12 +1033,14 @@ class _RightInfoPanel extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Marketing Team',
+                          controller.activeDepartment?.title ??
+                              controller.activeContact?.name ??
+                              'Chat',
                           style: TextStyle(
                             fontSize: 14,
                             fontWeight: FontWeight.w800,
@@ -967,7 +1048,9 @@ class _RightInfoPanel extends StatelessWidget {
                           ),
                         ),
                         Text(
-                          '2 members . Marketing',
+                          controller.activeDepartment?.subtitle ??
+                              controller.activeContact?.role ??
+                              '',
                           style: TextStyle(
                             fontSize: 11,
                             color: AppColors.textSecondary,
@@ -979,10 +1062,7 @@ class _RightInfoPanel extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 12),
-              const Text(
-                'Marketing department discussions and campaigns',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
-              ),
+
               const SizedBox(height: 14),
               Center(
                 child: Obx(() {
@@ -1250,6 +1330,35 @@ class _RightInfoPanel extends StatelessWidget {
           }),
         ),
       ],
+    );
+  }
+}
+
+class _MessageAttachments extends StatelessWidget {
+  const _MessageAttachments({required this.message});
+  final ChatMessage message;
+  @override
+  Widget build(BuildContext context) {
+    final files = message.attachments.isNotEmpty
+        ? message.attachments
+        : [
+            if (message.fileUrl != null)
+              {
+                'url': message.fileUrl,
+                'name': message.fileName ?? 'Attachment',
+              },
+          ];
+    if (files.isEmpty) return const SizedBox.shrink();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: files
+          .map(
+            (file) => ChatAttachment(
+              file: file,
+              color: message.isMe ? Colors.white : AppColors.primaryBlue,
+            ),
+          )
+          .toList(),
     );
   }
 }

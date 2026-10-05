@@ -18,6 +18,7 @@ class DeliveryOverviewCard extends StatelessWidget {
     final linkSize = (size.width * 0.009).clamp(10.0, 12.0);
 
     return SectionCard(
+      height: 400,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,27 +45,35 @@ class DeliveryOverviewCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          GetBuilder<DashboardController>(
-            id: AppGetIds.deliveryOverview,
-            builder: (controller) {
-              final totalCount = controller.deliverySlices
-                  .fold<double>(0, (sum, item) => sum + item.percent)
-                  .round();
+          Expanded(
+            child: GetBuilder<DashboardController>(
+              id: AppGetIds.deliveryOverview,
+              builder: (controller) {
+                if (controller.deliverySlices.isEmpty) {
+                  return const Center(child: Text('No overview data available'));
+                }
+                final totalCount = controller.deliveryTotal.round();
 
-              return Column(
-                children: [
-                  Center(
-                    child: DonutChart(
-                      slices: controller.deliverySlices,
-                      centerTitle: "Today's Deliveries",
-                      centerValue: '$totalCount',
+                return Column(
+                  children: [
+                    Expanded(
+                      child: Center(
+                        child: DonutChart(
+                          slices: controller.deliverySlices,
+                          centerTitle: "Today's Deliveries",
+                          centerValue: '$totalCount',
+                        ),
+                      ),
                     ),
-                  ),
-                  SizedBox(height: DashboardGap.section(context)),
-                  ChartLegend(slices: controller.deliverySlices),
-                ],
-              );
-            },
+                    SizedBox(height: DashboardGap.section(context)),
+                    ChartLegend(
+                      slices: controller.deliverySlices,
+                      totalOverride: controller.deliveryTotal,
+                    ),
+                  ],
+                );
+              },
+            ),
           ),
         ],
       ),

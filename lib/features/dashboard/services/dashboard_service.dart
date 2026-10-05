@@ -39,9 +39,11 @@ class DashboardService extends GetxService {
         ApiConstants.dashboard,
         queryParams: queryParams.isNotEmpty ? queryParams : null,
       );
-      AppLogger.i('Dashboard API Response: $response', tag: 'DASHBOARD');
 
       if (response is Map) {
+        if (response['success'] == false) {
+          throw const FormatException('Dashboard API returned a failure');
+        }
         if (response['success'] == true && response['data'] is Map) {
           return Map<String, dynamic>.from(response['data'] as Map);
         } else if (response['data'] is Map) {

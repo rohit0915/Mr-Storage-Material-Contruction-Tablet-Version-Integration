@@ -107,10 +107,19 @@ class BundleScanView extends GetView<BundleScanController> {
                 ElevatedButton(
                   onPressed: () => BundleScanQrDialog.show(
                     context,
-                    onScanned: (bundleId) => Get.toNamed(
-                      AppRoutes.bundleScanDetail,
-                      arguments: controller.pageBundles.firstOrNull,
-                    ),
+                    onScanned: (bundleId) {
+                      final found = controller.filteredBundles.firstWhereOrNull(
+                        (b) =>
+                            b.bundleId.toLowerCase() ==
+                                bundleId.toLowerCase() ||
+                            b.id.toLowerCase() == bundleId.toLowerCase() ||
+                            b.realMongoId == bundleId,
+                      );
+                      Get.toNamed(
+                        AppRoutes.bundleScanDetail,
+                        arguments: found ?? bundleId,
+                      );
+                    },
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(
@@ -138,10 +147,19 @@ class BundleScanView extends GetView<BundleScanController> {
                 ElevatedButton(
                   onPressed: () => BundleScanQrDialog.show(
                     context,
-                    onScanned: (bundleId) => Get.toNamed(
-                      AppRoutes.bundleScanDetail,
-                      arguments: controller.pageBundles.firstOrNull,
-                    ),
+                    onScanned: (bundleId) {
+                      final found = controller.filteredBundles.firstWhereOrNull(
+                        (b) =>
+                            b.bundleId.toLowerCase() ==
+                                bundleId.toLowerCase() ||
+                            b.id.toLowerCase() == bundleId.toLowerCase() ||
+                            b.realMongoId == bundleId,
+                      );
+                      Get.toNamed(
+                        AppRoutes.bundleScanDetail,
+                        arguments: found ?? bundleId,
+                      );
+                    },
                   ),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(

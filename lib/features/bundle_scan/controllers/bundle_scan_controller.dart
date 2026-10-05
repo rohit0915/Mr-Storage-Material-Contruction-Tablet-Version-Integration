@@ -1,3 +1,4 @@
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -59,7 +60,11 @@ class BundleScanController extends GetxController {
           scopedLeadId.isNotEmpty ||
           scopedJobId.isNotEmpty;
     }
-    fetchBundlesFromApi();
+    searchController.addListener(() {
+      searchQuery.value = searchController.text.trim();
+      pageIndex.value = 0;
+    });
+    fetchBundlesFromApi(targetLimit: 1000); // Fetch all for local filter/pagination
   }
 
   Future<void> fetchBundlesFromApi({int? targetPage, int? targetLimit}) async {
@@ -127,66 +132,30 @@ class BundleScanController extends GetxController {
   final selectedSort = 'Latest'.obs;
 
   List<BundleScanItem> get filteredBundles {
-    var list = List<BundleScanItem>.from(_allBundles);
-
-    // If scoped to a specific project from Project Details:
-    if (isProjectScoped &&
-        (scopedJobId.isNotEmpty ||
-            scopedProject.isNotEmpty ||
-            scopedLeadId.isNotEmpty)) {
-      list = list.where((b) {
-        if (scopedJobId.isNotEmpty &&
-            b.jobId.toLowerCase() == scopedJobId.toLowerCase()) {
-          return true;
-        }
-        if (scopedProject.isNotEmpty &&
-            b.project.toLowerCase().contains(scopedProject.toLowerCase())) {
-          return true;
-        }
-        if (scopedLeadId.isNotEmpty &&
-            (b.realMongoId == scopedLeadId || b.id == scopedLeadId)) {
-          return true;
-        }
-        return false;
-      }).toList();
-    }
-
+    var list = _allBundles.toList();
     if (selectedStatus.value != 'All Statuses') {
-      final filterText = selectedStatus.value.toUpperCase();
-      list = list.where((b) {
-        return b.statusText.toUpperCase().contains(filterText) ||
-            b.status.name.toUpperCase().contains(filterText);
-      }).toList();
+      final status = selectedStatus.value.toLowerCase();
+      list = list.where((b) => b.statusText.toLowerCase() == status || b.status.name.toLowerCase() == status).toList();
     }
-
-    final q = searchQuery.value.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      list = list
-          .where(
-            (b) =>
-                b.bundleId.toLowerCase().contains(q) ||
-                b.project.toLowerCase().contains(q) ||
-                b.jobId.toLowerCase().contains(q) ||
-                b.parts.toLowerCase().contains(q) ||
-                b.site.toLowerCase().contains(q) ||
-                b.totalWeight.toLowerCase().contains(q) ||
-                b.statusText.toLowerCase().contains(q),
-          )
-          .toList();
+    
+    if (searchQuery.value.isNotEmpty) {
+      final q = searchQuery.value.toLowerCase();
+      list = list.where((b) => 
+        b.bundleId.toLowerCase().contains(q) || 
+        b.project.toLowerCase().contains(q) ||
+        b.driver.toLowerCase().contains(q) ||
+        b.totalWeight.toLowerCase().contains(q)
+      ).toList();
     }
 
     if (selectedSort.value == 'Weight High to Low') {
-      list.sort(
-        (a, b) =>
-            _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)),
-      );
+      list.sort((a, b) => _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)));
     } else if (selectedSort.value == 'Weight Low to High') {
-      list.sort(
-        (a, b) =>
-            _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)),
-      );
+      list.sort((a, b) => _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)));
     } else if (selectedSort.value == 'Oldest') {
-      list = list.reversed.toList();
+      list.sort((a, b) => a.bundleId.compareTo(b.bundleId));
+    } else {
+      list.sort((a, b) => b.bundleId.compareTo(a.bundleId));
     }
 
     return list;
@@ -204,32 +173,37 @@ class BundleScanController extends GetxController {
 
   void setSort(String sort) {
     selectedSort.value = sort;
+    pageIndex.value = 0;
   }
 
   int get totalPages {
-    final t = totalCount;
+    final t = filteredBundles.length;
     if (t == 0) return 1;
     final pSize = pageSize.value > 0 ? pageSize.value : 10;
     return (t / pSize).ceil().clamp(1, 999);
   }
 
-  List<BundleScanItem> get pageBundles => filteredBundles;
+  List<BundleScanItem> get pageBundles {
+    if (filteredBundles.isEmpty) return [];
+    final startIndex = pageIndex.value * pageSize.value;
+    return filteredBundles.skip(startIndex).take(pageSize.value).toList();
+  }
 
   void nextPage() {
     if (pageIndex.value < totalPages - 1) {
-      fetchBundlesFromApi(targetPage: pageIndex.value + 2);
+      pageIndex.value++;
     }
   }
 
   void prevPage() {
     if (pageIndex.value > 0) {
-      fetchBundlesFromApi(targetPage: pageIndex.value);
+      pageIndex.value--;
     }
   }
 
   void goToPage(int p) {
     if (p >= 0 && p < totalPages) {
-      fetchBundlesFromApi(targetPage: p + 1);
+      pageIndex.value = p;
     }
   }
 

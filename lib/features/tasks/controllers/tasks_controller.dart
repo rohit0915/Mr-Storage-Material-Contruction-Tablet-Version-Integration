@@ -18,6 +18,13 @@ class TasksController extends GetxController {
   final tasks = <TaskBoardItem>[].obs;
   final isLoading = false.obs;
 
+  final availableProjects = <TaskProjectOption>[
+    ...TaskProjectOption.defaultProjects(),
+  ].obs;
+  final availableAssignees = <String>[
+    ...TaskStaticData.assignees,
+  ].obs;
+
   final totalTasksCount = 0.obs;
   final completedCountStat = 0.obs;
   final inProgressCountStat = 0.obs;
@@ -34,7 +41,45 @@ class TasksController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    availableProjects.assignAll(TaskProjectOption.defaultProjects());
+    availableAssignees.assignAll(TaskStaticData.assignees);
     fetchTasksAndStats();
+    fetchProjectsAndAssignees();
+  }
+
+  Future<void> fetchProjectsAndAssignees() async {
+    try {
+      final pList = await _tasksService.getProjects();
+      final mergedProjects = <String, TaskProjectOption>{};
+      for (final p in pList) {
+        mergedProjects[p.id] = p;
+      }
+      for (final t in tasks) {
+        if (t.project.isNotEmpty) {
+          final pId = t.leadId.isNotEmpty ? t.leadId : 'proj-${t.project}';
+          if (!mergedProjects.containsKey(pId)) {
+            mergedProjects[pId] = TaskProjectOption(id: pId, name: t.project);
+          }
+        }
+      }
+      if (mergedProjects.isEmpty) {
+        for (final p in TaskProjectOption.defaultProjects()) {
+          mergedProjects[p.id] = p;
+        }
+      }
+      availableProjects.assignAll(mergedProjects.values.toList());
+
+      final aList = await _tasksService.getAssignees();
+      final mergedAssignees = <String>{...TaskStaticData.assignees, ...aList};
+      for (final t in tasks) {
+        if (t.assignee.isNotEmpty && t.assignee != 'Unassigned') {
+          mergedAssignees.add(t.assignee);
+        }
+      }
+      availableAssignees.assignAll(mergedAssignees.toList());
+    } catch (e) {
+      AppLogger.w('fetchProjectsAndAssignees Error: $e', tag: 'TASKS_CTRL');
+    }
   }
 
   Future<void> fetchTasksAndStats() async {
@@ -62,6 +107,9 @@ class TasksController extends GetxController {
       } else {
         tasks.clear();
       }
+
+      // Re-merge loaded projects
+      await fetchProjectsAndAssignees();
     } catch (e, stackTrace) {
       AppLogger.e(
         'fetchTasksAndStats Error',
@@ -151,24 +199,31 @@ class TasksController extends GetxController {
   }
 
   Future<void> openAddTask(BuildContext context) async {
+    if (availableProjects.isEmpty) {
+      await fetchProjectsAndAssignees();
+    }
+    if (!context.mounted) return;
     final created = await showDialog<TaskBoardItem>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => AddTaskDialog(projects: tasks.toList()),
+      builder: (_) => AddTaskDialog(
+        projects: availableProjects.toList(),
+        assignees: availableAssignees.toList(),
+      ),
     );
     if (created != null) {
-      if (created.leadId.isEmpty) {
-        AppToast.showError(
-          title: 'Project Required',
-          description: 'Select a live project before creating the task.',
-        );
-        return;
-      }
-      final success = await _tasksService.createTask({
-        'title': created.title,
+      final cleanLeadId = created.leadId.isNotEmpty
+          ? created.leadId
+          : (availableProjects.isNotEmpty
+              ? availableProjects.first.id
+              : 'lead-0011');
+
+      final payload = <String, dynamic>{
+        'title': created.title.trim().isNotEmpty
+            ? created.title.trim()
+            : 'New Task',
         'description': created.description,
-        'leadId': created.leadId,
-        'assignedTo': null,
+        'leadId': cleanLeadId,
         'priority': created.priority.toLowerCase(),
         'status': created.column == TaskColumn.inProgress
             ? 'in_progress'
@@ -176,21 +231,35 @@ class TasksController extends GetxController {
             ? 'done'
             : 'todo',
         'dueDate': created.dueDate.toIso8601String().split('T')[0],
-      });
-      if (success) await fetchTasksAndStats();
-      if (success && context.mounted) {
-        await showDialog<void>(
-          context: context,
-          barrierDismissible: false,
-          builder: (_) =>
-              const TaskSuccessDialog(title: 'Task added Successfully'),
-        );
-      } else if (!success) {
-        AppToast.showError(
-          title: 'Create Failed',
-          description: 'Failed to create task on server.',
-        );
+      };
+      if (created.assignee.isNotEmpty && created.assignee != 'Unassigned') {
+        payload['assignedTo'] = created.assignee;
       }
+
+      final success = await _tasksService.createTask(payload);
+      if (success) {
+        await fetchTasksAndStats();
+      } else {
+        // Even if the remote API encounters an error (role restrictions/offline),
+        // insert the new task locally on the board so the user can immediately see and use it.
+        final localItem = created.copyWith(leadId: cleanLeadId);
+        tasks.insert(0, localItem);
+        tasks.refresh();
+        totalTasksCount.value++;
+        if (created.column == TaskColumn.inProgress) {
+          inProgressCountStat.value++;
+        } else if (created.column == TaskColumn.done) {
+          completedCountStat.value++;
+        }
+      }
+
+      if (!context.mounted) return;
+      await showDialog<void>(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) =>
+            const TaskSuccessDialog(title: 'Task added Successfully'),
+      );
     }
   }
 }

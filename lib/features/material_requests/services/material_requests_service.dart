@@ -135,11 +135,19 @@ class MaterialRequestsService extends GetxService {
     String reviewNotes,
   ) async {
     try {
+      final normalizedStatus = _normalizeStatus(status);
+      final notes = reviewNotes.trim().isNotEmpty
+          ? reviewNotes.trim()
+          : (normalizedStatus == 'cancelled'
+              ? 'Cancelled by user'
+              : 'Status updated to $normalizedStatus');
       final res = await _apiClient.put(
         ApiConstants.materialRequestStatus(requestId),
-        body: {'status': status, 'reviewNotes': reviewNotes},
+        body: {'status': normalizedStatus, 'reviewNotes': notes},
       );
       return res != null;
+    } on ApiException {
+      rethrow;
     } catch (e, stackTrace) {
       AppLogger.e(
         'updateMaterialRequestStatus Error',
@@ -149,6 +157,16 @@ class MaterialRequestsService extends GetxService {
       );
     }
     return false;
+  }
+
+  static String _normalizeStatus(String status) {
+    final lower = status.trim().toLowerCase();
+    if (lower.contains('cancel')) return 'cancelled';
+    if (lower.contains('approv')) return 'approved';
+    if (lower.contains('reject')) return 'rejected';
+    if (lower.contains('fulfill')) return 'fulfilled';
+    if (lower.contains('pend')) return 'pending';
+    return lower;
   }
 
   Future<bool> sendQuotation(

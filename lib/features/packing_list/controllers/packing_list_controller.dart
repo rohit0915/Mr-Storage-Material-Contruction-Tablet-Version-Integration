@@ -33,7 +33,11 @@ class PackingListController extends GetxController {
   @override
   void onInit() {
     super.onInit();
-    fetchPackingListsFromApi();
+    searchController.addListener(() {
+      searchQuery.value = searchController.text.trim();
+      pageIndex.value = 0;
+    });
+    fetchPackingListsFromApi(targetLimit: 1000);
   }
 
   Future<void> fetchPackingListsFromApi({
@@ -131,44 +135,32 @@ class PackingListController extends GetxController {
   final selectedSort = 'Latest'.obs;
 
   List<PackingListItem> get filteredLists {
-    var list = List<PackingListItem>.from(_allPackingLists);
-
+    var list = _allPackingLists.toList();
+    
     if (selectedStatus.value != 'All Statuses') {
-      final filterText = selectedStatus.value.toUpperCase();
-      list = list.where((item) {
-        return item.statusText.toUpperCase().contains(filterText) ||
-            item.status.name.toUpperCase().contains(filterText);
-      }).toList();
+      final status = selectedStatus.value.toLowerCase();
+      list = list.where((b) => b.statusText.toLowerCase() == status || b.status.name.toLowerCase() == status).toList();
     }
-
-    final q = searchQuery.value.trim().toLowerCase();
-    if (q.isNotEmpty) {
-      list = list
-          .where(
-            (item) =>
-                item.packingListId.toLowerCase().contains(q) ||
-                item.project.toLowerCase().contains(q) ||
-                item.jobId.toLowerCase().contains(q) ||
-                item.truck.toLowerCase().contains(q) ||
-                item.destination.toLowerCase().contains(q) ||
-                item.totalWeight.toLowerCase().contains(q) ||
-                item.statusText.toLowerCase().contains(q),
-          )
-          .toList();
+    
+    if (searchQuery.value.isNotEmpty) {
+      final q = searchQuery.value.toLowerCase();
+      list = list.where((b) => 
+        b.packingListId.toLowerCase().contains(q) || 
+        b.project.toLowerCase().contains(q) ||
+        b.loadId.toLowerCase().contains(q) ||
+        b.jobId.toLowerCase().contains(q) ||
+        b.destination.toLowerCase().contains(q)
+      ).toList();
     }
 
     if (selectedSort.value == 'Weight High to Low') {
-      list.sort(
-        (a, b) =>
-            _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)),
-      );
+      list.sort((a, b) => _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)));
     } else if (selectedSort.value == 'Weight Low to High') {
-      list.sort(
-        (a, b) =>
-            _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)),
-      );
+      list.sort((a, b) => _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)));
     } else if (selectedSort.value == 'Oldest') {
-      list = list.reversed.toList();
+      list.sort((a, b) => a.packingListId.compareTo(b.packingListId));
+    } else {
+      list.sort((a, b) => b.packingListId.compareTo(a.packingListId));
     }
 
     return list;
@@ -186,39 +178,44 @@ class PackingListController extends GetxController {
 
   void setSort(String sort) {
     selectedSort.value = sort;
+    pageIndex.value = 0;
   }
 
   int get totalPages {
-    final t = totalPackingList;
+    final t = filteredLists.length;
     if (t == 0) return 1;
     final pSize = pageSize.value > 0 ? pageSize.value : 10;
     return (t / pSize).ceil().clamp(1, 999);
   }
 
-  List<PackingListItem> get pageItems => filteredLists;
+  List<PackingListItem> get pageItems {
+    if (filteredLists.isEmpty) return [];
+    final startIndex = pageIndex.value * pageSize.value;
+    return filteredLists.skip(startIndex).take(pageSize.value).toList();
+  }
   List<PackingListItem> get pageLists => pageItems;
 
   void nextPage() {
     if (pageIndex.value < totalPages - 1) {
-      fetchPackingListsFromApi(targetPage: pageIndex.value + 2);
+      pageIndex.value++;
     }
   }
 
   void prevPage() {
     if (pageIndex.value > 0) {
-      fetchPackingListsFromApi(targetPage: pageIndex.value);
+      pageIndex.value--;
     }
   }
 
   void goToPage(int p) {
     if (p >= 0 && p < totalPages) {
-      fetchPackingListsFromApi(targetPage: p + 1);
+      pageIndex.value = p;
     }
   }
 
   void changePage(int pageNumber) {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
-      fetchPackingListsFromApi(targetPage: pageNumber);
+      pageIndex.value = pageNumber - 1;
     }
   }
 

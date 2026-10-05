@@ -17,10 +17,10 @@ class ProjectTimelineCard extends StatelessWidget {
     final itemSize = (size.width * 0.010).clamp(12.0, 14.0);
 
     return SectionCard(
+      height: 400,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header Row with Title and Action Dropdown
           Row(
             children: [
               Expanded(
@@ -54,16 +54,13 @@ class ProjectTimelineCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-
-          // Timeline Steps List
-          GetBuilder<DashboardController>(
-            id: AppGetIds.projectTimeline,
-            builder: (controller) {
-              final steps = controller.timeline;
-              if (steps.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Center(
+          Expanded(
+            child: GetBuilder<DashboardController>(
+              id: AppGetIds.projectTimeline,
+              builder: (controller) {
+                final steps = controller.timeline;
+                if (steps.isEmpty) {
+                  return Center(
                     child: Text(
                       'No timeline steps available',
                       style: TextStyle(
@@ -71,16 +68,21 @@ class ProjectTimelineCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
+                  );
+                }
+
+                return SingleChildScrollView(
+                  child: Column(
+                    children: steps.map((step) {
+                      return _TimelineRowItem(
+                        step: step,
+                        fontSize: itemSize,
+                      );
+                    }).toList(),
                   ),
                 );
-              }
-
-              return Column(
-                children: steps.map((step) {
-                  return _TimelineRowItem(step: step, fontSize: itemSize);
-                }).toList(),
-              );
-            },
+              },
+            ),
           ),
         ],
       ),

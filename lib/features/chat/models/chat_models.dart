@@ -26,13 +26,13 @@ class DepartmentChannel {
   final List<String> rawMemberIds;
 
   factory DepartmentChannel.fromJson(Map<String, dynamic> json) {
-    final rawId = json['_id'] ?? json['id'] ?? '';
+    final rawId = json['groupId'] ?? json['_id'] ?? json['id'] ?? '';
     final name = json['name'] ?? json['title'] ?? 'Group Channel';
     final desc = json['description'] ?? json['subtitle'] ?? '';
     final unread = (json['unreadCount'] as num?)?.toInt() ?? 0;
     final members = json['members'] is List
         ? (json['members'] as List).length
-        : 0;
+        : int.tryParse('${json['memberCount'] ?? 0}') ?? 0;
     final memberIds = json['members'] is List
         ? (json['members'] as List)
               .map((m) => (m is Map ? m['_id'] ?? m['id'] ?? '' : m).toString())
@@ -59,7 +59,7 @@ class DirectContact {
     required this.id,
     required this.name,
     required this.role,
-    this.isOnline = true,
+    this.isOnline = false,
     this.avatarUrl,
     this.email,
   });
@@ -72,7 +72,7 @@ class DirectContact {
   final String? email;
 
   factory DirectContact.fromJson(Map<String, dynamic> json) {
-    final rawId = json['_id'] ?? json['id'] ?? '';
+    final rawId = json['userId'] ?? json['_id'] ?? json['id'] ?? '';
     final name = json['name'] ?? json['fullName'] ?? json['email'] ?? 'User';
     final role =
         json['role'] ?? json['title'] ?? json['department'] ?? 'Team Member';
@@ -101,6 +101,7 @@ class ChatMessage {
     this.senderAvatar,
     this.fileUrl,
     this.fileName,
+    this.attachments = const [],
   });
 
   final String id;
@@ -112,6 +113,7 @@ class ChatMessage {
   final String? senderAvatar;
   final String? fileUrl;
   final String? fileName;
+  final List<Map<String, dynamic>> attachments;
 
   factory ChatMessage.fromJson(
     Map<String, dynamic> json, {
@@ -129,7 +131,10 @@ class ChatMessage {
 
     final text = json['content'] ?? json['message'] ?? json['text'] ?? '';
     final createdAt = json['createdAt'] ?? json['timestamp'] ?? '';
-    final isMe = currentUserId != null && senderId.toString() == currentUserId;
+    final isMe =
+        currentUserId != null &&
+        currentUserId.isNotEmpty &&
+        senderId.toString() == currentUserId;
     final fileUrl = json['attachmentUrl'] ?? json['fileUrl'];
     final fileName = json['fileName'] ?? json['attachmentName'];
 
@@ -143,6 +148,11 @@ class ChatMessage {
       isMe: isMe,
       isAi: json['isAi'] == true,
       senderAvatar: senderMap['avatar']?.toString(),
+      attachments:
+          (json['attachments'] is List ? json['attachments'] as List : [])
+              .whereType<Map>()
+              .map((a) => Map<String, dynamic>.from(a))
+              .toList(),
       fileUrl: fileUrl?.toString(),
       fileName: fileName?.toString(),
     );

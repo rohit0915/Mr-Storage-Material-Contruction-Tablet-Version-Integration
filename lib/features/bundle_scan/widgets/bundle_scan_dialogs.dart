@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
+import 'scanner_dialog.dart';
 
 // ─── Success popup ────────────────────────────────────────────────────────────
 
@@ -137,7 +138,13 @@ class _BundleScanQrDialogState extends State<BundleScanQrDialog> {
               const SizedBox(height: 24),
               Center(
                 child: ElevatedButton.icon(
-                  onPressed: () {},
+                  onPressed: () async {
+                    final scanned = await ScannerDialog.show(context);
+                    if (scanned != null && scanned.isNotEmpty && mounted) {
+                      Navigator.of(context).pop();
+                      widget.onScanned?.call(scanned);
+                    }
+                  },
                   icon: const Icon(
                     Icons.camera_alt_rounded,
                     size: 20,

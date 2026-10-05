@@ -42,6 +42,7 @@ class DispatchItem {
   const DispatchItem({
     required this.loadId,
     this.packingListNo = '',
+    this.packingListMongoId = '',
     this.project = '',
     this.jobId = '',
     required this.truck,
@@ -59,6 +60,7 @@ class DispatchItem {
 
   final String loadId;
   final String packingListNo;
+  final String packingListMongoId;
   final String project;
   final String jobId;
   final String truck;
@@ -84,12 +86,19 @@ class DispatchItem {
     final lId = rawId;
 
     String pkl = '';
-    if (json['packingListNo'] != null &&
-        json['packingListNo'].toString().startsWith('PL-')) {
+    String pklMongoId = '';
+    
+    if (json['packingListId'] != null) {
+      final pklStr = json['packingListId'].toString();
+      if (pklStr.startsWith('PL-')) {
+        pkl = pklStr;
+      } else if (pklStr.length == 24) {
+        pklMongoId = pklStr;
+      }
+    }
+    
+    if (json['packingListNo'] != null && json['packingListNo'].toString().startsWith('PL-')) {
       pkl = json['packingListNo'].toString();
-    } else if (json['packingListId'] != null &&
-        json['packingListId'].toString().startsWith('PL-')) {
-      pkl = json['packingListId'].toString();
     }
 
     String pName = '';
@@ -146,6 +155,7 @@ class DispatchItem {
     return DispatchItem(
       loadId: lId,
       packingListNo: pkl,
+      packingListMongoId: pklMongoId,
       project: pName,
       jobId: jId,
       truck:

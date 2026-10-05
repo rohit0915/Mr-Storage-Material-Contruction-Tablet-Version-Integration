@@ -24,6 +24,9 @@ class AppShellController extends GetxController {
       case 'Tasks':
         Get.offNamed(AppRoutes.tasks);
         break;
+      case 'Daily Work Logs':
+        Get.offNamed(AppRoutes.dailyWorkLogs);
+        break;
       case 'Material Request':
         Get.offNamed(AppRoutes.materialRequests);
         break;

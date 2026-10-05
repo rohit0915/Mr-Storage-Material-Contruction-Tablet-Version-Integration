@@ -79,42 +79,42 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
                             children: [
                               _HeadCell(
                                 flex: 2,
-                                text: 'Request ID',
+                                text: 'REQUEST ID',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 3,
-                                text: 'Project / Site',
+                                text: 'PROJECT / SITE',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 2,
-                                text: 'Requested Items',
+                                text: 'ITEMS',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 2,
-                                text: 'Request Date',
+                                text: 'DATE',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 2,
-                                text: 'Required By',
+                                text: 'REQUIRED',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 2,
-                                text: 'Status',
+                                text: 'STATUS',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 2,
-                                text: 'Priority',
+                                text: 'PRIORITY',
                                 size: cellFont,
                               ),
                               _HeadCell(
                                 flex: 2,
-                                text: 'Actions',
+                                text: 'ACTIONS',
                                 size: cellFont,
                                 isLast: true,
                               ),
@@ -552,21 +552,13 @@ class _HeadCell extends StatelessWidget {
       flex: flex,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : Border(
-                  right: BorderSide(
-                    color: AppColors.cardBorder.withValues(alpha: 0.7),
-                  ),
-                ),
-        ),
         child: Text(
           text,
           style: TextStyle(
             color: AppColors.textSecondary,
             fontWeight: FontWeight.w700,
             fontSize: size,
+            letterSpacing: 0.5,
           ),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -593,15 +585,6 @@ class _DataCell extends StatelessWidget {
       flex: flex,
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        decoration: BoxDecoration(
-          border: isLast
-              ? null
-              : Border(
-                  right: BorderSide(
-                    color: AppColors.cardBorder.withValues(alpha: 0.5),
-                  ),
-                ),
-        ),
         child: child,
       ),
     );
@@ -674,18 +657,37 @@ class _PriorityLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = switch (priority) {
-      'High' => const Color(0xFFDC2626),
-      'Medium' => const Color(0xFFD97706),
-      _ => const Color(0xFF2563EB),
-    };
+    Color bg = const Color(0xFFF3F4F6);
+    Color fg = const Color(0xFF4B5563);
+    
+    final lower = priority.toLowerCase();
+    if (lower.contains('low')) {
+      bg = const Color(0xFFDCFCE7);
+      fg = const Color(0xFF16A34A);
+    } else if (lower.contains('medium')) {
+      bg = const Color(0xFFFEF9C3);
+      fg = const Color(0xFFD97706);
+    } else if (lower.contains('high') || lower.contains('urgent')) {
+      bg = const Color(0xFFFEE2E2);
+      fg = const Color(0xFFEF4444);
+    }
 
-    return Text(
-      priority,
-      style: TextStyle(
-        color: color,
-        fontWeight: FontWeight.w700,
-        fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0),
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        decoration: BoxDecoration(
+          color: bg,
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Text(
+          priority,
+          style: TextStyle(
+            color: fg,
+            fontWeight: FontWeight.w700,
+            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0),
+          ),
+        ),
       ),
     );
   }

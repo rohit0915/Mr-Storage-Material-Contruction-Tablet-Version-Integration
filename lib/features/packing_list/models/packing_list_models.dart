@@ -127,12 +127,12 @@ class PackingListItem {
       bundleCount = int.tryParse(json['bundles'].toString()) ?? 0;
     }
 
-    final realId = (json['_id'] ?? json['id'] ?? '').toString();
+    final realId = (json['_id'] ?? json['id'] ?? json['packingListId'] ?? '').toString();
     final loadName = foundPklCode.replaceAll('PL-', 'LOAD-');
 
     return PackingListItem(
-      id: realId.isNotEmpty ? realId : foundPklCode,
-      realMongoId: realId,
+      id: realId.isNotEmpty && !isMongoHexId(foundPklCode) && foundPklCode.isNotEmpty ? foundPklCode : (realId.isNotEmpty ? realId : foundPklCode),
+      realMongoId: realId.isNotEmpty && isMongoHexId(realId) ? realId : '',
       packingListId: foundPklCode,
       loadId:
           json['loadId']?.toString() ?? json['load']?.toString() ?? loadName,

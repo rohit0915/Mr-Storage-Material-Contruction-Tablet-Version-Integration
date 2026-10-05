@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:get/get.dart';
 
 import '../../../app/constants/api_constants.dart';
@@ -98,6 +100,50 @@ class ProjectCalendarService extends GetxService {
     }
   }
 
+  /// Get consolidated BOM for a project: GET /api/construction/projects/:leadId/consolidated-bom
+  Future<dynamic> getConsolidatedBOM(String leadId) async {
+    try {
+      final response = await _apiClient.get(ApiConstants.consolidatedBOM(leadId));
+      AppLogger.i(
+        'Consolidated BOM API Response ($leadId): $response',
+        tag: 'PROJECTS',
+      );
+
+      if (response is Map && response.containsKey('data')) {
+        return response['data'];
+      }
+      return response;
+    } catch (e) {
+      AppLogger.w(
+        'getConsolidatedBOM not available for $leadId: $e',
+        tag: 'PROJECTS',
+      );
+      return null;
+    }
+  }
+
+  /// Get BOM files for a project: GET /api/construction/projects/:leadId/bom-files
+  Future<dynamic> getBOMFiles(String leadId) async {
+    try {
+      final response = await _apiClient.get(ApiConstants.bomFiles(leadId));
+      AppLogger.i(
+        'BOM Files API Response ($leadId): $response',
+        tag: 'PROJECTS',
+      );
+
+      if (response is Map && response.containsKey('data')) {
+        return response['data'];
+      }
+      return response;
+    } catch (e) {
+      AppLogger.w(
+        'getBOMFiles not available for $leadId: $e',
+        tag: 'PROJECTS',
+      );
+      return null;
+    }
+  }
+
   /// Get project calendar events for a specified month and year
   Future<dynamic> getProjectCalendar({
     required int month,
@@ -105,9 +151,18 @@ class ProjectCalendarService extends GetxService {
     String? leadId,
   }) async {
     try {
+      final firstDay = DateTime(year, month, 1);
+      final lastDay = DateTime(year, month + 1, 0);
+      final startDateStr =
+          '${firstDay.year}-${firstDay.month.toString().padLeft(2, '0')}-01';
+      final endDateStr =
+          '${lastDay.year}-${lastDay.month.toString().padLeft(2, '0')}-${lastDay.day.toString().padLeft(2, '0')}';
+
       final queryParams = <String, String>{
         'month': month.toString(),
         'year': year.toString(),
+        'startDate': startDateStr,
+        'endDate': endDateStr,
       };
       if (leadId != null && leadId.isNotEmpty) {
         queryParams['leadId'] = leadId;
@@ -244,51 +299,144 @@ class ProjectCalendarService extends GetxService {
     }
   }
 
-  /// Create a new delivery / material request on backend API
-  Future<bool> createDelivery({
+  /// Create a new delivery on backend API: POST /construction/deliveries
+  Future<Map<String, dynamic>> createDelivery({
     required String leadId,
     required String title,
-    required String location,
-    required DateTime date,
+    String? sectionLocation,
+    required DateTime deliveryDate,
     String? description,
+    String? notes,
+    List<String>? attachments,
   }) async {
-    try {
-      final body = <String, dynamic>{
-        'leadId': leadId,
-        'notes': description != null && description.isNotEmpty
-            ? description
-            : title,
-        'requiredDate': date.toIso8601String(),
-        'siteLocation': location,
-        'requestedItems': [
-          {
-            'name': title.isNotEmpty ? title : 'Delivery Material',
-            'quantity': 1,
-            'unit': 'pkg',
-          },
-        ],
-        'priority': 'medium',
-      };
+    final dateStr =
+        '${deliveryDate.year.toString().padLeft(4, '0')}-${deliveryDate.month.toString().padLeft(2, '0')}-${deliveryDate.day.toString().padLeft(2, '0')}';
 
-      final response = await _apiClient.post(
-        ApiConstants.materialRequests,
-        body: body,
-      );
+    final body = <String, dynamic>{
+      'title': title,
+      'leadId': leadId,
+      'deliveryDate': dateStr,
+    };
 
-      AppLogger.i('Create Delivery API Response: $response', tag: 'DELIVERIES');
-      if (response is Map &&
-          (response['success'] == true || response.containsKey('data'))) {
-        return true;
+    if (sectionLocation != null && sectionLocation.trim().isNotEmpty) {
+      body['sectionLocation'] = sectionLocation.trim();
+    }
+    if (description != null && description.trim().isNotEmpty) {
+      body['description'] = description.trim();
+    }
+    if (notes != null && notes.trim().isNotEmpty) {
+      body['notes'] = notes.trim();
+    }
+    if (attachments != null && attachments.isNotEmpty) {
+      body['attachments'] = attachments;
+    }
+
+    AppLogger.i(
+      'Calling POST ${ApiConstants.deliveries} with body: $body',
+      tag: 'DELIVERIES',
+    );
+
+    final response = await _apiClient.post(
+      ApiConstants.deliveries,
+      body: body,
+    );
+
+    AppLogger.i('Create Delivery API Response: $response', tag: 'DELIVERIES');
+
+    if (response is Map) {
+      if (response['success'] == false) {
+        final msg = response['message']?.toString() ??
+            response['error']?.toString() ??
+            'Failed to add delivery';
+        throw ApiException(msg, 400, response);
       }
-      return false;
-    } catch (e, stackTrace) {
-      AppLogger.e(
-        'createDelivery Exception',
-        error: e,
-        stackTrace: stackTrace,
+      if (response['data'] is Map) {
+        return Map<String, dynamic>.from(response['data'] as Map);
+      }
+      return Map<String, dynamic>.from(response);
+    }
+    return <String, dynamic>{};
+  }
+
+  Future<Uint8List?> downloadPackingListBytes(String deliveryId) async {
+    try {
+      return await _apiClient.getBytes(
+        ApiConstants.deliveryDownloadPackingList(deliveryId),
+      );
+    } catch (e) {
+      AppLogger.w(
+        'downloadPackingListBytes failed for $deliveryId: $e',
         tag: 'DELIVERIES',
       );
-      return false;
     }
+    return null;
+  }
+
+  Future<Uint8List?> downloadBillOfLadingBytes(String deliveryId) async {
+    try {
+      return await _apiClient.getBytes(
+        ApiConstants.deliveryDownloadBillOfLading(deliveryId),
+      );
+    } catch (e) {
+      AppLogger.w(
+        'downloadBillOfLadingBytes failed for $deliveryId: $e',
+        tag: 'DELIVERIES',
+      );
+    }
+    return null;
+  }
+
+  /// Download packing list for a delivery: GET /construction/deliveries/:deliveryId/download/packing-list
+  Future<String?> downloadPackingList(String deliveryId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.deliveryDownloadPackingList(deliveryId),
+      );
+      AppLogger.i('downloadPackingList API Response: $res', tag: 'DELIVERIES');
+      if (res is Map) {
+        final url = res['url'] ??
+            res['downloadUrl'] ??
+            res['fileUrl'] ??
+            res['data']?['url'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      } else if (res is String && res.startsWith('http')) {
+        return res;
+      }
+    } catch (e) {
+      AppLogger.w(
+        'downloadPackingList failed for $deliveryId: $e',
+        tag: 'DELIVERIES',
+      );
+    }
+    return null;
+  }
+
+  /// Download bill of lading for a delivery: GET /construction/deliveries/:deliveryId/download/bill-of-lading
+  Future<String?> downloadBillOfLading(String deliveryId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.deliveryDownloadBillOfLading(deliveryId),
+      );
+      AppLogger.i('downloadBillOfLading API Response: $res', tag: 'DELIVERIES');
+      if (res is Map) {
+        final url = res['url'] ??
+            res['downloadUrl'] ??
+            res['fileUrl'] ??
+            res['data']?['url'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      } else if (res is String && res.startsWith('http')) {
+        return res;
+      }
+    } catch (e) {
+      AppLogger.w(
+        'downloadBillOfLading failed for $deliveryId: $e',
+        tag: 'DELIVERIES',
+      );
+    }
+    return null;
   }
 }

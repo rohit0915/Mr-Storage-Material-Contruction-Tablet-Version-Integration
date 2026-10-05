@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
+import '../../../app/constants/get_builder_ids.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
 import '../widgets/active_sites_card.dart';
@@ -34,6 +35,33 @@ class DashboardView extends GetView<DashboardController> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const DashboardOverviewTitle(),
+            GetBuilder<DashboardController>(
+              id: AppGetIds.dashboardMetrics,
+              builder: (controller) => Column(
+                children: [
+                  if (controller.isLoading)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: LinearProgressIndicator(),
+                    ),
+                  if (controller.errorMessage.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red),
+                          const SizedBox(width: 8),
+                          Expanded(child: Text(controller.errorMessage)),
+                          TextButton(
+                            onPressed: controller.fetchDashboardData,
+                            child: const Text('Retry'),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
+              ),
+            ),
             SizedBox(height: gap),
             const MetricCardsRow(),
             SizedBox(height: gap),
@@ -41,11 +69,32 @@ class DashboardView extends GetView<DashboardController> {
             SizedBox(height: gap),
             LayoutBuilder(
               builder: (context, constraints) {
+                if (constraints.maxWidth < 600) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      const DeliveryOverviewCard(),
+                      SizedBox(height: gap),
+                      const MaterialRequestCard(),
+                      SizedBox(height: gap),
+                      const ActiveSitesCard(),
+                      SizedBox(height: gap),
+                      const DeadlinesCard(),
+                      SizedBox(height: gap),
+                      const ProjectTimelineCard(),
+                      SizedBox(height: gap),
+                      const FreightCarriersCard(),
+                      SizedBox(height: gap),
+                      const RecentActivityCard(),
+                    ],
+                  );
+                }
                 final isNarrow = constraints.maxWidth < 900;
                 if (isNarrow) {
                   return Column(
                     children: [
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Expanded(child: DeliveryOverviewCard()),
                           SizedBox(width: colGap),
@@ -56,6 +105,7 @@ class DashboardView extends GetView<DashboardController> {
                       const ActiveSitesCard(),
                       SizedBox(height: gap),
                       Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Expanded(child: DeadlinesCard()),
                           SizedBox(width: colGap),
@@ -79,7 +129,7 @@ class DashboardView extends GetView<DashboardController> {
                         SizedBox(width: colGap),
                         const Expanded(flex: 3, child: MaterialRequestCard()),
                         SizedBox(width: colGap),
-                        const Expanded(flex: 5, child: ActiveSitesCard()),
+                        const Expanded(flex: 6, child: ActiveSitesCard()),
                       ],
                     ),
                     SizedBox(height: gap),

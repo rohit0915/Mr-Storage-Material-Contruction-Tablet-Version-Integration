@@ -1,3 +1,4 @@
+import 'package:url_launcher/url_launcher.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -7,11 +8,86 @@ import '../models/packing_list_models.dart';
 import '../controllers/packing_list_controller.dart';
 import '../widgets/packing_list_dialogs.dart';
 
-class PackingListDetailView extends StatelessWidget {
+class PackingListDetailView extends StatefulWidget {
   const PackingListDetailView({super.key});
 
-  static const _bundleListItems =
-      <(String, String, String, String, String, String, String)>[];
+  @override
+  State<PackingListDetailView> createState() => _PackingListDetailViewState();
+}
+
+class _PackingListDetailViewState extends State<PackingListDetailView> {
+  final _bundleListItems = <(String, String, String, String, String, String, String)>[];
+  Map<String, dynamic>? _detailData;
+  bool _isLoading = true;
+  int _totalItems = 0;
+  int _totalBundles = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchDetail();
+  }
+
+  Future<void> _fetchDetail() async {
+    final item = Get.arguments as PackingListItem?;
+    if (item == null) {
+      setState(() => _isLoading = false);
+      return;
+    }
+    final controller = Get.find<PackingListController>();
+    final data = await controller.getPackingListDetail(item.id);
+    if (data != null && mounted) {
+      setState(() {
+        _detailData = data;
+        
+        List<dynamic> rawBundles = [];
+        if (data['bundles'] is List) {
+          rawBundles = data['bundles'] as List;
+        } else if (data['items'] is List) {
+          rawBundles = data['items'] as List;
+        } else if (data['bundleItems'] is List) {
+          rawBundles = data['bundleItems'] as List;
+        }
+
+        _totalItems = (data['totalItems'] ?? data['itemsCount'] ?? rawBundles.length) is num
+            ? ((data['totalItems'] ?? data['itemsCount'] ?? rawBundles.length) as num).toInt()
+            : rawBundles.length;
+            
+        _totalBundles = (data['totalBundles'] ?? rawBundles.length) is num
+            ? ((data['totalBundles'] ?? rawBundles.length) as num).toInt()
+            : rawBundles.length;
+
+        _bundleListItems.clear();
+        for (int i = 0; i < rawBundles.length; i++) {
+          if (rawBundles[i] is! Map) continue;
+          final b = rawBundles[i] as Map;
+          
+          final idx = (i + 1).toString();
+          final bundleId = (b['bundleId'] ?? b['tag'] ?? b['code'] ?? 'B-${idx.padLeft(3, '0')}').toString();
+          
+          final partCode = (b['partCode'] ?? b['partNumber'] ?? '').toString();
+          final desc = (b['description'] ?? b['part'] ?? b['name'] ?? '').toString();
+          final partStr = [partCode, desc].where((s) => s.isNotEmpty).join(' - ');
+          
+          final qty = (b['quantity'] ?? b['qty'] ?? 1).toString();
+          
+          String length = (b['length'] ?? b['len'] ?? '-').toString();
+          if (length != '-' && !length.toLowerCase().contains('ft')) length += ' ft';
+          
+          String weight = (b['weight'] ?? b['totalWeight'] ?? b['totalWeightLbs'] ?? '-').toString();
+          if (weight != '-' && !weight.toLowerCase().contains('lbs')) weight += ' LBS';
+          
+          final markIds = (b['markIds'] ?? b['status'] ?? b['markId'] ?? '-').toString();
+          
+          _bundleListItems.add((idx, bundleId, partStr.isEmpty ? '-' : partStr, qty, length, weight, markIds));
+        }
+        
+        _isLoading = false;
+      });
+    } else if (mounted) {
+      setState(() => _isLoading = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -34,7 +110,6 @@ class PackingListDetailView extends StatelessWidget {
     final weightStr = item?.totalWeight.isNotEmpty == true
         ? item!.totalWeight
         : '—';
-    final bundlesCount = item?.bundles ?? 0;
 
     return AppScaffold(
       menuTitle: 'Packing List',
@@ -90,9 +165,15 @@ class PackingListDetailView extends StatelessWidget {
                               ? null
                               : () async {
                                   final url = await controller.downloadPdf(
-                                    item.id,
+                                    item.realMongoId.isNotEmpty ? item.realMongoId : item.id,
                                   );
-                                  if (url != null && context.mounted) {
+                                  if (url != null) {
+                                    final uri = Uri.parse(url);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  }
+                                  if (context.mounted) {
                                     await PackingListSuccessDialog.show(
                                       context,
                                       'Packing List\nDownloaded',
@@ -105,7 +186,13 @@ class PackingListDetailView extends StatelessWidget {
                           label: 'EXPORT EXCEL',
                           onTap: () async {
                             final url = await controller.exportExcel();
-                            if (url != null && context.mounted) {
+                            if (url != null) {
+                              final uri = Uri.parse(url);
+                              if (await canLaunchUrl(uri)) {
+                                await launchUrl(uri, mode: LaunchMode.externalApplication);
+                              }
+                            }
+                            if (context.mounted) {
                               await PackingListSuccessDialog.show(
                                 context,
                                 'Exported Excel\nsuccessfully',
@@ -178,8 +265,8 @@ class PackingListDetailView extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 14),
-                        _summaryRow('TOTAL BUNDLES', '$bundlesCount'),
-                        _summaryRow('TOTAL ITEMS', '—'),
+                        _summaryRow('TOTAL BUNDLES', '$_totalBundles'),
+                        _summaryRow('TOTAL ITEMS', '$_totalItems'),
                         _summaryRow('TOTAL WEIGHT', weightStr),
                         const SizedBox(height: 20),
                         const Text(
@@ -211,15 +298,31 @@ class PackingListDetailView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 12),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                clipBehavior: Clip.antiAlias,
-                child: Column(
-                  children: [
+              if (_isLoading)
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(child: CircularProgressIndicator()),
+                )
+              else if (_bundleListItems.isEmpty)
+                const Padding(
+                  padding: EdgeInsets.all(40),
+                  child: Center(
+                    child: Text(
+                      'No bundles found for this packing list.',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 16),
+                    ),
+                  ),
+                )
+              else
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
                     // Dark Header
                     Container(
                       color: const Color(0xFF1A1A2E),
@@ -298,7 +401,7 @@ class PackingListDetailView extends StatelessWidget {
                           Expanded(
                             flex: 3,
                             child: Text(
-                              'STATUS',
+                              'MARK IDS / STATUS',
                               style: TextStyle(
                                 fontWeight: FontWeight.w700,
                                 fontSize: 12,

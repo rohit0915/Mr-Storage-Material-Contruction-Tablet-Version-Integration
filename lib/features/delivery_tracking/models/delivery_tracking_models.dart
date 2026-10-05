@@ -12,6 +12,7 @@ class DeliveryItem {
     required this.title,
     required this.location,
     required this.project,
+    this.projectMongoId = '',
     required this.quantity,
     required this.stagingArea,
     required this.carrier,
@@ -34,6 +35,7 @@ class DeliveryItem {
   final String title;
   final String location;
   final String project;
+  final String projectMongoId;
   final String quantity;
   final String stagingArea;
   final String carrier;
@@ -65,6 +67,7 @@ class DeliveryItem {
 
     String projName = 'Project';
     String jId = '';
+    String pMongoId = '';
     if (json['project'] is Map) {
       projName =
           (json['project']['projectName'] ??
@@ -73,6 +76,7 @@ class DeliveryItem {
               .toString();
       jId = (json['project']['jobId'] ?? json['project']['code'] ?? '')
           .toString();
+      pMongoId = (json['project']['_id'] ?? json['project']['id'] ?? '').toString();
     } else if (json['project'] != null &&
         json['project'].toString().isNotEmpty) {
       projName = json['project'].toString();
@@ -154,6 +158,7 @@ class DeliveryItem {
       title: desc,
       location: loc,
       project: projName,
+      projectMongoId: pMongoId,
       jobId: jId,
       quantity: weight,
       stagingArea: staging,

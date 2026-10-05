@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../../app/constants/app_assets.dart';
 import '../../../app/theme/app_colors.dart';
 import '../models/label_printing_models.dart';
 
@@ -87,11 +87,16 @@ class LabelPreviewDialog extends StatelessWidget {
                   children: [
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
-                      child: Image.asset(
-                        AppAssets.qrCode,
+                      child: Container(
                         width: 150,
                         height: 150,
-                        fit: BoxFit.cover,
+                        color: Colors.white,
+                        child: QrImageView(
+                          data: 'project=${item.project}\nshipper=${item.shipper}\nload_id=${item.loadId}\nbundle_id=${item.id}\npart=${item.part}\nweight=${item.totalWeightLbs}\nlength=${item.lengthFt}',
+                          version: QrVersions.auto,
+                          size: 150.0,
+                          padding: const EdgeInsets.all(8),
+                        ),
                       ),
                     ),
                     const SizedBox(width: 24),

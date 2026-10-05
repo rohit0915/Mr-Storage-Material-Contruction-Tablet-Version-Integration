@@ -1,10 +1,15 @@
+import 'package:file_picker/file_picker.dart' as file_picker;
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/constants/app_assets.dart';
+import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_toast.dart';
 import '../controllers/delivery_tracking_controller.dart';
 import '../models/delivery_tracking_models.dart';
+import '../services/delivery_tracking_service.dart';
+import '../../bundle_scan/widgets/scanner_dialog.dart';
 
 // ─── Reusable helpers ────────────────────────────────────────────────────────
 
@@ -145,7 +150,7 @@ class MarkReceivedDialog extends StatelessWidget {
 
 // ─── Mark as Partial Received ─────────────────────────────────────────────────
 
-class MarkPartialDialog extends StatelessWidget {
+class MarkPartialDialog extends StatefulWidget {
   const MarkPartialDialog({
     super.key,
     required this.item,
@@ -153,12 +158,12 @@ class MarkPartialDialog extends StatelessWidget {
   });
 
   final DeliveryItem item;
-  final VoidCallback onConfirm;
+  final Function(String) onConfirm;
 
   static Future<void> show(
     BuildContext context,
     DeliveryItem item,
-    VoidCallback onConfirm,
+    Function(String) onConfirm,
   ) => showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -166,15 +171,149 @@ class MarkPartialDialog extends StatelessWidget {
   );
 
   @override
+  State<MarkPartialDialog> createState() => _MarkPartialDialogState();
+}
+
+class _MarkPartialDialogState extends State<MarkPartialDialog> {
+  final _notesController = TextEditingController();
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return _ConfirmDialog(
-      title: 'Mark as Partial\nReceived',
-      message: '',
-      confirmLabel: 'Ok',
-      confirmColor: AppColors.primaryBlue,
-      onConfirm: () async {
-        onConfirm();
-      },
+    return _DialogBase(
+      maxWidth: 500,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    'Mark Delivery Partial',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: (MediaQuery.sizeOf(context).width * 0.015).clamp(18.0, 22.0),
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                _closeButton(context),
+              ],
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  'ID: ${widget.item.id}',
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Notes / Reason',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _notesController,
+                  maxLines: 4,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textPrimary,
+                  ),
+                  decoration: InputDecoration(
+                    hintText: 'Enter reason for partial delivery...',
+                    hintStyle: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.pop(context),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          side: const BorderSide(color: AppColors.cardBorder),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          backgroundColor: const Color(0xFFD1D5DB), // Light gray cancel
+                          foregroundColor: Colors.white,
+                        ),
+                        child: const Text(
+                          'CANCEL',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          await widget.onConfirm(_notesController.text);
+                        },
+                        style: ElevatedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          backgroundColor: const Color(0xFF4F46E5), // Indigo blue
+                          foregroundColor: Colors.white,
+                          elevation: 0,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                        ),
+                        child: const Text(
+                          'CONFIRM',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -315,7 +454,14 @@ class _ScanQrDialogState extends State<ScanQrDialog> {
             ),
             const SizedBox(height: 20),
             ElevatedButton.icon(
-              onPressed: null,
+              onPressed: () async {
+                final scanned = await ScannerDialog.show(context);
+                if (scanned != null && scanned.isNotEmpty && mounted) {
+                  setState(() {
+                    _bundleController.text = scanned;
+                  });
+                }
+              },
               icon: const Icon(Icons.camera_alt_outlined, size: 18),
               label: const Text(
                 'Camera Scan',
@@ -343,6 +489,7 @@ class _ScanQrDialogState extends State<ScanQrDialog> {
             const SizedBox(height: 8),
             TextField(
               controller: _bundleController,
+              keyboardType: TextInputType.number,
               style: TextStyle(
                 fontSize: fontSize,
                 color: AppColors.textPrimary,
@@ -388,7 +535,10 @@ class _ScanQrDialogState extends State<ScanQrDialog> {
                       if (Get.isRegistered<DeliveryTrackingController>()) {
                         final success =
                             await Get.find<DeliveryTrackingController>()
-                                .scanQrCode(_bundleController.text.trim());
+                                .scanQrCode(
+                                  _bundleController.text.trim(),
+                                  projectId: widget.item.projectMongoId.isNotEmpty ? widget.item.projectMongoId : widget.item.project,
+                                );
                         if (!success || !mounted) return;
                       }
                       if (!mounted) return;
@@ -418,10 +568,16 @@ class _ScanQrDialogState extends State<ScanQrDialog> {
   }
 }
 
-class _ScanResultDialog extends StatelessWidget {
-  const _ScanResultDialog({required this.item});
+class ScanResultDialog extends StatelessWidget {
+  const ScanResultDialog({super.key, required this.item});
 
   final DeliveryItem item;
+
+  static Future<void> show(BuildContext context, DeliveryItem item) =>
+      showDialog<void>(
+        context: context,
+        builder: (_) => ScanResultDialog(item: item),
+      );
 
   @override
   Widget build(BuildContext context) {
@@ -470,36 +626,42 @@ class _ScanResultDialog extends StatelessWidget {
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
-                    alignment: WrapAlignment.end,
-                    children: [
-                      _TopActionBtn(
-                        label: 'Download',
-                        icon: Icons.download_rounded,
-                      ),
-                      _TopActionBtn(
-                        label: 'Reprint Label',
-                        icon: Icons.print_outlined,
-                      ),
-                      _TopActionBtn(
-                        label: 'Report Mismatch',
-                        icon: Icons.warning_amber_rounded,
-                      ),
-                      _TopActionBtn(
-                        label: 'Verify Bundle',
-                        icon: Icons.verified_outlined,
-                      ),
-                      _TopActionBtn(
-                        label: 'Mark Loaded',
-                        icon: Icons.check_box_outlined,
-                      ),
-                      _TopActionBtn(
-                        label: 'Mark Staged',
-                        icon: Icons.inventory_2_outlined,
-                      ),
-                    ],
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _TopActionBtn(
+                          label: 'Download',
+                          icon: Icons.download_rounded,
+                        ),
+                        const SizedBox(width: 6),
+                        _TopActionBtn(
+                          label: 'Reprint Label',
+                          icon: Icons.print_outlined,
+                        ),
+                        const SizedBox(width: 6),
+                        _TopActionBtn(
+                          label: 'Report Mismatch',
+                          icon: Icons.warning_amber_rounded,
+                        ),
+                        const SizedBox(width: 6),
+                        _TopActionBtn(
+                          label: 'Verify Bundle',
+                          icon: Icons.verified_outlined,
+                        ),
+                        const SizedBox(width: 6),
+                        _TopActionBtn(
+                          label: 'Mark Loaded',
+                          icon: Icons.check_box_outlined,
+                        ),
+                        const SizedBox(width: 6),
+                        _TopActionBtn(
+                          label: 'Mark Staged',
+                          icon: Icons.inventory_2_outlined,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ],
@@ -975,7 +1137,7 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _fieldLabel('Phone number'),
-                      _textField(_phoneCtrl, '(555) 123-4567'),
+                      _textField(_phoneCtrl, '(555) 123-4567', keyboardType: TextInputType.phone),
                     ],
                   ),
                 ),
@@ -985,7 +1147,7 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       _fieldLabel('Email Address'),
-                      _textField(_emailCtrl, 'contact@company.com'),
+                      _textField(_emailCtrl, 'contact@company.com', keyboardType: TextInputType.emailAddress),
                     ],
                   ),
                 ),
@@ -1082,9 +1244,11 @@ class _UpdateSiteContactDialogState extends State<UpdateSiteContactDialog> {
     TextEditingController ctrl,
     String hint, {
     int maxLines = 1,
+    TextInputType? keyboardType,
   }) => TextField(
     controller: ctrl,
     maxLines: maxLines,
+    keyboardType: keyboardType,
     style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
     decoration: InputDecoration(
       hintText: hint,
@@ -1524,7 +1688,7 @@ class _UpdatePickupInstructionsDialogState
 
 // ─── View Details ─────────────────────────────────────────────────────────────
 
-class ViewDetailsDialog extends StatelessWidget {
+class ViewDetailsDialog extends StatefulWidget {
   const ViewDetailsDialog({super.key, required this.item});
   final DeliveryItem item;
 
@@ -1534,6 +1698,14 @@ class ViewDetailsDialog extends StatelessWidget {
         barrierDismissible: false,
         builder: (_) => ViewDetailsDialog(item: item),
       );
+
+  @override
+  State<ViewDetailsDialog> createState() => _ViewDetailsDialogState();
+}
+
+class _ViewDetailsDialogState extends State<ViewDetailsDialog> {
+  bool _isDownloadingPackingList = false;
+  bool _isDownloadingBol = false;
 
   static const _steps = [
     ('Scheduled', true),
@@ -1561,15 +1733,102 @@ class ViewDetailsDialog extends StatelessWidget {
     DeliveryStatus.delivered => 'Delivered',
   };
 
+  Future<void> _downloadPackingList() async {
+    if (_isDownloadingPackingList) return;
+    setState(() => _isDownloadingPackingList = true);
+    try {
+      final deliveryId = widget.item.realMongoId.isNotEmpty
+          ? widget.item.realMongoId
+          : widget.item.id;
+      final service = Get.isRegistered<DeliveryTrackingService>()
+          ? Get.find<DeliveryTrackingService>()
+          : Get.put(DeliveryTrackingService());
+
+      final bytes = await service.downloadPackingListBytes(deliveryId);
+      if (bytes != null && bytes.isNotEmpty) {
+        final fileName = '${widget.item.id}_packing_list.pdf';
+        final savedPath = await file_picker.FilePicker.saveFile(
+          dialogTitle: 'Save Packing List',
+          fileName: fileName,
+          type: file_picker.FileType.custom,
+          allowedExtensions: ['pdf'],
+          bytes: bytes,
+        );
+        if (savedPath != null) {
+          AppToast.showSuccess(
+            title: 'Packing List Saved',
+            description: 'Saved to $savedPath',
+          );
+        }
+      } else {
+        AppToast.showError(
+          title: 'Download Failed',
+          description: 'Could not fetch Packing List document.',
+        );
+      }
+    } catch (e) {
+      AppToast.showError(
+        title: 'Download Failed',
+        description: e.toString(),
+      );
+    } finally {
+      if (mounted) setState(() => _isDownloadingPackingList = false);
+    }
+  }
+
+  Future<void> _downloadBillOfLading() async {
+    if (_isDownloadingBol) return;
+    setState(() => _isDownloadingBol = true);
+    try {
+      final deliveryId = widget.item.realMongoId.isNotEmpty
+          ? widget.item.realMongoId
+          : widget.item.id;
+      final service = Get.isRegistered<DeliveryTrackingService>()
+          ? Get.find<DeliveryTrackingService>()
+          : Get.put(DeliveryTrackingService());
+
+      final bytes = await service.downloadBillOfLadingBytes(deliveryId);
+      if (bytes != null && bytes.isNotEmpty) {
+        final fileName = '${widget.item.id}_bill_of_lading.pdf';
+        final savedPath = await file_picker.FilePicker.saveFile(
+          dialogTitle: 'Save Bill of Lading',
+          fileName: fileName,
+          type: file_picker.FileType.custom,
+          allowedExtensions: ['pdf'],
+          bytes: bytes,
+        );
+        if (savedPath != null) {
+          AppToast.showSuccess(
+            title: 'Bill of Lading Saved',
+            description: 'Saved to $savedPath',
+          );
+        }
+      } else {
+        AppToast.showError(
+          title: 'Download Failed',
+          description: 'Could not fetch Bill of Lading document.',
+        );
+      }
+    } catch (e) {
+      AppToast.showError(
+        title: 'Download Failed',
+        description: e.toString(),
+      );
+    } finally {
+      if (mounted) setState(() => _isDownloadingBol = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final item = widget.item;
     final size = MediaQuery.sizeOf(context);
     final labelSize = (size.width * 0.009).clamp(11.0, 12.0);
     final valueSize = (size.width * 0.010).clamp(12.0, 13.0);
     final statusColor = _statusColor(item.status);
 
     return _DialogBase(
-      maxWidth: 700,
+      maxWidth: 720,
       child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
         child: Column(
@@ -1617,16 +1876,65 @@ class ViewDetailsDialog extends StatelessWidget {
                         item.id,
                         style: TextStyle(
                           fontSize: labelSize,
+                          fontWeight: FontWeight.w600,
                           color: AppColors.textSecondary,
                         ),
                       ),
                     ],
                   ),
                 ),
+                InkWell(
+                  onTap: () {
+                    Navigator.of(context).pop();
+                    Get.toNamed(
+                      AppRoutes.deliveryDetails,
+                      arguments: {
+                        'id': item.realMongoId.isNotEmpty
+                            ? item.realMongoId
+                            : item.id,
+                        'deliveryId': item.id,
+                        'item': item,
+                      },
+                    );
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    margin: const EdgeInsets.only(right: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEFF6FF),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: const Color(0xFFBFDBFE)),
+                    ),
+                    child: const Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.open_in_new_rounded,
+                          size: 13,
+                          color: Color(0xFF2563EB),
+                        ),
+                        SizedBox(width: 4),
+                        Text(
+                          'Full Page',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
                 _closeButton(context),
               ],
             ),
             const SizedBox(height: 16),
+
             // Status banner
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -1708,7 +2016,9 @@ class ViewDetailsDialog extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        item.stagingArea,
+                        item.stagingArea.isNotEmpty
+                            ? item.stagingArea
+                            : 'Plant Yard',
                         style: TextStyle(
                           fontSize: valueSize + 2,
                           fontWeight: FontWeight.w800,
@@ -1721,6 +2031,7 @@ class ViewDetailsDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
+
             // Progress checklist
             Container(
               width: double.infinity,
@@ -1763,40 +2074,113 @@ class ViewDetailsDialog extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 16),
-            // Delivery flow
+
+            // ─── RED BOX 1: Delivery Flow & Route ───
             Container(
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(10),
+                borderRadius: BorderRadius.circular(12),
                 border: Border.all(color: AppColors.cardBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 6,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-              child: Row(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  _FlowNode(
-                    label: item.carrier,
-                    sublabel: 'Origin',
-                    color: AppColors.primaryBlue,
-                    iconData: Icons.local_shipping_outlined,
+                  const Row(
+                    children: [
+                      Icon(
+                        Icons.route_outlined,
+                        size: 15,
+                        color: Color(0xFF2563EB),
+                      ),
+                      SizedBox(width: 6),
+                      Text(
+                        'DELIVERY FLOW & ROUTE',
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.7,
+                          color: Color(0xFF64748B),
+                        ),
+                      ),
+                    ],
                   ),
-                  _FlowArrow(),
-                  _FlowNode(
-                    label: item.stagingArea,
-                    sublabel: 'Plant Staging',
-                    color: AppColors.success,
-                    iconData: Icons.inventory_2_outlined,
+                  const SizedBox(height: 14),
+                  // Icons row with connecting arrows
+                  Row(
+                    children: [
+                      _buildFlowCircle(
+                        icon: Icons.local_shipping_outlined,
+                        color: const Color(0xFF2563EB),
+                        bgColor: const Color(0xFFEFF6FF),
+                      ),
+                      Expanded(child: _buildRouteConnector()),
+                      _buildFlowCircle(
+                        icon: Icons.inventory_2_outlined,
+                        color: const Color(0xFF16A34A),
+                        bgColor: const Color(0xFFDCFCE7),
+                      ),
+                      Expanded(child: _buildRouteConnector()),
+                      _buildFlowCircle(
+                        icon: Icons.location_on_outlined,
+                        color: const Color(0xFFEA580C),
+                        bgColor: const Color(0xFFFFEDD5),
+                      ),
+                    ],
                   ),
-                  _FlowArrow(),
-                  _FlowNode(
-                    label: item.finalDestination,
-                    sublabel: 'Destination',
-                    color: AppColors.orange,
-                    iconData: Icons.location_on_outlined,
+                  const SizedBox(height: 10),
+                  // Labels row: 3 equal-width columns
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: _buildRouteLabel(
+                          badge: 'ORIGIN',
+                          badgeColor: const Color(0xFF2563EB),
+                          title: item.carrier.isNotEmpty
+                              ? item.carrier
+                              : 'Dispatch Facility',
+                          subtitle: 'Carrier Origin',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildRouteLabel(
+                          badge: 'PLANT STAGING',
+                          badgeColor: const Color(0xFF16A34A),
+                          title: item.stagingArea.isNotEmpty
+                              ? item.stagingArea
+                              : 'Plant Yard',
+                          subtitle: 'Staging & QA',
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: _buildRouteLabel(
+                          badge: 'DESTINATION',
+                          badgeColor: const Color(0xFFEA580C),
+                          title: item.finalDestination.isNotEmpty
+                              ? item.finalDestination
+                              : (item.location.isNotEmpty
+                                  ? item.location
+                                  : 'Project Site'),
+                          subtitle: 'Final Drop-off',
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
+
             // Info columns
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1883,7 +2267,8 @@ class ViewDetailsDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
-            // Weight / material type
+
+            // Weight / material type & Documents
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -1933,6 +2318,8 @@ class ViewDetailsDialog extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 12),
+
+                // ─── RED BOX 2: Documents Download ───
                 Expanded(
                   child: Container(
                     padding: const EdgeInsets.all(14),
@@ -1944,13 +2331,36 @@ class ViewDetailsDialog extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          'Documents',
-                          style: TextStyle(
-                            fontSize: labelSize,
-                            fontWeight: FontWeight.w700,
-                            color: AppColors.textPrimary,
-                          ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              'Documents',
+                              style: TextStyle(
+                                fontSize: labelSize,
+                                fontWeight: FontWeight.w700,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFEFF6FF),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: const Text(
+                                'PDF & Manifest',
+                                style: TextStyle(
+                                  fontSize: 9,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF2563EB),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 8),
                         Row(
@@ -1958,26 +2368,16 @@ class ViewDetailsDialog extends StatelessWidget {
                             Expanded(
                               child: _DocumentCard(
                                 label: 'Packing list',
-                                onTap: (ctx) async {
-                                  if (!ctx.mounted) return;
-                                  await _showSuccess(
-                                    ctx,
-                                    'Packing List Downloaded',
-                                  );
-                                },
+                                isLoading: _isDownloadingPackingList,
+                                onTap: _downloadPackingList,
                               ),
                             ),
                             const SizedBox(width: 10),
                             Expanded(
                               child: _DocumentCard(
-                                label: 'Bill of loading',
-                                onTap: (ctx) async {
-                                  if (!ctx.mounted) return;
-                                  await _showSuccess(
-                                    ctx,
-                                    'Bill of Loading Downloaded',
-                                  );
-                                },
+                                label: 'Bill of Lading',
+                                isLoading: _isDownloadingBol,
+                                onTap: _downloadBillOfLading,
                               ),
                             ),
                           ],
@@ -1989,14 +2389,21 @@ class ViewDetailsDialog extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 16),
+
             // Special instructions
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: const Color(0xFFFEFCE8),
+                color: item.notes.trim().isNotEmpty
+                    ? const Color(0xFFFEFCE8)
+                    : const Color(0xFFF8FAFC),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: const Color(0xFFFDE68A)),
+                border: Border.all(
+                  color: item.notes.trim().isNotEmpty
+                      ? const Color(0xFFFDE68A)
+                      : const Color(0xFFE2E8F0),
+                ),
               ),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -2011,10 +2418,17 @@ class ViewDetailsDialog extends StatelessWidget {
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    item.notes,
+                    item.notes.trim().isNotEmpty
+                        ? item.notes
+                        : 'No special instructions provided.',
                     style: TextStyle(
                       fontSize: labelSize,
-                      color: const Color(0xFF92400E),
+                      fontStyle: item.notes.trim().isNotEmpty
+                          ? FontStyle.normal
+                          : FontStyle.italic,
+                      color: item.notes.trim().isNotEmpty
+                          ? const Color(0xFF92400E)
+                          : AppColors.textSecondary,
                     ),
                   ),
                 ],
@@ -2047,6 +2461,117 @@ class ViewDetailsDialog extends StatelessWidget {
       ),
     );
   }
+
+  Widget _buildFlowCircle({
+    required IconData icon,
+    required Color color,
+    required Color bgColor,
+  }) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        color: bgColor,
+        shape: BoxShape.circle,
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 2),
+        boxShadow: [
+          BoxShadow(
+            color: color.withValues(alpha: 0.15),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Icon(icon, color: color, size: 22),
+    );
+  }
+
+  Widget _buildRouteConnector() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Container(
+              height: 2,
+              color: const Color(0xFFCBD5E1),
+            ),
+          ),
+          Container(
+            width: 20,
+            height: 20,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF1F5F9),
+              shape: BoxShape.circle,
+              border: Border.all(color: const Color(0xFFCBD5E1)),
+            ),
+            child: const Icon(
+              Icons.arrow_forward_rounded,
+              size: 12,
+              color: Color(0xFF64748B),
+            ),
+          ),
+          Expanded(
+            child: Container(
+              height: 2,
+              color: const Color(0xFFCBD5E1),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildRouteLabel({
+    required String badge,
+    required Color badgeColor,
+    required String title,
+    required String subtitle,
+  }) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          decoration: BoxDecoration(
+            color: badgeColor.withValues(alpha: 0.1),
+            borderRadius: BorderRadius.circular(4),
+          ),
+          child: Text(
+            badge,
+            style: TextStyle(
+              fontSize: 9,
+              fontWeight: FontWeight.w800,
+              color: badgeColor,
+              letterSpacing: 0.5,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          title,
+          textAlign: TextAlign.center,
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+            height: 1.2,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          subtitle,
+          textAlign: TextAlign.center,
+          style: const TextStyle(
+            fontSize: 10,
+            color: AppColors.textSecondary,
+          ),
+        ),
+      ],
+    );
+  }
 }
 
 class _PriorityBadge extends StatelessWidget {
@@ -2073,55 +2598,6 @@ class _PriorityBadge extends StatelessWidget {
           color: color,
         ),
       ),
-    );
-  }
-}
-
-class _FlowNode extends StatelessWidget {
-  const _FlowNode({
-    required this.label,
-    required this.sublabel,
-    required this.color,
-    this.iconData,
-  });
-  final String label, sublabel;
-  final Color color;
-  final IconData? iconData;
-
-  @override
-  Widget build(BuildContext context) {
-    final inner = iconData != null
-        ? Icon(iconData, color: Colors.white, size: 20)
-        : const Icon(Icons.circle, color: Colors.white, size: 10);
-
-    return Column(
-      children: [
-        CircleAvatar(radius: 22, backgroundColor: color, child: inner),
-        const SizedBox(height: 6),
-        Text(
-          sublabel,
-          style: const TextStyle(fontSize: 10, color: AppColors.textSecondary),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: AppColors.textPrimary,
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _FlowArrow extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Expanded(
-      child: Divider(thickness: 1.5, color: AppColors.cardBorder),
     );
   }
 }
@@ -2215,9 +2691,14 @@ class _InfoCol extends StatelessWidget {
 }
 
 class _DocumentCard extends StatelessWidget {
-  const _DocumentCard({required this.label, required this.onTap});
+  const _DocumentCard({
+    required this.label,
+    required this.onTap,
+    this.isLoading = false,
+  });
   final String label;
-  final void Function(BuildContext ctx) onTap;
+  final VoidCallback onTap;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -2226,7 +2707,7 @@ class _DocumentCard extends StatelessWidget {
       12.0,
     );
     return InkWell(
-      onTap: () => onTap(context),
+      onTap: isLoading ? null : onTap,
       borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
@@ -2242,16 +2723,29 @@ class _DocumentCard extends StatelessWidget {
                 label,
                 style: TextStyle(
                   fontSize: labelSize,
-                  color: AppColors.textSecondary,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textPrimary,
                 ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const SizedBox(width: 6),
-            Icon(
-              Icons.download_rounded,
-              size: 17,
-              color: AppColors.primaryBlue,
-            ),
+            if (isLoading)
+              const SizedBox(
+                width: 16,
+                height: 16,
+                child: CircularProgressIndicator(
+                  strokeWidth: 2,
+                  color: AppColors.primaryBlue,
+                ),
+              )
+            else
+              const Icon(
+                Icons.download_rounded,
+                size: 18,
+                color: AppColors.primaryBlue,
+              ),
           ],
         ),
       ),

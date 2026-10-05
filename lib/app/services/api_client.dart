@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 import 'package:get/get.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -14,6 +15,8 @@ class ApiClient extends GetxService {
   static const String _tokenKey = 'access_token';
   static const String _refreshTokenKey = 'refresh_token';
   static const String _userKey = 'user_data';
+  static const String _rememberEmailKey = 'remember_email';
+  static const String _rememberPasswordKey = 'remember_password';
 
   SharedPreferences? _prefs;
   String? _token;
@@ -63,6 +66,25 @@ class ApiClient extends GetxService {
       } catch (e) {
         AppLogger.e('Error decoding user data', error: e, tag: 'API');
       }
+    }
+    return null;
+  }
+
+  Future<void> saveLoginCredentials(String email, String password) async {
+    await _prefs?.setString(_rememberEmailKey, email);
+    await _prefs?.setString(_rememberPasswordKey, password);
+  }
+
+  Future<void> clearLoginCredentials() async {
+    await _prefs?.remove(_rememberEmailKey);
+    await _prefs?.remove(_rememberPasswordKey);
+  }
+
+  Map<String, String>? getSavedLoginCredentials() {
+    final email = _prefs?.getString(_rememberEmailKey);
+    final password = _prefs?.getString(_rememberPasswordKey);
+    if (email != null && password != null && email.isNotEmpty) {
+      return {'email': email, 'password': password};
     }
     return null;
   }
@@ -299,6 +321,55 @@ class ApiClient extends GetxService {
     } catch (e, stackTrace) {
       AppLogger.e(
         'ApiClient GET Exception for $endpoint',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'API',
+      );
+      rethrow;
+    }
+  }
+
+  Future<Uint8List> getBytes(
+    String endpoint, {
+    Map<String, String>? queryParams,
+    Map<String, String>? headers,
+    bool isRetry = false,
+  }) async {
+    try {
+      final uri = _buildUri(endpoint, queryParams);
+      final reqHeaders = _buildHeaders(customHeaders: headers);
+      AppLogger.i('GET (bytes) $uri', tag: 'API');
+
+      final response = await http
+          .get(uri, headers: reqHeaders)
+          .timeout(const Duration(seconds: 30));
+
+      if (response.statusCode == 401 && !isRetry) {
+        final refreshed = await tryRefreshToken();
+        if (refreshed) {
+          return getBytes(
+            endpoint,
+            queryParams: queryParams,
+            headers: headers,
+            isRetry: true,
+          );
+        } else {
+          _handleUnauthorized();
+          throw ApiException('Unauthorized', 401);
+        }
+      }
+
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return response.bodyBytes;
+      } else {
+        throw ApiException(
+          'Failed to download binary file',
+          response.statusCode,
+        );
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'ApiClient getBytes Exception for $endpoint',
         error: e,
         stackTrace: stackTrace,
         tag: 'API',

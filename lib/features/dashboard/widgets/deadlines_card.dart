@@ -18,6 +18,7 @@ class DeadlinesCard extends StatelessWidget {
     final gap = DashboardGap.item(context);
 
     return SectionCard(
+      height: 400,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -44,14 +45,13 @@ class DeadlinesCard extends StatelessWidget {
             ],
           ),
           SizedBox(height: DashboardGap.section(context)),
-          GetBuilder<DashboardController>(
-            id: AppGetIds.upcomingDeadlines,
-            builder: (controller) {
-              final list = controller.deadlines;
-              if (list.isEmpty) {
-                return Padding(
-                  padding: const EdgeInsets.all(20),
-                  child: Center(
+          Expanded(
+            child: GetBuilder<DashboardController>(
+              id: AppGetIds.upcomingDeadlines,
+              builder: (controller) {
+                final list = controller.deadlines;
+                if (list.isEmpty) {
+                  return Center(
                     child: Text(
                       'No upcoming deadlines',
                       style: TextStyle(
@@ -59,78 +59,80 @@ class DeadlinesCard extends StatelessWidget {
                         color: AppColors.textSecondary,
                       ),
                     ),
-                  ),
-                );
-              }
+                  );
+                }
 
-              return Column(
-                children: list.map((item) {
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: gap),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.project,
-                                style: TextStyle(
-                                  fontSize: itemSize,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              SizedBox(height: size.height * 0.003),
-                              Row(
+                return SingleChildScrollView(
+                  child: Column(
+                    children: list.map((item) {
+                      return Padding(
+                        padding: EdgeInsets.only(bottom: gap),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Container(
-                                    width: 7,
-                                    height: 7,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.orange,
-                                      shape: BoxShape.circle,
+                                  Text(
+                                    item.project,
+                                    style: TextStyle(
+                                      fontSize: itemSize,
+                                      fontWeight: FontWeight.w700,
+                                      color: AppColors.textPrimary,
                                     ),
                                   ),
-                                  SizedBox(width: size.width * 0.005),
-                                  Text(
-                                    item.location,
-                                    style: TextStyle(
-                                      fontSize: itemSize - 1,
-                                      color: AppColors.textSecondary,
-                                    ),
+                                  SizedBox(height: size.height * 0.003),
+                                  Row(
+                                    children: [
+                                      Container(
+                                        width: 7,
+                                        height: 7,
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.orange,
+                                          shape: BoxShape.circle,
+                                        ),
+                                      ),
+                                      SizedBox(width: size.width * 0.005),
+                                      Text(
+                                        item.location,
+                                        style: TextStyle(
+                                          fontSize: itemSize - 1,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                                 ],
                               ),
-                            ],
-                          ),
-                        ),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: [
-                            Text(
-                              item.date,
-                              style: TextStyle(
-                                fontSize: itemSize,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.danger,
-                              ),
                             ),
-                            Text(
-                              item.daysLeft,
-                              style: TextStyle(
-                                fontSize: itemSize - 1,
-                                color: AppColors.textPrimary,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  item.date,
+                                  style: TextStyle(
+                                    fontSize: itemSize,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.danger,
+                                  ),
+                                ),
+                                Text(
+                                  item.daysLeft,
+                                  style: TextStyle(
+                                    fontSize: itemSize - 1,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
-                      ],
-                    ),
-                  );
-                }).toList(),
-              );
-            },
+                      );
+                    }).toList(),
+                  ),
+                );
+              },
+            ),
           ),
         ],
       ),

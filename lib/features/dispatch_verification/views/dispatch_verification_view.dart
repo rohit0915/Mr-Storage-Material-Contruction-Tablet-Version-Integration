@@ -8,6 +8,7 @@ import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/dispatch_verification_controller.dart';
 import '../models/dispatch_verification_models.dart';
 import '../widgets/dispatch_verification_dialogs.dart';
+import 'dispatch_verification_detail_view.dart';
 
 class DispatchVerificationView extends GetView<DispatchVerificationController> {
   const DispatchVerificationView({super.key});
@@ -412,9 +413,8 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
                               (item) => _DispatchRow(
                                 item: item,
                                 fontSize: subSize,
-                                onView: () => Get.toNamed(
-                                  AppRoutes.dispatchVerificationDetail,
-                                  arguments: item,
+                                onView: () => Get.dialog(
+                                  DispatchVerificationDetailView(item: item),
                                 ),
                               ),
                             ),

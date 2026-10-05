@@ -1,14 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dispatch_verification_controller.dart';
 import '../models/dispatch_verification_models.dart';
 import '../widgets/dispatch_verification_dialogs.dart';
 
 class DispatchVerificationDetailView extends StatelessWidget {
-  const DispatchVerificationDetailView({super.key});
+  const DispatchVerificationDetailView({super.key, this.item});
+
+  final DispatchItem? item;
 
   @override
   Widget build(BuildContext context) {
@@ -16,38 +17,33 @@ class DispatchVerificationDetailView extends StatelessWidget {
         ? Get.find<DispatchVerificationController>()
         : Get.put(DispatchVerificationController());
 
-    final item =
-        Get.arguments as DispatchItem? ?? controller.selectedItem.value;
+    final currentItem =
+        item ??
+        (Get.arguments as DispatchItem?) ??
+        controller.selectedItem.value;
     final size = MediaQuery.sizeOf(context);
-    final padH = size.width * 0.016;
 
     void showSuccess(String title) =>
         DispatchVerificationSuccessDialog.show(context, title);
 
-    final bundles = item?.bundleList ?? const [];
+    final bundles = currentItem?.bundleList ?? const [];
 
-    return AppScaffold(
-      menuTitle: 'Dispatch Verification',
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(
-          padH,
-          size.height * 0.014,
-          padH,
-          size.height * 0.02,
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: (size.width * 0.7).clamp(800.0, 1200.0),
+          maxHeight: size.height * 0.85,
         ),
-        child: Container(
-          width: double.infinity,
-          padding: const EdgeInsets.all(24),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: AppColors.cardBorder),
-          ),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              // Top Action Bar matching Image 2
-              Row(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header padding
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+              child: Row(
                 children: [
                   OutlinedButton.icon(
                     onPressed: () => Get.back(),
@@ -85,7 +81,9 @@ class DispatchVerificationDetailView extends StatelessWidget {
                                   if (loadId.isNotEmpty) {
                                     await controller.confirmDispatch(
                                       loadId,
-                                      packingListId: item?.packingListNo,
+                                      packingListId: item?.packingListMongoId.isNotEmpty == true 
+                                          ? item?.packingListMongoId 
+                                          : item?.packingListNo,
                                     );
                                     showSuccess(
                                       'Dispatch Confirmed\nsuccessfully',
@@ -163,280 +161,301 @@ class DispatchVerificationDetailView extends StatelessWidget {
                   }),
                 ],
               ),
-              const SizedBox(height: 28),
-
-              // Load Information & Verification Section matching Image 2
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Left Column: Load Information
-                  Expanded(
-                    flex: 5,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Load Information',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _infoRow('LOAD ID', item?.loadId ?? '—'),
-                        _infoRow('PACKING LIST NO', item?.packingListNo ?? '—'),
-                        _infoRow(
-                          'PROJECT',
-                          '${item?.project ?? "—"} (${item?.jobId ?? "—"})',
-                        ),
-                        _infoRow('TRUCK', item?.truck ?? '—'),
-                        _infoRow('DESTINATION', item?.destination ?? '—'),
-                        _infoRow('STATUS', item?.statusText ?? '—'),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 40),
-
-                  // Right Column: Weight Verification & Loading Verification
-                  Expanded(
-                    flex: 5,
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        const Text(
-                          'Weight Verification',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        _infoRow('PLANNED WEIGHT', item?.totalWeight ?? '—'),
-                        const SizedBox(height: 4),
-                        const _CheckRow(
-                          label: 'Weight verified',
-                          checked: true,
-                        ),
-                        const SizedBox(height: 24),
-                        const Text(
-                          'Loading Verification',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        const _CheckRow(
-                          label: 'Loading Verified',
-                          checked: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 32),
-
-              // Bundle Verification List Table matching Image 2
-              const Text(
-                'Bundle Verification List',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 14),
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: AppColors.cardBorder),
-                ),
-                clipBehavior: Clip.antiAlias,
+            ),
+            // Body Content
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    // Dark Header matching Image 2
-                    Container(
-                      color: const Color(0xFF1E293B), // Slate dark header
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 12,
-                      ),
-                      child: const Row(
-                        children: [
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              '#',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
+                    // Load Information & Verification Section matching Image 2
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Left Column: Load Information
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text(
+                                'Load Information',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'BUNDLE NO',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
+                              const SizedBox(height: 16),
+                              _infoRow('LOAD ID', item?.loadId ?? '—'),
+                              _infoRow(
+                                'PACKING LIST NO',
+                                item?.packingListNo ?? '—',
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 4,
-                            child: Text(
-                              'BUNDLE ID',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
+                              _infoRow(
+                                'PROJECT',
+                                '${item?.project ?? "—"} (${item?.jobId ?? "—"})',
                               ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'WEIGHT',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              'STATUS',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'VERIFIED',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    // Data Rows for this load
-                    if (bundles.isEmpty)
-                      const Padding(
-                        padding: EdgeInsets.all(24),
-                        child: Center(
-                          child: Text(
-                            'No bundles assigned to this load.',
-                            style: TextStyle(color: AppColors.textSecondary),
+                              _infoRow('TRUCK', item?.truck ?? '—'),
+                              _infoRow('DESTINATION', item?.destination ?? '—'),
+                              _infoRow('STATUS', item?.statusText ?? '—'),
+                            ],
                           ),
                         ),
-                      )
-                    else
-                      ...bundles.map(
-                        (b) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 12,
-                          ),
-                          decoration: const BoxDecoration(
-                            border: Border(
-                              bottom: BorderSide(color: AppColors.cardBorder),
-                            ),
-                          ),
-                          child: Row(
+                        const SizedBox(width: 40),
+
+                        // Right Column: Weight Verification & Loading Verification
+                        Expanded(
+                          flex: 5,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Expanded(
-                                flex: 1,
-                                child: Text(
-                                  '${b.index}',
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
+                              const Text(
+                                'Weight Verification',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  b.bundleNo,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w800,
-                                    color: AppColors.textPrimary,
-                                  ),
+                              const SizedBox(height: 16),
+                              _infoRow(
+                                'PLANNED WEIGHT',
+                                item?.totalWeight ?? '—',
+                              ),
+                              const SizedBox(height: 4),
+                              const _CheckRow(
+                                label: 'Weight verified',
+                                checked: true,
+                              ),
+                              const SizedBox(height: 24),
+                              const Text(
+                                'Loading Verification',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
                                 ),
                               ),
-                              Expanded(
-                                flex: 4,
-                                child: Text(
-                                  b.bundleId,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  b.weight,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(
-                                  b.status,
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textSecondary,
-                                  ),
-                                ),
-                              ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
-                                  b.isVerified ? 'Verified' : 'Unverified',
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w600,
-                                    color: b.isVerified
-                                        ? const Color(0xFF22C55E)
-                                        : AppColors.textSecondary,
-                                  ),
-                                ),
+                              const SizedBox(height: 16),
+                              const _CheckRow(
+                                label: 'Loading Verified',
+                                checked: true,
                               ),
                             ],
                           ),
                         ),
+                      ],
+                    ),
+                    const SizedBox(height: 32),
+
+                    // Bundle Verification List Table matching Image 2
+                    const Text(
+                      'Bundle Verification List',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
                       ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          // Dark Header matching Image 2
+                          Container(
+                            color: const Color(0xFF1E293B), // Slate dark header
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 12,
+                            ),
+                            child: const Row(
+                              children: [
+                                Expanded(
+                                  flex: 1,
+                                  child: Text(
+                                    '#',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    'BUNDLE NO',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 4,
+                                  child: Text(
+                                    'BUNDLE ID',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    'WEIGHT',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 3,
+                                  child: Text(
+                                    'STATUS',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: 2,
+                                  child: Text(
+                                    'VERIFIED',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 12,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // Data Rows for this load
+                          if (bundles.isEmpty)
+                            const Padding(
+                              padding: EdgeInsets.all(24),
+                              child: Center(
+                                child: Text(
+                                  'No bundles assigned to this load.',
+                                  style: TextStyle(
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ),
+                            )
+                          else
+                            ...bundles.map(
+                              (b) => Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 16,
+                                  vertical: 12,
+                                ),
+                                decoration: const BoxDecoration(
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.cardBorder,
+                                    ),
+                                  ),
+                                ),
+                                child: Row(
+                                  children: [
+                                    Expanded(
+                                      flex: 1,
+                                      child: Text(
+                                        '${b.index}',
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        b.bundleNo,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w800,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 4,
+                                      child: Text(
+                                        b.bundleId,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        b.weight,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: AppColors.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 3,
+                                      child: Text(
+                                        b.status,
+                                        style: const TextStyle(
+                                          fontSize: 13,
+                                          color: AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                    Expanded(
+                                      flex: 2,
+                                      child: Text(
+                                        b.isVerified
+                                            ? 'Verified'
+                                            : 'Unverified',
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w600,
+                                          color: b.isVerified
+                                              ? const Color(0xFF22C55E)
+                                              : AppColors.textSecondary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

@@ -19,25 +19,34 @@ class AddMaterialRequestDialog extends StatefulWidget {
 class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
   final _materialCtrl = TextEditingController();
   final _qtyCtrl = TextEditingController();
+  final _notesCtrl = TextEditingController();
 
   final _requestedDate = DateTime.now();
   late String _project;
   String _site = 'Site A';
   String _priority = 'High';
+  String _department = 'Framing';
+  String _unit = 'pcs';
   DateTime? _requiredBy;
 
   @override
   void initState() {
     super.initState();
-    final projects = Get.find<MaterialRequestsController>().projects;
+    final controller = Get.find<MaterialRequestsController>();
+    final projects = controller.projects;
     _project =
         projects.firstWhereOrNull((name) => name != 'All Projects') ?? '';
+        
+    final departments = controller.departments;
+    _department = 
+        departments.firstWhereOrNull((name) => name != 'All Departments') ?? 'Framing';
   }
 
   @override
   void dispose() {
     _materialCtrl.dispose();
     _qtyCtrl.dispose();
+    _notesCtrl.dispose();
     super.dispose();
   }
 
@@ -67,7 +76,7 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
       id: id,
       project: _project,
       site: _site,
-      department: 'Construction',
+      department: _department,
       requestedBy: 'John Smith',
       requestDate: now,
       requiredBy: _requiredBy!,
@@ -84,9 +93,9 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
       items: [
         MaterialRequestItemRow(
           name: name,
-          unit: 'units',
+          unit: _unit,
           quantity: qty,
-          remarks: '-',
+          remarks: _notesCtrl.text.trim(),
         ),
       ],
     );
@@ -110,6 +119,8 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
     final labelSize = (size.width * 0.010).clamp(12.0, 13.0);
     final reqDateStr = DateFormat('dd-MM-yyyy').format(_requestedDate);
 
+    final controller = Get.find<MaterialRequestsController>();
+
     return Dialog(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
@@ -118,7 +129,7 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
       child: ConstrainedBox(
         constraints: BoxConstraints(
           maxWidth: dialogWidth,
-          maxHeight: size.height * 0.82,
+          maxHeight: size.height * 0.9,
         ),
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 22, 24, 20),
@@ -134,26 +145,15 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                 ),
               ),
               const SizedBox(height: 18),
-              _label('Requested Date (Auto-fill)', labelSize),
-              const SizedBox(height: 6),
-              _readOnlyField(reqDateStr),
-              const SizedBox(height: 14),
               Row(
                 children: [
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _label('Required By', labelSize),
+                        _label('Requested Date (Auto-fill)', labelSize),
                         const SizedBox(height: 6),
-                        _dateTapField(
-                          value: _requiredBy == null
-                              ? 'dd - mm - yyyy'
-                              : DateFormat(
-                                  'dd - MM - yyyy',
-                                ).format(_requiredBy!),
-                          onTap: _pickRequiredBy,
-                        ),
+                        _readOnlyField(reqDateStr),
                       ],
                     ),
                   ),
@@ -162,14 +162,13 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _label('Project', labelSize),
+                        _label('Required By', labelSize),
                         const SizedBox(height: 6),
-                        _dropdown(
-                          value: _project,
-                          items: Get.find<MaterialRequestsController>().projects
-                              .where((name) => name != 'All Projects')
-                              .toList(),
-                          onChanged: (v) => setState(() => _project = v),
+                        _dateTapField(
+                          value: _requiredBy == null
+                              ? 'DD-MM-YYYY'
+                              : DateFormat('dd-MM-yyyy').format(_requiredBy!),
+                          onTap: _pickRequiredBy,
                         ),
                       ],
                     ),
@@ -179,6 +178,23 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
               const SizedBox(height: 14),
               Row(
                 children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('Project', labelSize),
+                        const SizedBox(height: 6),
+                        _dropdown(
+                          value: _project,
+                          items: controller.projects
+                              .where((name) => name != 'All Projects')
+                              .toList(),
+                          onChanged: (v) => setState(() => _project = v),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
@@ -193,17 +209,36 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                       ],
                     ),
                   ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _label('Site Location', labelSize),
+                        const SizedBox(height: 6),
+                        _dropdown(
+                          value: _site,
+                          items: const ['Construction Site A', 'Site B', 'Site C'],
+                          onChanged: (v) => setState(() => _site = v),
+                        ),
+                      ],
+                    ),
+                  ),
                   const SizedBox(width: 14),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        _label('Site', labelSize),
+                        _label('Department', labelSize),
                         const SizedBox(height: 6),
-                        _dropdown(
-                          value: _site,
-                          items: const ['Site A', 'Site B', 'Site C'],
-                          onChanged: (v) => setState(() => _site = v),
+                        _textField(
+                          controller: TextEditingController(text: _department),
+                          hint: 'e.g., Framing',
+                          onChanged: (v) => _department = v,
                         ),
                       ],
                     ),
@@ -221,7 +256,7 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                         const SizedBox(height: 6),
                         _textField(
                           controller: _materialCtrl,
-                          hint: 'e.g., Steel Beams',
+                          hint: 'e.g., Steel Studs',
                         ),
                       ],
                     ),
@@ -233,15 +268,39 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                       children: [
                         _label('Quantity', labelSize),
                         const SizedBox(height: 6),
-                        _textField(
-                          controller: _qtyCtrl,
-                          hint: 'e.g., 50 units',
-                          keyboard: TextInputType.number,
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: _textField(
+                                controller: _qtyCtrl,
+                                hint: '100',
+                                keyboard: TextInputType.number,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 1,
+                              child: _dropdown(
+                                value: _unit,
+                                items: const ['pcs', 'tons', 'kg', 'units'],
+                                onChanged: (v) => setState(() => _unit = v),
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
                   ),
                 ],
+              ),
+              const SizedBox(height: 14),
+              _label('Notes', labelSize),
+              const SizedBox(height: 6),
+              _textField(
+                controller: _notesCtrl,
+                hint: 'Optional notes...',
+                maxLines: 3,
               ),
               const SizedBox(height: 22),
               Row(
@@ -261,9 +320,12 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                         borderRadius: BorderRadius.circular(8),
                       ),
                     ),
-                    child: const Text(
+                    child: Text(
                       'Cancel',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: (size.width * 0.010).clamp(12.0, 14.0),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                   const SizedBox(width: 12),
@@ -272,7 +334,6 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                     style: ElevatedButton.styleFrom(
                       backgroundColor: AppColors.primaryBlue,
                       foregroundColor: Colors.white,
-                      elevation: 0,
                       padding: const EdgeInsets.symmetric(
                         horizontal: 32,
                         vertical: 14,
@@ -280,10 +341,14 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      elevation: 0,
                     ),
-                    child: const Text(
+                    child: Text(
                       'Create',
-                      style: TextStyle(fontWeight: FontWeight.w700),
+                      style: TextStyle(
+                        fontSize: (size.width * 0.010).clamp(12.0, 14.0),
+                        fontWeight: FontWeight.w700,
+                      ),
                     ),
                   ),
                 ],
@@ -295,63 +360,107 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
     );
   }
 
-  Widget _label(String text, double size) => Text(
-    text,
-    style: TextStyle(
-      fontWeight: FontWeight.w700,
-      color: AppColors.textPrimary,
-      fontSize: size,
-    ),
-  );
+  Widget _label(String text, double size) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textPrimary,
+      ),
+    );
+  }
 
-  Widget _readOnlyField(String value) {
+  Widget _readOnlyField(String val) {
     return Container(
-      width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
       decoration: BoxDecoration(
         color: const Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.cardBorder),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFE5E7EB)),
       ),
       child: Text(
-        value,
+        val,
         style: const TextStyle(
-          fontWeight: FontWeight.w600,
-          color: AppColors.textPrimary,
+          fontSize: 14,
+          color: AppColors.textSecondary,
+          fontWeight: FontWeight.w500,
         ),
       ),
     );
   }
 
-  Widget _dateTapField({required String value, required VoidCallback onTap}) {
+  Widget _dateTapField({
+    required String value,
+    required VoidCallback onTap,
+  }) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(10),
+      borderRadius: BorderRadius.circular(8),
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.cardBorder),
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: const Color(0xFFD1D5DB)),
         ),
         child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Expanded(
-              child: Text(
-                value,
-                style: TextStyle(
-                  fontWeight: FontWeight.w600,
-                  color: value.contains('dd')
-                      ? AppColors.textSecondary
-                      : AppColors.textPrimary,
-                ),
+            Text(
+              value,
+              style: TextStyle(
+                fontSize: 14,
+                color: value.startsWith('DD')
+                    ? const Color(0xFF9CA3AF)
+                    : AppColors.textPrimary,
+                fontWeight: FontWeight.w500,
               ),
             ),
-            const Icon(
-              Icons.calendar_today_outlined,
-              size: 18,
-              color: AppColors.textSecondary,
-            ),
+            const Icon(Icons.calendar_today_outlined, size: 16, color: Color(0xFF6B7280)),
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _textField({
+    required TextEditingController controller,
+    required String hint,
+    TextInputType keyboard = TextInputType.text,
+    int maxLines = 1,
+    ValueChanged<String>? onChanged,
+  }) {
+    return TextField(
+      controller: controller,
+      keyboardType: keyboard,
+      maxLines: maxLines,
+      onChanged: onChanged,
+      style: const TextStyle(
+        fontSize: 14,
+        color: AppColors.textPrimary,
+        fontWeight: FontWeight.w500,
+      ),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: const TextStyle(
+          color: Color(0xFF9CA3AF),
+          fontWeight: FontWeight.w400,
+        ),
+        filled: true,
+        fillColor: Colors.white,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: Color(0xFFD1D5DB)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(8),
+          borderSide: const BorderSide(color: AppColors.primaryBlue, width: 1.5),
         ),
       ),
     );
@@ -362,61 +471,42 @@ class _AddMaterialRequestDialogState extends State<AddMaterialRequestDialog> {
     required List<String> items,
     required ValueChanged<String> onChanged,
   }) {
-    return DropdownButtonFormField<String>(
-      key: ValueKey(value),
-      initialValue: value,
-      isExpanded: true,
-      decoration: InputDecoration(
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-      ),
-      items: items
-          .map(
-            (e) => DropdownMenuItem(
-              value: e,
-              child: Text(e, overflow: TextOverflow.ellipsis),
-            ),
-          )
-          .toList(),
-      onChanged: (v) {
-        if (v == null) return;
-        onChanged(v);
-      },
-    );
-  }
+    // If the list is empty or the selected value is not in the list, fallback gracefully.
+    final safeItems = items.isEmpty ? [''] : items;
+    final safeValue = safeItems.contains(value) ? value : safeItems.first;
 
-  Widget _textField({
-    required TextEditingController controller,
-    required String hint,
-    TextInputType keyboard = TextInputType.text,
-  }) {
-    return TextField(
-      controller: controller,
-      keyboardType: keyboard,
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: const TextStyle(color: AppColors.textSecondary),
-        contentPadding: const EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(10),
-          borderSide: const BorderSide(color: AppColors.cardBorder),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: const Color(0xFFD1D5DB)),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: safeValue,
+          isExpanded: true,
+          icon: const Icon(
+            Icons.keyboard_arrow_down_rounded,
+            color: Color(0xFF6B7280),
+          ),
+          style: const TextStyle(
+            fontSize: 14,
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.w500,
+          ),
+          onChanged: (v) {
+            if (v != null) onChanged(v);
+          },
+          items: safeItems.map((item) {
+            return DropdownMenuItem(
+              value: item,
+              child: Text(
+                item.isEmpty ? 'Select...' : item,
+                overflow: TextOverflow.ellipsis,
+              ),
+            );
+          }).toList(),
         ),
       ),
     );

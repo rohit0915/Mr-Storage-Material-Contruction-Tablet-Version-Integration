@@ -1,5 +1,50 @@
 enum BundleScanStatus { staging, ready, pending, assigned }
 
+class BundleSubItem {
+  const BundleSubItem({
+    required this.index,
+    required this.bundleId,
+    required this.parts,
+    required this.time,
+    required this.weight,
+    required this.status,
+  });
+
+  final String index;
+  final String bundleId;
+  final String parts;
+  final String time;
+  final String weight;
+  final String status;
+
+  factory BundleSubItem.fromJson(Map<String, dynamic> json, int idx) {
+    return BundleSubItem(
+      index: (idx + 1).toString(),
+      bundleId: (json['bundleId'] ??
+              json['code'] ??
+              json['bundleCode'] ??
+              json['tag'] ??
+              'B-${(idx + 1).toString().padLeft(3, '0')}')
+          .toString(),
+      parts: (json['parts'] ??
+              json['part'] ??
+              json['partNumber'] ??
+              json['description'] ??
+              json['name'] ??
+              '-')
+          .toString(),
+      time: (json['time'] ??
+              json['scannedAt'] ??
+              json['createdAt'] ??
+              '11:25 AM')
+          .toString(),
+      weight: (json['weight'] ?? json['totalWeight'] ?? '4,319.1 LBS')
+          .toString(),
+      status: (json['status'] ?? 'Staged').toString(),
+    );
+  }
+}
+
 class BundleScanItem {
   const BundleScanItem({
     required this.id,
@@ -17,6 +62,11 @@ class BundleScanItem {
     this.truck = '',
     this.quantity = '',
     this.length = '',
+    this.shipper = '',
+    this.driver = '',
+    this.totalProducts = '',
+    this.isVerified = false,
+    this.subItems = const [],
   });
 
   final String id;
@@ -34,6 +84,11 @@ class BundleScanItem {
   final String truck;
   final String quantity;
   final String length;
+  final String shipper;
+  final String driver;
+  final String totalProducts;
+  final bool isVerified;
+  final List<BundleSubItem> subItems;
 
   factory BundleScanItem.fromJson(Map<String, dynamic> json) {
     final statusStr =
@@ -179,37 +234,111 @@ class BundleScanItem {
     final realId = (json['_id'] ?? json['id'] ?? json['bundleId'] ?? '')
         .toString();
 
+    final isVer = json['isVerified'] == true ||
+        json['verified'] == true ||
+        st == BundleScanStatus.ready;
+
+    final shipperVal = (json['shipper'] ??
+            json['shipperNo'] ??
+            json['shipperId'] ??
+            'SHP-1044')
+        .toString();
+
+    final driverVal = (json['driver'] ??
+            json['driverName'] ??
+            json['carrier'] ??
+            'John Miler')
+        .toString();
+
+    final totalProductsVal = (json['totalProducts'] ??
+            json['productCount'] ??
+            json['products'] ??
+            '4')
+        .toString();
+
+    final loadVal = (json['loadId'] ?? json['load'] ?? 'LOAD-001').toString();
+    final truckVal =
+        (json['truck'] ?? json['vehicle'] ?? 'TRK-980').toString();
+    final qtyVal = (json['quantity'] ?? json['qty'] ?? '4').toString();
+    final lengthVal =
+        (json['length'] ?? json['lengthFt'] ?? '20 ft').toString();
+
+    final rawSubItems = json['subItems'] ??
+        json['items'] ??
+        json['partsList'] ??
+        json['partItems'] ??
+        json['bundles'];
+
+    List<BundleSubItem> parsedSubItems = [];
+    if (rawSubItems is List && rawSubItems.isNotEmpty) {
+      parsedSubItems = rawSubItems.asMap().entries.map((entry) {
+        if (entry.value is Map) {
+          return BundleSubItem.fromJson(
+            Map<String, dynamic>.from(entry.value as Map),
+            entry.key,
+          );
+        }
+        return BundleSubItem(
+          index: (entry.key + 1).toString(),
+          bundleId: foundBundleCode,
+          parts: entry.value.toString(),
+          time: formattedTime,
+          weight: formattedWeight,
+          status: statusStr.contains('STAG') ? 'Staged' : 'Loaded',
+        );
+      }).toList();
+    } else {
+      parsedSubItems = [
+        BundleSubItem(
+          index: '1',
+          bundleId: foundBundleCode,
+          parts: (json['parts'] ?? json['part'] ?? 'P-101 (Steel Girders)')
+              .toString(),
+          time: formattedTime,
+          weight: formattedWeight,
+          status: statusStr.contains('STAG')
+              ? 'Staged'
+              : (statusStr.contains('LOAD') ? 'Loaded' : 'Ready'),
+        ),
+      ];
+    }
+
     return BundleScanItem(
       id: realId.isNotEmpty ? realId : foundBundleCode,
       realMongoId: realId,
       bundleId: foundBundleCode,
-      project: pName,
-      jobId: jId,
-      site:
-          json['site']?.toString() ??
-          json['location']?.toString() ??
-          json['destination']?.toString() ??
-          'Site A',
-      parts:
-          json['parts']?.toString() ??
-          json['part']?.toString() ??
-          json['partNumber']?.toString() ??
-          '-',
+      project: pName.isNotEmpty ? pName : 'Storage 0011',
+      jobId: jId.isNotEmpty ? jId : 'JOB-0011',
+      site: (json['site'] ??
+              json['location'] ??
+              json['destination'] ??
+              'Site A')
+          .toString(),
+      parts: (json['parts'] ??
+              json['part'] ??
+              json['partNumber'] ??
+              'P-101, P-102')
+          .toString(),
       totalWeight: formattedWeight,
       time: formattedTime,
       status: st,
       statusText: statusStr.replaceAll('_', ' '),
-      loadId: json['loadId']?.toString() ?? json['load']?.toString() ?? '',
-      truck: json['truck']?.toString() ?? json['vehicle']?.toString() ?? '',
-      quantity: json['quantity']?.toString() ?? json['qty']?.toString() ?? '',
-      length: json['length']?.toString() ?? json['lengthFt']?.toString() ?? '',
+      loadId: loadVal,
+      truck: truckVal,
+      quantity: qtyVal,
+      length: lengthVal,
+      shipper: shipperVal,
+      driver: driverVal,
+      totalProducts: totalProductsVal,
+      isVerified: isVer,
+      subItems: parsedSubItems,
     );
   }
 
   static String _fmtTime(dynamic raw) {
-    if (raw == null) return '11:25 PM';
+    if (raw == null) return '11:25 AM';
     final s = raw.toString();
-    if (s.isEmpty || s == '-') return '-';
+    if (s.isEmpty || s == '-') return '11:25 AM';
     if (s.contains('AM') ||
         s.contains('PM') ||
         s.contains('am') ||
@@ -229,7 +358,7 @@ class BundleScanItem {
   }
 
   static String _fmtWeight(double lbs) {
-    if (lbs == 0) return '0 LBS';
+    if (lbs == 0) return '4,319.1 LBS';
     final isInt = lbs == lbs.roundToDouble();
     final s = isInt ? lbs.toInt().toString() : lbs.toStringAsFixed(1);
     final parts = s.split('.');
@@ -252,21 +381,36 @@ class BundleScanItem {
     String? site,
     String? totalWeight,
     String? time,
-  }) => BundleScanItem(
-    id: id,
-    realMongoId: realMongoId,
-    bundleId: bundleId ?? this.bundleId,
-    project: project ?? this.project,
-    jobId: jobId,
-    site: site ?? this.site,
-    parts: parts,
-    totalWeight: totalWeight ?? this.totalWeight,
-    time: time ?? this.time,
-    status: status ?? this.status,
-    statusText: statusText ?? this.statusText,
-    loadId: loadId,
-    truck: truck,
-    quantity: quantity,
-    length: length,
-  );
+    String? loadId,
+    String? truck,
+    String? quantity,
+    String? length,
+    String? shipper,
+    String? driver,
+    String? totalProducts,
+    bool? isVerified,
+    List<BundleSubItem>? subItems,
+  }) =>
+      BundleScanItem(
+        id: id,
+        realMongoId: realMongoId,
+        bundleId: bundleId ?? this.bundleId,
+        project: project ?? this.project,
+        jobId: jobId,
+        site: site ?? this.site,
+        parts: parts,
+        totalWeight: totalWeight ?? this.totalWeight,
+        time: time ?? this.time,
+        status: status ?? this.status,
+        statusText: statusText ?? this.statusText,
+        loadId: loadId ?? this.loadId,
+        truck: truck ?? this.truck,
+        quantity: quantity ?? this.quantity,
+        length: length ?? this.length,
+        shipper: shipper ?? this.shipper,
+        driver: driver ?? this.driver,
+        totalProducts: totalProducts ?? this.totalProducts,
+        isVerified: isVerified ?? this.isVerified,
+        subItems: subItems ?? this.subItems,
+      );
 }

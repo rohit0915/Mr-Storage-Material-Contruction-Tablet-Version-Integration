@@ -64,7 +64,7 @@ class DrawingsService extends GetxService {
       return uploadDrawing(leadId, {
         'url': publicUrl,
         'name': fileName,
-        'type': mimeType.startsWith('video/') ? 'photo' : 'photo',
+        'type': mimeType.startsWith('video/') ? 'video' : 'photo',
       });
     } catch (e, stackTrace) {
       AppLogger.e(
@@ -83,9 +83,6 @@ class DrawingsService extends GetxService {
         leadId == null || leadId.isEmpty
             ? ApiConstants.drawings
             : ApiConstants.projectDrawings(leadId),
-        queryParams: leadId == null || leadId.isEmpty
-            ? const {'type': 'drawing'}
-            : null,
       );
       AppLogger.i(
         'Get Drawings API Response: $response',

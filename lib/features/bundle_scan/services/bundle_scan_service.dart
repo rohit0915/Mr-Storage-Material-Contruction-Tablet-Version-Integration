@@ -177,11 +177,19 @@ class BundleScanService {
     }
   }
 
-  Future<bool> reportMismatch(String id, String reason) async {
+  Future<bool> reportMismatch(
+    String id,
+    String reason, {
+    String notes = '',
+  }) async {
     try {
       final res = await _apiClient.post(
         ApiConstants.bundleMismatch(id),
-        body: {'reason': reason},
+        body: {
+          'reason': reason,
+          'notes': notes.isNotEmpty ? notes : reason,
+          'photos': [],
+        },
       );
       return res != null;
     } catch (e, st) {
@@ -205,6 +213,25 @@ class BundleScanService {
     } catch (e, st) {
       AppLogger.e(
         'Error reprinting label',
+        error: e,
+        stackTrace: st,
+        tag: 'BUNDLE_SCAN',
+      );
+      return false;
+    }
+  }
+
+  Future<bool> exportBundleScan({String? bundleId}) async {
+    try {
+      final url = bundleId != null && bundleId.isNotEmpty
+          ? '${ApiConstants.bundleScanExport}?bundleId=$bundleId'
+          : ApiConstants.bundleScanExport;
+      final res = await _apiClient.get(url);
+      AppLogger.i('Export bundle scan response: $res', tag: 'BUNDLE_SCAN');
+      return res != null;
+    } catch (e, st) {
+      AppLogger.e(
+        'Error exporting bundle scan',
         error: e,
         stackTrace: st,
         tag: 'BUNDLE_SCAN',

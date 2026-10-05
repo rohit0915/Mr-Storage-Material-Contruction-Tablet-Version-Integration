@@ -19,6 +19,7 @@ class MaterialRequestItemRow {
 class MaterialRequestBoardItem {
   const MaterialRequestBoardItem({
     required this.id,
+    this.databaseId = '',
     required this.project,
     required this.site,
     required this.department,
@@ -39,6 +40,7 @@ class MaterialRequestBoardItem {
   });
 
   final String id;
+  final String databaseId;
   final String project;
   final String site;
   final String department;
@@ -56,7 +58,8 @@ class MaterialRequestBoardItem {
   final String requestedByRole;
   final String requestNotes;
 
-  factory MaterialRequestBoardItem.fromJson(Map<String, dynamic> json) {
+  factory MaterialRequestBoardItem.fromJson(Map<String, dynamic> rawJson) {
+    final json = rawJson['materialRequest'] is Map ? (rawJson['materialRequest'] as Map<String, dynamic>) : rawJson;
     final rId = json['requestId'] ?? json['code'] ?? json['_id'] ?? 'MR-001';
 
     String pName = 'No Project';
@@ -154,6 +157,7 @@ class MaterialRequestBoardItem {
 
     return MaterialRequestBoardItem(
       id: rId.toString(),
+      databaseId: (json['_id'] ?? json['id'] ?? '').toString(),
       project: pName,
       site: loc,
       department: json['department']?.toString().isNotEmpty == true

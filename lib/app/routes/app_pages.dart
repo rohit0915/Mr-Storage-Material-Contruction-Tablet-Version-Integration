@@ -10,6 +10,8 @@ import '../../features/project_calendar/bindings/project_calendar_binding.dart';
 import '../../features/project_calendar/bindings/bom_file_details_binding.dart';
 import '../../features/tasks/bindings/tasks_binding.dart';
 import '../../features/tasks/views/tasks_view.dart';
+import '../../features/daily_work_logs/bindings/daily_work_logs_binding.dart';
+import '../../features/daily_work_logs/views/daily_work_logs_view.dart';
 import '../../features/bundle_scan/bindings/bundle_scan_binding.dart';
 import '../../features/bundle_scan/views/bundle_scan_detail_view.dart';
 import '../../features/bundle_scan/views/bundle_scan_view.dart';
@@ -81,6 +83,11 @@ class AppPages {
       name: AppRoutes.tasks,
       page: () => const TasksView(),
       binding: TasksBinding(),
+    ),
+    GetPage(
+      name: AppRoutes.dailyWorkLogs,
+      page: () => const DailyWorkLogsView(),
+      binding: DailyWorkLogsBinding(),
     ),
     GetPage(
       name: AppRoutes.materialRequests,

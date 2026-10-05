@@ -1,3 +1,5 @@
+import 'dart:typed_data';
+
 import 'package:get/get.dart';
 
 import '../../../app/constants/api_constants.dart';
@@ -93,11 +95,14 @@ class DeliveryTrackingService extends GetxService {
     }
   }
 
-  Future<bool> scanBundleQr(String code) async {
+  Future<bool> scanBundleQr(String code, {String? projectId}) async {
     try {
       final res = await _apiClient.post(
         ApiConstants.deliveryScanBundle,
-        body: {'bundleId': code},
+        body: {
+          'bundleId': code,
+          if (projectId != null && projectId.isNotEmpty) 'project': projectId,
+        },
       );
       return res != null;
     } catch (e) {
@@ -106,15 +111,48 @@ class DeliveryTrackingService extends GetxService {
     }
   }
 
-  Future<bool> scanQrCode(String code) => scanBundleQr(code);
+  Future<bool> scanQrCode(String code, {String? projectId}) => scanBundleQr(code, projectId: projectId);
+
+  Future<Uint8List?> downloadPackingListBytes(String deliveryId) async {
+    try {
+      return await _apiClient.getBytes(
+        ApiConstants.deliveryDownloadPackingList(deliveryId),
+      );
+    } catch (e) {
+      AppLogger.w('downloadPackingListBytes Error: $e', tag: 'DELIVERY_SERVICE');
+    }
+    return null;
+  }
+
+  Future<Uint8List?> downloadBillOfLadingBytes(String deliveryId) async {
+    try {
+      return await _apiClient.getBytes(
+        ApiConstants.deliveryDownloadBillOfLading(deliveryId),
+      );
+    } catch (e) {
+      AppLogger.w('downloadBillOfLadingBytes Error: $e', tag: 'DELIVERY_SERVICE');
+    }
+    return null;
+  }
 
   Future<String?> downloadPackingListPdf(String deliveryId) async {
     try {
       final res = await _apiClient.get(
         ApiConstants.deliveryDownloadPackingList(deliveryId),
       );
-      if (res is Map && res['url'] != null) {
-        return res['url'].toString();
+      if (res is Map) {
+        final url = res['url'] ??
+            res['downloadUrl'] ??
+            res['fileUrl'] ??
+            res['data']?['url'] ??
+            res['data']?['downloadUrl'] ??
+            res['data']?['fileUrl'] ??
+            res['pdfUrl'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      } else if (res is String && res.startsWith('http')) {
+        return res;
       }
     } catch (e) {
       AppLogger.w('downloadPackingListPdf Error: $e', tag: 'DELIVERY_SERVICE');
@@ -127,8 +165,19 @@ class DeliveryTrackingService extends GetxService {
       final res = await _apiClient.get(
         ApiConstants.deliveryDownloadBillOfLading(deliveryId),
       );
-      if (res is Map && res['url'] != null) {
-        return res['url'].toString();
+      if (res is Map) {
+        final url = res['url'] ??
+            res['downloadUrl'] ??
+            res['fileUrl'] ??
+            res['data']?['url'] ??
+            res['data']?['downloadUrl'] ??
+            res['data']?['fileUrl'] ??
+            res['pdfUrl'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      } else if (res is String && res.startsWith('http')) {
+        return res;
       }
     } catch (e) {
       AppLogger.w('downloadBillOfLadingPdf Error: $e', tag: 'DELIVERY_SERVICE');

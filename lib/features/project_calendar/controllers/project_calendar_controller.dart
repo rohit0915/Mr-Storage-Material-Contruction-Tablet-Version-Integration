@@ -18,6 +18,7 @@ class ProjectCalendarController extends GetxController {
   final selectedDay = DateTime.now().day.obs;
   final selectedProjectId = ''.obs;
   final dropdownOpen = false.obs;
+  final calendarViewMode = 'Month'.obs;
 
   bool isLoadingProjects = false;
   bool isLoadingCalendar = false;
@@ -30,8 +31,13 @@ class ProjectCalendarController extends GetxController {
 
   CalendarProjectOption? get selectedProject {
     if (projects.isEmpty) return null;
+    final sel = selectedProjectId.value.trim().toLowerCase();
+    if (sel.isEmpty) return projects.first;
     return projects.firstWhere(
-      (p) => p.id == selectedProjectId.value,
+      (p) =>
+          (p.id.isNotEmpty && p.id.toLowerCase() == sel) ||
+          (p.code.isNotEmpty && p.code.toLowerCase() == sel) ||
+          (p.name.isNotEmpty && p.name.toLowerCase() == sel),
       orElse: () => projects.first,
     );
   }
@@ -179,19 +185,72 @@ class ProjectCalendarController extends GetxController {
       );
 
       if (res != null) {
+        final newEvents = <int, List<CalendarDayEvent>>{};
+        final newDeliveriesMap = <int, List<DeliveryItem>>{};
+
+        List rawDeliveriesList = [];
         Map<String, dynamic>? calendarMap;
+
         if (res is Map) {
-          if (res['calendar'] is Map) {
+          final dataMap = res['data'] is Map ? res['data'] as Map : res;
+          if (dataMap['deliveries'] is List) {
+            rawDeliveriesList = dataMap['deliveries'] as List;
+          } else if (dataMap['items'] is List) {
+            rawDeliveriesList = dataMap['items'] as List;
+          }
+          if (dataMap['calendar'] is Map) {
+            calendarMap = Map<String, dynamic>.from(dataMap['calendar'] as Map);
+          } else if (res['calendar'] is Map) {
             calendarMap = Map<String, dynamic>.from(res['calendar'] as Map);
-          } else {
-            calendarMap = Map<String, dynamic>.from(res);
+          }
+        } else if (res is List) {
+          rawDeliveriesList = res;
+        }
+
+        // 1. Process array of deliveries from backend
+        for (final dItem in rawDeliveriesList) {
+          if (dItem is Map) {
+            final dMap = Map<String, dynamic>.from(dItem);
+            final deliveryObj = DeliveryItem.fromJson(dMap);
+            final eventObj = CalendarDayEvent.fromJson(dMap);
+
+            // Extract date to place on calendar day
+            final sched = dMap['schedule'] is Map ? dMap['schedule'] as Map : {};
+            final rawDateStr = (sched['deliveryDate'] ??
+                    sched['arrivalDate'] ??
+                    sched['pickupDate'] ??
+                    dMap['deliveryDate'] ??
+                    dMap['arrivalDate'] ??
+                    dMap['date'] ??
+                    dMap['createdAt'] ??
+                    '').toString();
+
+            DateTime? dt;
+            if (rawDateStr.isNotEmpty) {
+              dt = DateTime.tryParse(rawDateStr)?.toLocal();
+              if (dt == null && rawDateStr.contains('-')) {
+                final cleanStr = rawDateStr.split(' ')[0].split('T')[0];
+                final parts = cleanStr.split('-');
+                if (parts.length == 3) {
+                  dt = DateTime(
+                    int.parse(parts[0]),
+                    int.parse(parts[1]),
+                    int.parse(parts[2]),
+                  );
+                }
+              }
+            }
+
+            if (dt != null && dt.month == m && dt.year == y) {
+              final dayNum = dt.day;
+              newEvents.putIfAbsent(dayNum, () => []).add(eventObj);
+              newDeliveriesMap.putIfAbsent(dayNum, () => []).add(deliveryObj);
+            }
           }
         }
 
+        // 2. Process calendar map if backend returns date-keyed object
         if (calendarMap != null) {
-          final newEvents = <int, List<CalendarDayEvent>>{};
-          final newDeliveriesMap = <int, List<DeliveryItem>>{};
-
           calendarMap.forEach((key, val) {
             int? dayNum;
             String cleanKey = key;
@@ -214,9 +273,13 @@ class ProjectCalendarController extends GetxController {
               itemsList = [val];
             }
 
-            if (itemsList.isNotEmpty) {
-              final dayEventList = <CalendarDayEvent>[];
-              final dayDeliveryList = <DeliveryItem>[];
+            if (dayNum != null &&
+                dayNum >= 1 &&
+                dayNum <= 31 &&
+                itemsList.isNotEmpty) {
+              final dayEventList = newEvents.putIfAbsent(dayNum, () => []);
+              final dayDeliveryList =
+                  newDeliveriesMap.putIfAbsent(dayNum, () => []);
 
               for (final dItem in itemsList) {
                 if (dItem is Map) {
@@ -225,21 +288,12 @@ class ProjectCalendarController extends GetxController {
                   dayDeliveryList.add(DeliveryItem.fromJson(dMap));
                 }
               }
-
-              if (dayNum != null && dayNum >= 1 && dayNum <= 31) {
-                if (dayEventList.isNotEmpty) {
-                  newEvents[dayNum] = dayEventList;
-                }
-                if (dayDeliveryList.isNotEmpty) {
-                  newDeliveriesMap[dayNum] = dayDeliveryList;
-                }
-              }
             }
           });
-
-          monthEvents = newEvents;
-          dayDeliveriesMap = newDeliveriesMap;
         }
+
+        monthEvents = newEvents;
+        dayDeliveriesMap = newDeliveriesMap;
       }
     } catch (e, stackTrace) {
       AppLogger.e(
@@ -288,10 +342,77 @@ class ProjectCalendarController extends GetxController {
     fetchCalendarData();
   }
 
+  void selectMonthYear(DateTime dt) {
+    focusedMonth.value = DateTime(dt.year, dt.month, 1);
+    selectedDay.value = dt.day;
+    fetchCalendarData();
+  }
+
   void selectProject(String id) {
-    selectedProjectId.value = id;
+    String targetId = id;
+    if (id.isNotEmpty) {
+      for (final p in projects) {
+        if (p.id.toLowerCase() == id.toLowerCase() ||
+            (p.code.isNotEmpty && p.code.toLowerCase() == id.toLowerCase()) ||
+            p.name.toLowerCase() == id.toLowerCase()) {
+          targetId = p.id;
+          break;
+        }
+      }
+    }
+    selectedProjectId.value = targetId;
     dropdownOpen.value = false;
-    update([AppGetIds.projectDropdown, AppGetIds.projectCards]);
+    update([
+      AppGetIds.projectDropdown,
+      AppGetIds.projectCards,
+      AppGetIds.calendarEvents,
+    ]);
+    fetchCalendarData();
+  }
+
+  void selectProjectAndOpenCalendar(ProjectCardItem item) {
+    CalendarProjectOption? match;
+    for (final p in projects) {
+      if (p.id.isNotEmpty && (p.id == item.realLeadId || p.id == item.projectId)) {
+        match = p;
+        break;
+      }
+      if (p.code.isNotEmpty && (p.code == item.projectId || p.code == item.realLeadId)) {
+        match = p;
+        break;
+      }
+      if (p.name.isNotEmpty && p.name.toLowerCase() == item.title.toLowerCase()) {
+        match = p;
+        break;
+      }
+    }
+
+    if (match == null && item.title.isNotEmpty) {
+      final newOption = CalendarProjectOption(
+        id: item.realLeadId.isNotEmpty ? item.realLeadId : item.projectId,
+        name: item.title,
+        code: item.projectId,
+        imageAsset: item.imageAsset,
+      );
+      projects.add(newOption);
+      match = newOption;
+    }
+
+    final idToSelect = match != null && match.id.isNotEmpty
+        ? match.id
+        : (item.realLeadId.isNotEmpty ? item.realLeadId : item.projectId);
+
+    selectedProjectId.value = idToSelect;
+    dropdownOpen.value = false;
+    selectedTab.value = ProjectCalendarTab.calendar;
+
+    update([
+      AppGetIds.projectCalendarTab,
+      AppGetIds.projectDropdown,
+      AppGetIds.projectCards,
+      AppGetIds.calendarEvents,
+    ]);
+
     fetchCalendarData();
   }
 
@@ -308,13 +429,36 @@ class ProjectCalendarController extends GetxController {
   Future<void> openAddDelivery(BuildContext context) async {
     dropdownOpen.value = false;
     update([AppGetIds.projectDropdown]);
-    final confirmed = await showDialog<bool>(
+
+    final currentDate = DateTime(
+      focusedMonth.value.year,
+      focusedMonth.value.month,
+      selectedDay.value.clamp(1, 28),
+    );
+
+    final result = await showDialog<AddDeliveryResult>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const AddDeliveryDialog(),
+      builder: (_) => AddDeliveryDialog(initialDate: currentDate),
     );
-    if (confirmed == true && context.mounted) {
+
+    if (result != null && context.mounted) {
+      final addedDate = result.date;
+      focusedMonth.value = DateTime(addedDate.year, addedDate.month, 1);
+      selectedDay.value = addedDate.day;
+
+      // If a project filter was active that doesn't match the new delivery's leadId, clear it
+      if (selectedProjectId.value.isNotEmpty &&
+          selectedProjectId.value != result.leadId) {
+        selectedProjectId.value = '';
+      }
+      update([AppGetIds.projectDropdown]);
+
       await fetchCalendarData();
+
+      // Ensure the newly created delivery appears in the calendar and right-hand list
+      _ensureDeliveryPresent(result);
+
       if (context.mounted) {
         await showDialog<void>(
           context: context,
@@ -323,5 +467,87 @@ class ProjectCalendarController extends GetxController {
         );
       }
     }
+  }
+
+  void _ensureDeliveryPresent(AddDeliveryResult result) {
+    final day = result.date.day;
+    final currentEvents = List<CalendarDayEvent>.from(monthEvents[day] ?? []);
+    final currentDeliveries =
+        List<DeliveryItem>.from(dayDeliveriesMap[day] ?? []);
+
+    final eventExists = currentEvents.any((e) => e.title == result.title);
+    if (!eventExists) {
+      currentEvents.insert(
+        0,
+        CalendarDayEvent(
+          title: result.title,
+          color: const Color(0xFFEC4899), // Pink dot for scheduled
+        ),
+      );
+      monthEvents[day] = currentEvents;
+    }
+
+    final deliveryExists = currentDeliveries.any(
+      (d) =>
+          d.title == result.title ||
+          (result.title.isNotEmpty && d.description == result.title),
+    );
+    if (!deliveryExists) {
+      String projectName = 'Project';
+      final match = projects.firstWhereOrNull((p) => p.id == result.leadId);
+      if (match != null) {
+        projectName = match.name;
+      }
+
+      const months = [
+        'Jan',
+        'Feb',
+        'Mar',
+        'Apr',
+        'May',
+        'Jun',
+        'Jul',
+        'Aug',
+        'Sep',
+        'Oct',
+        'Nov',
+        'Dec',
+      ];
+      final formattedDate =
+          '${months[result.date.month - 1]} ${result.date.day}, ${result.date.year}';
+
+      final dData = result.deliveryData?['delivery'] is Map
+          ? Map<String, dynamic>.from(result.deliveryData!['delivery'] as Map)
+          : (result.deliveryData ?? {});
+
+      final delId =
+          dData['_id']?.toString() ??
+          dData['id']?.toString() ??
+          'del-${DateTime.now().millisecondsSinceEpoch}';
+      final delNumber =
+          dData['deliveryNumber']?.toString() ?? 'DEL-${result.date.year}';
+
+      currentDeliveries.insert(
+        0,
+        DeliveryItem(
+          id: delId,
+          code: delNumber,
+          title: result.title,
+          projectName: projectName,
+          location:
+              result.sectionLocation != null &&
+                  result.sectionLocation!.isNotEmpty
+              ? result.sectionLocation!
+              : 'Site Location',
+          date: formattedDate,
+          status: 'Scheduled',
+          statusColor: const Color(0xFFEC4899),
+          description: result.description ?? '',
+        ),
+      );
+      dayDeliveriesMap[day] = currentDeliveries;
+    }
+
+    update([AppGetIds.calendarEvents]);
   }
 }

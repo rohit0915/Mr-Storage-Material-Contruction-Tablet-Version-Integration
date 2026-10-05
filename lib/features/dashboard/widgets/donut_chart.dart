@@ -63,8 +63,8 @@ class DonutChart extends StatelessWidget {
           Padding(
             padding: EdgeInsets.only(
               bottom: isSemiGauge ? chartSize * 0.04 : 0,
-              left: chartSize * 0.1,
-              right: chartSize * 0.1,
+              left: chartSize * 0.15,
+              right: chartSize * 0.15,
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -158,7 +158,9 @@ class ChartLegend extends StatelessWidget {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final fontSize = (size.width * 0.009).clamp(10.0, 12.0);
-    final totalSum = totalOverride ?? slices.fold<double>(0, (sum, item) => sum + item.percent);
+    final totalSum =
+        totalOverride ??
+        slices.fold<double>(0, (sum, item) => sum + item.percent);
 
     return Column(
       children: slices.map((slice) {
@@ -233,32 +235,48 @@ class _DonutPainter extends CustomPainter {
 
     final totalSum = slices.fold<double>(0, (sum, item) => sum + item.percent);
 
-    if (totalSum == 0) {
-      // When all values are 0, show equal segments for all categories with smooth animation
-      final baseSegment = maxTotalAngle / slices.length;
-      final sweep = baseSegment * animationValue;
-      for (final slice in slices) {
+    final zeroCount = slices.where((s) => s.percent <= 0).length;
+    final nonZeroCount = slices.length - zeroCount;
+
+    final List<double> targetSweeps;
+
+    if (totalSum <= 0 || nonZeroCount == 0) {
+      // If all slices are 0, distribute all slices equally so each color is visible
+      final equalSweep = maxTotalAngle / slices.length;
+      targetSweeps = List.filled(slices.length, equalSweep);
+    } else if (zeroCount == 0) {
+      // All slices are positive, distribute proportionally
+      targetSweeps = slices
+          .map((s) => (s.percent / totalSum) * maxTotalAngle)
+          .toList();
+    } else {
+      // Give each 0% category a small visible accent slice (~8 degrees / 0.14 rad),
+      // while non-zero categories share the remaining circle proportionally.
+      final maxZeroTotal = maxTotalAngle * 0.20;
+      final minZeroSweep = (0.14).clamp(0.04, maxZeroTotal / zeroCount);
+      final remainingAngle = maxTotalAngle - (zeroCount * minZeroSweep);
+
+      targetSweeps = slices.map((s) {
+        if (s.percent <= 0) {
+          return minZeroSweep;
+        } else {
+          return (s.percent / totalSum) * remainingAngle;
+        }
+      }).toList();
+    }
+
+    for (int i = 0; i < slices.length; i++) {
+      final slice = slices[i];
+      final targetSweep = targetSweeps[i];
+      final animatedSweep = targetSweep * animationValue;
+      if (animatedSweep > 0) {
         final paint = Paint()
           ..color = slice.color
           ..style = PaintingStyle.stroke
           ..strokeWidth = strokeWidth
           ..strokeCap = StrokeCap.butt;
-        canvas.drawArc(rect, start, sweep, false, paint);
-        start += baseSegment;
-      }
-    } else {
-      for (final slice in slices) {
-        final targetSweep = (slice.percent / totalSum) * maxTotalAngle;
-        final animatedSweep = targetSweep * animationValue;
-        if (animatedSweep > 0) {
-          final paint = Paint()
-            ..color = slice.color
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = strokeWidth
-            ..strokeCap = StrokeCap.butt;
-          canvas.drawArc(rect, start, animatedSweep, false, paint);
-          start += targetSweep;
-        }
+        canvas.drawArc(rect, start, animatedSweep, false, paint);
+        start += targetSweep;
       }
     }
   }

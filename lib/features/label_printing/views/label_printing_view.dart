@@ -4,7 +4,6 @@ import 'package:get/get.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/widgets/app_shimmer.dart';
-import '../../tasks/widgets/task_success_dialog.dart';
 import '../controllers/label_printing_controller.dart';
 import '../widgets/label_print_success_dialog.dart';
 import '../widgets/label_printing_summary_cards.dart';
@@ -79,15 +78,7 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
                   ),
                 ),
                 OutlinedButton.icon(
-                  onPressed: () async {
-                    await showDialog<void>(
-                      context: context,
-                      barrierDismissible: false,
-                      builder: (_) => const TaskSuccessDialog(
-                        title: 'File exported Successfully',
-                      ),
-                    );
-                  },
+                  onPressed: controller.exportReport,
                   icon: const Icon(Icons.download_rounded, size: 18),
                   label: Text(
                     'Export',
