@@ -310,37 +310,6 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 20),
-
-                    // Attachment (2)
-                    const Text(
-                      'Attachment (2)',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 15,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: const [
-                        Expanded(
-                          child: _AttachmentTile(
-                            name: 'Material_List_xlsx',
-                            size: '12KB',
-                            isExcel: true,
-                          ),
-                        ),
-                        SizedBox(width: 14),
-                        Expanded(
-                          child: _AttachmentTile(
-                            name: 'Site_Drawing.Pdf',
-                            size: '2.4 MB',
-                            isExcel: false,
-                          ),
-                        ),
-                      ],
-                    ),
                     const SizedBox(height: 24),
 
                     // Bottom Cancel Request Button
@@ -570,85 +539,5 @@ class _ItemsTable extends StatelessWidget {
       buf.write(s[i]);
     }
     return buf.toString();
-  }
-}
-
-class _AttachmentTile extends StatelessWidget {
-  const _AttachmentTile({
-    required this.name,
-    required this.size,
-    required this.isExcel,
-  });
-
-  final String name;
-  final String size;
-  final bool isExcel;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        border: Border.all(color: AppColors.cardBorder),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 32,
-            height: 32,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: isExcel
-                  ? const Color(0xFFDCFCE7)
-                  : const Color(0xFFFEE2E2),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Icon(
-              isExcel
-                  ? Icons.table_chart_outlined
-                  : Icons.picture_as_pdf_outlined,
-              color: isExcel
-                  ? const Color(0xFF16A34A)
-                  : const Color(0xFFDC2626),
-              size: 18,
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 12,
-                    color: AppColors.textPrimary,
-                  ),
-                ),
-                Text(
-                  size,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          IconButton(
-            onPressed: () {},
-            icon: const Icon(
-              Icons.arrow_downward_rounded,
-              size: 16,
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
-    );
   }
 }

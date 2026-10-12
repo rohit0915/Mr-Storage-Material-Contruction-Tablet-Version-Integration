@@ -283,16 +283,18 @@ class DashboardController extends GetxController {
       }
       final id = item['_id']?.toString() ?? '';
       if (id.isEmpty) continue;
-      final name = (item['name'] ?? 'Building ${item['buildingNumber'] ?? ''}')
-          .toString();
-      var label = name;
-      var suffix = 2;
-      while (_buildingIds.containsKey(label)) {
-        label = '$name (${suffix++})';
+      final rawName = (item['name'] ?? 'Building ${item['buildingNumber'] ?? ''}')
+          .toString().trim();
+      final name = rawName.replaceAll(RegExp(r'\s*\(\d+\)$'), '').trim();
+      if (_buildingIds.containsKey(name)) {
+        continue;
       }
-      _buildingIds[label] = id;
+      _buildingIds[name] = id;
     }
     buildingOptions.assignAll(_buildingIds.keys);
+    if (!buildingOptions.contains(selectedBuilding.value)) {
+      selectedBuilding.value = 'All Buildings';
+    }
   }
 
   Future<void> fetchDashboardData() async {
@@ -578,19 +580,34 @@ class DashboardController extends GetxController {
     }
 
     // 4. upcomingDeadlines List
-    if (data['upcomingDeadlines'] is List) {
-      final list = data['upcomingDeadlines'] as List;
+    final rawDeadlines = data['upcomingDeadlines'] ??
+        data['deadlines'] ??
+        data['projectDeadlines'] ??
+        data['upcomingProjectDeadlines'];
+    if (rawDeadlines is List && rawDeadlines.isNotEmpty) {
       final parsed = <DeadlineItem>[];
-      for (final item in list) {
+      for (final item in rawDeadlines) {
         if (item is Map) {
           parsed.add(DeadlineItem.fromJson(Map<String, dynamic>.from(item)));
         }
       }
       deadlines = parsed;
+    } else if (data['activeSites'] is List) {
+      // Also extract any active sites from API that have non-empty deadlines
+      final parsed = <DeadlineItem>[];
+      for (final item in (data['activeSites'] as List)) {
+        if (item is Map) {
+          final d = item['deadline'] ?? item['endDate'] ?? item['targetDate'] ?? item['dueDate'];
+          if (d != null && d.toString().isNotEmpty && d.toString() != '—') {
+            parsed.add(DeadlineItem.fromJson(Map<String, dynamic>.from(item)));
+          }
+        }
+      }
+      deadlines = parsed;
     } else {
       deadlines = [];
-      update([AppGetIds.upcomingDeadlines]);
     }
+    update([AppGetIds.upcomingDeadlines]);
 
     // 5. activeSites
     if (data['activeSites'] is List) {

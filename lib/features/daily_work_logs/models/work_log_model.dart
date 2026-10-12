@@ -33,29 +33,37 @@ class WorkLogItem {
 
   String get formattedDate => DateFormat('dd MMM yyyy').format(date);
   String get displayDateModal => DateFormat('dd/MM/yyyy').format(date);
+  String get displayLoggedBy => _cleanUserName(loggedByName);
+  String get displayLoggedByEmail => _cleanUserEmail(loggedByEmail);
 
   factory WorkLogItem.fromJson(Map<String, dynamic> json) {
-    String pName = 'Storage 0011';
-    String jId = '2026014';
+    String pName = '';
+    String jId = '';
     String lId = '';
 
     if (json['leadId'] is Map) {
       final lead = json['leadId'] as Map;
       pName = lead['projectName']?.toString() ??
           lead['name']?.toString() ??
-          'Storage 0011';
-      jId = lead['jobId']?.toString() ?? lead['code']?.toString() ?? '2026014';
+          '';
+      jId = lead['jobId']?.toString() ?? lead['code']?.toString() ?? '';
       lId = lead['_id']?.toString() ?? lead['id']?.toString() ?? '';
     } else if (json['project'] is Map) {
       final p = json['project'] as Map;
-      pName = p['projectName']?.toString() ?? p['name']?.toString() ?? 'Storage 0011';
-      jId = p['jobId']?.toString() ?? p['code']?.toString() ?? '2026014';
+      pName = p['projectName']?.toString() ?? p['name']?.toString() ?? '';
+      jId = p['jobId']?.toString() ?? p['code']?.toString() ?? '';
       lId = p['_id']?.toString() ?? p['id']?.toString() ?? '';
     } else if (json['projectName'] != null && json['projectName'].toString().isNotEmpty) {
       pName = json['projectName'].toString();
-      jId = json['jobId']?.toString() ?? '2026014';
+      jId = json['jobId']?.toString() ?? '';
+      lId = json['leadId']?.toString() ?? json['projectId']?.toString() ?? '';
     } else if (json['leadId'] != null) {
       lId = json['leadId'].toString();
+      pName = json['leadName']?.toString() ?? json['project']?.toString() ?? '';
+    }
+
+    if (pName.isEmpty) {
+      pName = json['project']?.toString() ?? 'Storage 0011';
     }
 
     String tTitle = 'General';
@@ -92,16 +100,30 @@ class WorkLogItem {
 
     String creator = 'Construction User';
     String email = 'construction1@example.com';
-    if (json['createdBy'] is Map) {
-      final u = json['createdBy'] as Map;
-      creator = u['name']?.toString() ?? u['email']?.toString() ?? creator;
+
+    final userObj = json['loggedBy'] ??
+        json['createdBy'] ??
+        json['user'] ??
+        json['author'];
+
+    if (userObj is Map) {
+      final u = userObj;
+      creator = u['name']?.toString() ??
+          u['fullName']?.toString() ??
+          u['userName']?.toString() ??
+          u['email']?.toString() ??
+          creator;
       email = u['email']?.toString() ?? email;
-    } else if (json['user'] is Map) {
-      final u = json['user'] as Map;
-      creator = u['name']?.toString() ?? u['email']?.toString() ?? creator;
-      email = u['email']?.toString() ?? email;
-    } else if (json['loggedBy'] != null) {
-      creator = json['loggedBy'].toString();
+    } else if (userObj != null) {
+      creator = _cleanUserName(userObj.toString(), fallback: creator);
+      email = _cleanUserEmail(userObj.toString(), fallback: email);
+    }
+
+    if (json['loggedByName'] != null && json['loggedByName'].toString().isNotEmpty) {
+      creator = _cleanUserName(json['loggedByName'].toString(), fallback: creator);
+    }
+    if (json['loggedByEmail'] != null && json['loggedByEmail'].toString().isNotEmpty) {
+      email = _cleanUserEmail(json['loggedByEmail'].toString(), fallback: email);
     }
 
     final pList = <String>[];
@@ -145,6 +167,41 @@ class WorkLogItem {
         'loggedByName': loggedByName,
         'loggedByEmail': loggedByEmail,
       };
+
+  static String _cleanUserName(String raw, {String fallback = 'Construction User'}) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return fallback;
+    // Check if it's a map toString or json string like "{_id: ..., name: Construction User, ...}"
+    if (trimmed.contains('{') && trimmed.contains('}')) {
+      final nameMatch = RegExp(r'''['"]?name['"]?\s*:\s*['"]?([^,'"}]+)['"]?''').firstMatch(trimmed);
+      if (nameMatch != null && nameMatch.group(1) != null) {
+        final extracted = nameMatch.group(1)!.trim();
+        if (extracted.isNotEmpty && extracted != 'null') return extracted;
+      }
+      final emailMatch = RegExp(r'''['"]?email['"]?\s*:\s*['"]?([^,'"}]+)['"]?''').firstMatch(trimmed);
+      if (emailMatch != null && emailMatch.group(1) != null) {
+        final extracted = emailMatch.group(1)!.trim();
+        if (extracted.isNotEmpty && extracted != 'null') return extracted;
+      }
+      return fallback;
+    }
+    return trimmed;
+  }
+
+  static String _cleanUserEmail(String raw, {String fallback = 'construction1@example.com'}) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return fallback;
+    if (trimmed.contains('{') && trimmed.contains('}')) {
+      final emailMatch = RegExp(r'''['"]?email['"]?\s*:\s*['"]?([^,'"}]+)['"]?''').firstMatch(trimmed);
+      if (emailMatch != null && emailMatch.group(1) != null) {
+        final extracted = emailMatch.group(1)!.trim();
+        if (extracted.isNotEmpty && extracted != 'null') return extracted;
+      }
+      return fallback;
+    }
+    if (trimmed.contains('@')) return trimmed;
+    return fallback;
+  }
 
   WorkLogItem copyWith({
     String? id,
@@ -243,6 +300,38 @@ class WorkLogItem {
         issues: 'Wind speeds within acceptable limits, work on schedule.',
         loggedByName: 'Adam Gilchrist',
         loggedByEmail: 'adam@example.com',
+      ),
+      WorkLogItem(
+        id: 'log-005',
+        leadId: 'lead-namra-01',
+        projectName: 'Storage Namra LLC 01',
+        jobId: 'LOAD-001',
+        taskId: '',
+        taskTitle: 'Site Preparation & Groundwork',
+        date: DateTime(2026, 10, 4),
+        progress: 85,
+        workDescription:
+            'Grading and ground preparation completed. Anchor bolt positions verified.',
+        photos: const [],
+        issues: 'Site cleared and ready for next erection phase.',
+        loggedByName: 'Construction User',
+        loggedByEmail: 'construction1@example.com',
+      ),
+      WorkLogItem(
+        id: 'log-006',
+        leadId: 'lead-namra-01',
+        projectName: 'Storage Namra LLC 01',
+        jobId: 'LOAD-001',
+        taskId: '',
+        taskTitle: 'Structural Frame Erection',
+        date: DateTime(2026, 10, 3),
+        progress: 50,
+        workDescription:
+            'Unloaded bundle materials and verified package checklist. Commenced column erection.',
+        photos: const [],
+        issues: 'All bundles scanned and accounted for.',
+        loggedByName: 'Construction User',
+        loggedByEmail: 'construction1@example.com',
       ),
     ];
   }

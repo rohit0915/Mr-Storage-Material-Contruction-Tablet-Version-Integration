@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_searchable_dropdown.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/daily_work_logs_controller.dart';
 import '../models/work_log_model.dart';
@@ -51,6 +52,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
     return LayoutBuilder(
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 650;
+        final canPop = Navigator.of(context).canPop();
 
         final titleCol = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -72,6 +74,34 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
                 color: Color(0xFF64748B),
               ),
             ),
+          ],
+        );
+
+        final backBtn = canPop
+            ? InkWell(
+                onTap: Get.back,
+                borderRadius: BorderRadius.circular(8),
+                child: Container(
+                  width: 38,
+                  height: 38,
+                  margin: const EdgeInsets.only(right: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.primaryBlue,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_back,
+                    color: Colors.white,
+                    size: 20,
+                  ),
+                ),
+              )
+            : null;
+
+        final titleRow = Row(
+          children: [
+            ?backBtn,
+            Expanded(child: titleCol),
           ],
         );
 
@@ -99,7 +129,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              titleCol,
+              titleRow,
               const SizedBox(height: 12),
               btn,
             ],
@@ -109,7 +139,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
         return Row(
           crossAxisAlignment: CrossAxisAlignment.center,
           children: [
-            Expanded(child: titleCol),
+            Expanded(child: titleRow),
             const SizedBox(width: 16),
             btn,
           ],
@@ -141,11 +171,18 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           final isNarrow = constraints.maxWidth < 650;
 
           final projectItems = <String>['All Projects'];
+          final displayMap = <String, String>{};
           for (final p in ctrl.projects) {
             final name = p['name'] ?? '';
-            if (name.isNotEmpty && !projectItems.contains(name)) {
-              projectItems.add(name);
+            if (name.isNotEmpty) {
+              if (!projectItems.contains(name)) {
+                projectItems.add(name);
+              }
+              displayMap[name] = p['displayName'] ?? name;
             }
+          }
+          if (ctrl.selectedProject.value.isNotEmpty && !projectItems.contains(ctrl.selectedProject.value)) {
+            projectItems.add(ctrl.selectedProject.value);
           }
           if (!projectItems.contains('Storage 0011')) {
             projectItems.add('Storage 0011');
@@ -208,36 +245,19 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
               const SizedBox(height: 6),
               SizedBox(
                 height: 40,
-                child: DropdownButtonFormField<String>(
-                  initialValue: projectItems.contains(ctrl.selectedProject.value)
+                child: AppSearchableDropdown.simple(
+                  key: ValueKey(ctrl.selectedProject.value),
+                  items: projectItems,
+                  value: projectItems.contains(ctrl.selectedProject.value)
                       ? ctrl.selectedProject.value
                       : projectItems.first,
-                  isExpanded: true,
-                  style: const TextStyle(fontSize: 13, color: Color(0xFF1E293B)),
-                  decoration: InputDecoration(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.primaryBlue),
-                    ),
-                  ),
-                  items: projectItems
-                      .map(
-                        (e) => DropdownMenuItem(
-                          value: e,
-                          child: Text(e, overflow: TextOverflow.ellipsis),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: ctrl.onProjectChanged,
+                  displayMap: displayMap,
+                  height: 40,
+                  menuMaxHeight: 300,
+                  searchHint: 'Search projects...',
+                  onChanged: (val) {
+                    if (val != null) ctrl.onProjectChanged(val);
+                  },
                 ),
               ),
             ],
@@ -368,52 +388,60 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final tableWidth = constraints.maxWidth < 1180 ? 1180.0 : constraints.maxWidth;
+        final tableWidth = constraints.maxWidth < 1280 ? 1280.0 : constraints.maxWidth;
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: SizedBox(
-            width: tableWidth,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Table Header
-                Container(
-                  color: const Color(0xFFF8FAFC),
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
-                  child: Row(
-                    children: const [
-                      Expanded(flex: 2, child: _Th('DATE')),
-                      Expanded(flex: 3, child: _Th('PROJECT')),
-                      Expanded(flex: 2, child: _Th('LINKED TASK')),
-                      Expanded(flex: 2, child: _Th('PROGRESS')),
-                      Expanded(flex: 4, child: _Th('WORK DESCRIPTION')),
-                      Expanded(flex: 2, child: _Th('PHOTOS')),
-                      Expanded(flex: 3, child: _Th('ISSUES / NOTES')),
-                      Expanded(flex: 2, child: _Th('LOGGED BY')),
-                      Expanded(flex: 1, child: _Th('ACTIONS', textAlign: TextAlign.center)),
-                    ],
-                  ),
-                ),
-                const Divider(height: 1, color: Color(0xFFE2E8F0)),
-
-                // Table Rows or Empty State
-                if (items.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 40),
-                    child: Center(
-                      child: Text(
-                        'No work logs found for the selected filters.',
-                        style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
-                      ),
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.0),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Table Header
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      border: Border(bottom: BorderSide(color: Color(0xFFCBD5E1), width: 1.5)),
                     ),
-                  )
-                else
-                  Column(
-                    children: items.map((log) => _buildRow(context, ctrl, log)).toList(),
+                    child: Row(
+                      children: [
+                        _thCell('DATE', flex: 2),
+                        _thCell('PROJECT', flex: 3),
+                        _thCell('LINKED TASK', flex: 2),
+                        _thCell('PROGRESS', flex: 2),
+                        _thCell('WORK DESCRIPTION', flex: 4),
+                        _thCell('PHOTOS', flex: 2),
+                        _thCell('ISSUES / NOTES', flex: 3),
+                        _thCell('LOGGED BY', flex: 3),
+                        _thCell('ACTIONS', flex: 2, textAlign: TextAlign.center, isLast: true),
+                      ],
+                    ),
                   ),
-              ],
+
+                  // Table Rows or Empty State
+                  if (items.isEmpty)
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 36),
+                      child: Center(
+                        child: Text(
+                          'No work logs found for the selected filters.',
+                          style: TextStyle(color: Color(0xFF64748B), fontSize: 13),
+                        ),
+                      ),
+                    )
+                  else
+                    Column(
+                      children: items.map((log) => _buildRow(context, ctrl, log)).toList(),
+                    ),
+                ],
+              ),
             ),
           ),
         );
@@ -421,16 +449,53 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
     );
   }
 
+  Widget _thCell(String text, {required int flex, TextAlign textAlign = TextAlign.left, bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: Color(0xFFCBD5E1), width: 1.0)),
+        ),
+        child: Text(
+          text,
+          textAlign: textAlign,
+          maxLines: 1,
+          softWrap: false,
+          overflow: TextOverflow.ellipsis,
+          style: const TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: Color(0xFF64748B),
+            letterSpacing: 0.5,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _tdCell({required int flex, required Widget child, bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
+        ),
+        child: child,
+      ),
+    );
+  }
+
   Widget _buildRow(BuildContext context, DailyWorkLogsController ctrl, WorkLogItem log) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
       decoration: const BoxDecoration(
-        border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1.0)),
+        border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
       ),
       child: Row(
         children: [
           // DATE
-          Expanded(
+          _tdCell(
             flex: 2,
             child: Text(
               log.formattedDate,
@@ -443,7 +508,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // PROJECT
-          Expanded(
+          _tdCell(
             flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -470,7 +535,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // LINKED TASK
-          Expanded(
+          _tdCell(
             flex: 2,
             child: Text(
               log.taskTitle.isNotEmpty ? log.taskTitle : 'General',
@@ -483,7 +548,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // PROGRESS
-          Expanded(
+          _tdCell(
             flex: 2,
             child: Align(
               alignment: Alignment.centerLeft,
@@ -506,7 +571,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // WORK DESCRIPTION
-          Expanded(
+          _tdCell(
             flex: 4,
             child: Text(
               log.workDescription,
@@ -520,7 +585,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // PHOTOS
-          Expanded(
+          _tdCell(
             flex: 2,
             child: log.photos.isNotEmpty
                 ? Row(
@@ -549,7 +614,7 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // ISSUES / NOTES
-          Expanded(
+          _tdCell(
             flex: 3,
             child: Text(
               log.issues,
@@ -560,35 +625,45 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
           ),
 
           // LOGGED BY
-          Expanded(
-            flex: 2,
+          _tdCell(
+            flex: 3,
             child: Text(
-              log.loggedByName,
+              log.displayLoggedBy,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
               style: const TextStyle(
                 fontSize: 13,
                 color: Color(0xFF334155),
-                fontWeight: FontWeight.w500,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
 
           // ACTIONS (View Button)
-          Expanded(
-            flex: 1,
+          _tdCell(
+            flex: 2,
+            isLast: true,
             child: Align(
               alignment: Alignment.center,
-              child: OutlinedButton(
-                onPressed: () => ctrl.openLogDetails(context, log),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: const Color(0xFF1E293B),
-                  side: const BorderSide(color: Color(0xFFCBD5E1)),
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  minimumSize: const Size(54, 30),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-                child: const Text(
-                  'View',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+              child: SizedBox(
+                height: 32,
+                child: OutlinedButton(
+                  onPressed: () => ctrl.openLogDetails(context, log),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFF1E293B),
+                    backgroundColor: Colors.white,
+                    side: const BorderSide(color: Color(0xFFCBD5E1)),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
+                    minimumSize: const Size(64, 32),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  ),
+                  child: const Text(
+                    'View',
+                    maxLines: 1,
+                    softWrap: false,
+                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                  ),
                 ),
               ),
             ),
@@ -752,22 +827,3 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
   }
 }
 
-class _Th extends StatelessWidget {
-  const _Th(this.text, {this.textAlign = TextAlign.left});
-  final String text;
-  final TextAlign textAlign;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      textAlign: textAlign,
-      style: const TextStyle(
-        fontSize: 11,
-        fontWeight: FontWeight.w800,
-        color: Color(0xFF64748B),
-        letterSpacing: 0.5,
-      ),
-    );
-  }
-}

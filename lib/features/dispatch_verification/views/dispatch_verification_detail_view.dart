@@ -2,31 +2,49 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_toast.dart';
 import '../controllers/dispatch_verification_controller.dart';
 import '../models/dispatch_verification_models.dart';
 import '../widgets/dispatch_verification_dialogs.dart';
 
-class DispatchVerificationDetailView extends StatelessWidget {
+class DispatchVerificationDetailView extends StatefulWidget {
   const DispatchVerificationDetailView({super.key, this.item});
 
   final DispatchItem? item;
 
   @override
-  Widget build(BuildContext context) {
-    final controller = Get.isRegistered<DispatchVerificationController>()
+  State<DispatchVerificationDetailView> createState() =>
+      _DispatchVerificationDetailViewState();
+}
+
+class _DispatchVerificationDetailViewState
+    extends State<DispatchVerificationDetailView> {
+  late final DispatchVerificationController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = Get.isRegistered<DispatchVerificationController>()
         ? Get.find<DispatchVerificationController>()
         : Get.put(DispatchVerificationController());
 
-    final currentItem =
-        item ??
+    final initialItem = widget.item ??
         (Get.arguments as DispatchItem?) ??
         controller.selectedItem.value;
+
+    if (initialItem != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        controller.fetchLoadDetail(initialItem);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
 
     void showSuccess(String title) =>
         DispatchVerificationSuccessDialog.show(context, title);
-
-    final bundles = currentItem?.bundleList ?? const [];
 
     return Dialog(
       backgroundColor: Colors.white,
@@ -37,57 +55,82 @@ class DispatchVerificationDetailView extends StatelessWidget {
           maxWidth: (size.width * 0.7).clamp(800.0, 1200.0),
           maxHeight: size.height * 0.85,
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header padding
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
-              child: Row(
-                children: [
-                  OutlinedButton.icon(
-                    onPressed: () => Get.back(),
-                    icon: const Icon(Icons.arrow_back, size: 16),
-                    label: const Text(
-                      'BACK',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
+        child: Obx(() {
+          final currentItem = controller.selectedItem.value ??
+              widget.item ??
+              (Get.arguments as DispatchItem?);
+
+          final bundles = currentItem?.bundleList ?? const [];
+          final isVerified = currentItem?.status == DispatchStatus.verified ||
+              (currentItem?.weightVerified == true &&
+                  currentItem?.loadingVerified == true);
+          final isBusy = controller.isActionLoading.value;
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header padding
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 24, 24, 16),
+                child: Row(
+                  children: [
+                    OutlinedButton.icon(
+                      onPressed: () => Get.back(),
+                      icon: const Icon(Icons.arrow_back, size: 16),
+                      label: const Text(
+                        'BACK',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 13,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.cardBorder),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 18,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
                       ),
                     ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      side: const BorderSide(color: AppColors.cardBorder),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 18,
-                        vertical: 12,
-                      ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                  const Spacer(),
-                  Obx(() {
-                    final isBusy = controller.isActionLoading.value;
-                    return Row(
+                    const Spacer(),
+                    Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         ElevatedButton(
                           onPressed: isBusy
                               ? null
                               : () async {
-                                  final loadId = item?.loadId ?? '';
+                                  if (!isVerified) {
+                                    AppToast.showError(
+                                      title: 'Verification Required',
+                                      description:
+                                          'First verify load, then confirm dispatch.',
+                                    );
+                                    return;
+                                  }
+                                  final loadId = currentItem?.mongoId.isNotEmpty == true
+                                      ? currentItem!.mongoId
+                                      : (currentItem?.loadId ?? '');
                                   if (loadId.isNotEmpty) {
-                                    await controller.confirmDispatch(
+                                    final success =
+                                        await controller.confirmDispatch(
                                       loadId,
-                                      packingListId: item?.packingListMongoId.isNotEmpty == true 
-                                          ? item?.packingListMongoId 
-                                          : item?.packingListNo,
+                                      packingListId: currentItem
+                                                  ?.packingListMongoId
+                                                  .isNotEmpty ==
+                                              true
+                                          ? currentItem?.packingListMongoId
+                                          : currentItem?.packingListNo,
                                     );
-                                    showSuccess(
-                                      'Dispatch Confirmed\nsuccessfully',
-                                    );
+                                    if (success) {
+                                      showSuccess(
+                                        'Dispatch Confirmed\nsuccessfully',
+                                      );
+                                    }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
@@ -126,12 +169,17 @@ class DispatchVerificationDetailView extends StatelessWidget {
                           onPressed: isBusy
                               ? null
                               : () async {
-                                  final loadId = item?.loadId ?? '';
+                                  final loadId = currentItem?.mongoId.isNotEmpty == true
+                                      ? currentItem!.mongoId
+                                      : (currentItem?.loadId ?? '');
                                   if (loadId.isNotEmpty) {
-                                    await controller.verifyDispatch(loadId);
-                                    showSuccess(
-                                      'Load Marked Verified\nsuccessfully',
-                                    );
+                                    final success =
+                                        await controller.verifyDispatch(loadId);
+                                    if (success) {
+                                      showSuccess(
+                                        'Load Marked Verified\nsuccessfully',
+                                      );
+                                    }
                                   }
                                 },
                           style: ElevatedButton.styleFrom(
@@ -157,98 +205,108 @@ class DispatchVerificationDetailView extends StatelessWidget {
                           ),
                         ),
                       ],
-                    );
-                  }),
-                ],
-              ),
-            ),
-            // Body Content
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Load Information & Verification Section matching Image 2
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Left Column: Load Information
-                        Expanded(
-                          flex: 5,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Load Information',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _infoRow('LOAD ID', item?.loadId ?? '—'),
-                              _infoRow(
-                                'PACKING LIST NO',
-                                item?.packingListNo ?? '—',
-                              ),
-                              _infoRow(
-                                'PROJECT',
-                                '${item?.project ?? "—"} (${item?.jobId ?? "—"})',
-                              ),
-                              _infoRow('TRUCK', item?.truck ?? '—'),
-                              _infoRow('DESTINATION', item?.destination ?? '—'),
-                              _infoRow('STATUS', item?.statusText ?? '—'),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(width: 40),
-
-                        // Right Column: Weight Verification & Loading Verification
-                        Expanded(
-                          flex: 5,
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Text(
-                                'Weight Verification',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              _infoRow(
-                                'PLANNED WEIGHT',
-                                item?.totalWeight ?? '—',
-                              ),
-                              const SizedBox(height: 4),
-                              const _CheckRow(
-                                label: 'Weight verified',
-                                checked: true,
-                              ),
-                              const SizedBox(height: 24),
-                              const Text(
-                                'Loading Verification',
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w800,
-                                  color: AppColors.textPrimary,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              const _CheckRow(
-                                label: 'Loading Verified',
-                                checked: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
                     ),
-                    const SizedBox(height: 32),
+                  ],
+                ),
+              ),
+              // Body Content
+              Expanded(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Load Information & Verification Section matching Image 2
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Left Column: Load Information
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Load Information',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _infoRow(
+                                  'LOAD ID',
+                                  currentItem?.displayLoadId.isNotEmpty == true
+                                      ? currentItem!.displayLoadId
+                                      : (currentItem?.loadId ?? '—'),
+                                ),
+                                _infoRow(
+                                  'PACKING LIST NO',
+                                  currentItem?.packingListNo ?? '—',
+                                ),
+                                _infoRow(
+                                  'PROJECT',
+                                  '${currentItem?.project ?? "—"} (${currentItem?.jobId ?? "—"})',
+                                ),
+                                _infoRow('TRUCK', currentItem?.truck ?? '—'),
+                                _infoRow(
+                                  'DESTINATION',
+                                  currentItem?.destination ?? '—',
+                                ),
+                                _infoRow(
+                                  'STATUS',
+                                  currentItem?.statusText ?? '—',
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 40),
+
+                          // Right Column: Weight Verification & Loading Verification
+                          Expanded(
+                            flex: 5,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Weight Verification',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _infoRow(
+                                  'PLANNED WEIGHT',
+                                  currentItem?.totalWeight ?? '—',
+                                ),
+                                const SizedBox(height: 4),
+                                _CheckRow(
+                                  label: 'Weight verified',
+                                  checked: isVerified,
+                                ),
+                                const SizedBox(height: 24),
+                                const Text(
+                                  'Loading Verification',
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                                const SizedBox(height: 16),
+                                _CheckRow(
+                                  label: 'Loading Verified',
+                                  checked: isVerified,
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 32),
 
                     // Bundle Verification List Table matching Image 2
                     const Text(
@@ -271,79 +329,18 @@ class DispatchVerificationDetailView extends StatelessWidget {
                         children: [
                           // Dark Header matching Image 2
                           Container(
-                            color: const Color(0xFF1E293B), // Slate dark header
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 16,
-                              vertical: 12,
+                            decoration: const BoxDecoration(
+                              color: Color(0xFF1E293B), // Slate dark header
+                              border: Border(bottom: BorderSide(color: Color(0xFF334155), width: 1.5)),
                             ),
-                            child: const Row(
+                            child: Row(
                               children: [
-                                Expanded(
-                                  flex: 1,
-                                  child: Text(
-                                    '#',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    'BUNDLE NO',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 4,
-                                  child: Text(
-                                    'BUNDLE ID',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    'WEIGHT',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 3,
-                                  child: Text(
-                                    'STATUS',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
-                                Expanded(
-                                  flex: 2,
-                                  child: Text(
-                                    'VERIFIED',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.w700,
-                                      fontSize: 12,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                ),
+                                _thCell('#', 1),
+                                _thCell('BUNDLE NO', 2),
+                                _thCell('BUNDLE ID', 4),
+                                _thCell('WEIGHT', 2),
+                                _thCell('STATUS', 3),
+                                _thCell('VERIFIED', 2, isLast: true),
                               ],
                             ),
                           ),
@@ -363,10 +360,6 @@ class DispatchVerificationDetailView extends StatelessWidget {
                           else
                             ...bundles.map(
                               (b) => Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 12,
-                                ),
                                 decoration: const BoxDecoration(
                                   border: Border(
                                     bottom: BorderSide(
@@ -376,19 +369,18 @@ class DispatchVerificationDetailView extends StatelessWidget {
                                 ),
                                 child: Row(
                                   children: [
-                                    Expanded(
-                                      flex: 1,
-                                      child: Text(
+                                    _tdCell(
+                                      Text(
                                         '${b.index}',
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: AppColors.textSecondary,
                                         ),
                                       ),
+                                      1,
                                     ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
+                                    _tdCell(
+                                      Text(
                                         b.bundleNo,
                                         style: const TextStyle(
                                           fontSize: 13,
@@ -396,10 +388,10 @@ class DispatchVerificationDetailView extends StatelessWidget {
                                           color: AppColors.textPrimary,
                                         ),
                                       ),
+                                      2,
                                     ),
-                                    Expanded(
-                                      flex: 4,
-                                      child: Text(
+                                    _tdCell(
+                                      Text(
                                         b.bundleId,
                                         style: const TextStyle(
                                           fontSize: 13,
@@ -407,10 +399,10 @@ class DispatchVerificationDetailView extends StatelessWidget {
                                           color: AppColors.textPrimary,
                                         ),
                                       ),
+                                      4,
                                     ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
+                                    _tdCell(
+                                      Text(
                                         b.weight,
                                         style: const TextStyle(
                                           fontSize: 13,
@@ -418,20 +410,20 @@ class DispatchVerificationDetailView extends StatelessWidget {
                                           color: AppColors.textPrimary,
                                         ),
                                       ),
+                                      2,
                                     ),
-                                    Expanded(
-                                      flex: 3,
-                                      child: Text(
+                                    _tdCell(
+                                      Text(
                                         b.status,
                                         style: const TextStyle(
                                           fontSize: 13,
                                           color: AppColors.textSecondary,
                                         ),
                                       ),
+                                      3,
                                     ),
-                                    Expanded(
-                                      flex: 2,
-                                      child: Text(
+                                    _tdCell(
+                                      Text(
                                         b.isVerified
                                             ? 'Verified'
                                             : 'Unverified',
@@ -443,6 +435,8 @@ class DispatchVerificationDetailView extends StatelessWidget {
                                               : AppColors.textSecondary,
                                         ),
                                       ),
+                                      2,
+                                      isLast: true,
                                     ),
                                   ],
                                 ),
@@ -456,10 +450,11 @@ class DispatchVerificationDetailView extends StatelessWidget {
               ),
             ),
           ],
-        ),
-      ),
-    );
-  }
+        );
+      }),
+    ),
+  );
+}
 
   static Widget _infoRow(String label, String value) => Padding(
     padding: const EdgeInsets.only(bottom: 12),
@@ -490,6 +485,53 @@ class DispatchVerificationDetailView extends StatelessWidget {
       ],
     ),
   );
+
+  static Widget _thCell(String text, int flex, {bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(
+                    color: Color(0xFF334155),
+                    width: 1.0,
+                  ),
+                ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _tdCell(Widget child, int flex, {bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder,
+                    width: 1.0,
+                  ),
+                ),
+        ),
+        child: child,
+      ),
+    );
+  }
 }
 
 class _CheckRow extends StatelessWidget {

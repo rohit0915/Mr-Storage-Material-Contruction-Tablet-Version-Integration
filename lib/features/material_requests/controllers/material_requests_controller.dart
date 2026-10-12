@@ -17,6 +17,23 @@ class MaterialRequestsController extends GetxController {
   final MaterialRequestsService _service;
 
   final projects = <String>['All Projects'].obs;
+  final priorityList = <String>[
+    'All Priorities',
+    'Low',
+    'Medium',
+    'High',
+    'Critical',
+  ].obs;
+  final statusList = <String>[
+    'All Statuses',
+    'Pending',
+    'Approved',
+    'Rejected',
+    'Fulfilled',
+    'Cancelled',
+  ].obs;
+
+  // Backward compatibility properties
   final departments = <String>[
     'All Departments',
     'Construction',
@@ -25,15 +42,8 @@ class MaterialRequestsController extends GetxController {
     'Warehouse',
   ].obs;
   final requestedByList = <String>['All'].obs;
-  final priorityList = const <String>['Low', 'Medium', 'High'];
-  final statusList = const <String>[
-    'All Status',
-    'Pending',
-    'Approved',
-    'Rejected',
-    'Cancelled',
-    'Fulfilled',
-  ];
+  final selectedDepartment = 'All Departments'.obs;
+  final selectedRequestedBy = 'All'.obs;
 
   final requests = <MaterialRequestBoardItem>[].obs;
   final isLoading = false.obs;
@@ -44,9 +54,9 @@ class MaterialRequestsController extends GetxController {
   final rejectedStat = 0.obs;
 
   final selectedProject = 'All Projects'.obs;
-  final selectedDepartment = 'All Departments'.obs;
-  final selectedRequestedBy = 'All'.obs;
-  final selectedStatus = 'All Status'.obs;
+  final selectedStatus = 'All Statuses'.obs;
+  final selectedPriority = 'All Priorities'.obs;
+  final searchQuery = ''.obs;
   final Map<String, String> _projectIdsByName = {};
   final Map<String, String> _requesterIdsByName = {};
 
@@ -67,18 +77,74 @@ class MaterialRequestsController extends GetxController {
   }
 
   Future<void> _initialLoad() async {
-    final projectRows = await _service.getProjects();
+    final filterData = await _service.getFilters();
     final names = <String>['All Projects'];
-    for (final row in projectRows) {
-      final name = (row['projectName'] ?? row['jobId'] ?? '').toString();
-      final id = (row['_id'] ?? row['leadId'] ?? '').toString();
-      if (name.isNotEmpty && id.isNotEmpty) {
-        _projectIdsByName[name] = id;
-        names.add(name);
+    if (filterData != null && filterData['projects'] is List) {
+      final pList = filterData['projects'] as List;
+      for (final p in pList) {
+        if (p is Map) {
+          final pName = (p['projectName'] ?? p['jobId'] ?? '').toString();
+          final jId = (p['jobId'] ?? '').toString();
+          final id = (p['leadId'] ?? p['_id'] ?? '').toString();
+          final label = pName.isNotEmpty && jId.isNotEmpty && pName != jId
+              ? '$pName ($jId)'
+              : (pName.isNotEmpty ? pName : jId);
+          if (label.isNotEmpty && id.isNotEmpty) {
+            _projectIdsByName[label] = id;
+            names.add(label);
+          }
+        }
+      }
+    }
+
+    if (names.length <= 1) {
+      final projectRows = await _service.getProjects();
+      for (final row in projectRows) {
+        final name = (row['projectName'] ?? row['jobId'] ?? '').toString();
+        final id = (row['_id'] ?? row['leadId'] ?? '').toString();
+        if (name.isNotEmpty && id.isNotEmpty) {
+          _projectIdsByName[name] = id;
+          names.add(name);
+        }
       }
     }
     projects.assignAll(names.toSet());
+
+    if (filterData != null) {
+      if (filterData['statuses'] is List &&
+          (filterData['statuses'] as List).isNotEmpty) {
+        final sList = filterData['statuses'] as List;
+        final list = <String>['All Statuses'];
+        for (final s in sList) {
+          final str = s.toString();
+          if (str.isNotEmpty) {
+            list.add(str[0].toUpperCase() + str.substring(1));
+          }
+        }
+        statusList.assignAll(list.toSet());
+      }
+      if (filterData['priorities'] is List &&
+          (filterData['priorities'] as List).isNotEmpty) {
+        final prList = filterData['priorities'] as List;
+        final list = <String>['All Priorities'];
+        for (final pr in prList) {
+          final str = pr.toString();
+          if (str.isNotEmpty) {
+            list.add(str[0].toUpperCase() + str.substring(1));
+          }
+        }
+        priorityList.assignAll(list.toSet());
+      }
+    }
+
     await fetchRequests();
+  }
+
+  String _formatDateForApi(DateTime dt) {
+    final y = dt.year.toString().padLeft(4, '0');
+    final m = dt.month.toString().padLeft(2, '0');
+    final d = dt.day.toString().padLeft(2, '0');
+    return '$y-$m-$d';
   }
 
   Future<void> fetchRequests() async {
@@ -91,11 +157,17 @@ class MaterialRequestsController extends GetxController {
             _projectIdsByName[selectedProject.value] ?? selectedProject.value,
         department: selectedDepartment.value,
         status: selectedStatus.value,
+        priority: selectedPriority.value,
+        search: searchQuery.value.trim(),
         requestedBy:
             _requesterIdsByName[selectedRequestedBy.value] ??
             selectedRequestedBy.value,
-        dateFrom: dateFrom.value?.toIso8601String(),
-        dateTo: dateTo.value?.toIso8601String(),
+        dateFrom: dateFrom.value != null
+            ? _formatDateForApi(dateFrom.value!)
+            : null,
+        dateTo: dateTo.value != null
+            ? _formatDateForApi(dateTo.value!)
+            : null,
       );
 
       if (res != null) {
@@ -168,20 +240,54 @@ class MaterialRequestsController extends GetxController {
     pageIndex.value = 0;
   }
 
+  bool get hasDateFilter => dateFrom.value != null || dateTo.value != null;
+
+  bool get hasActiveFilters {
+    return selectedProject.value != 'All Projects' ||
+        (selectedStatus.value != 'All Statuses' &&
+            selectedStatus.value != 'All Status') ||
+        selectedPriority.value != 'All Priorities' ||
+        searchQuery.value.trim().isNotEmpty ||
+        dateFrom.value != null ||
+        dateTo.value != null;
+  }
+
+  void resetFilters() {
+    selectedProject.value = 'All Projects';
+    selectedStatus.value = 'All Statuses';
+    selectedPriority.value = 'All Priorities';
+    searchQuery.value = '';
+    dateFrom.value = null;
+    dateTo.value = null;
+    resetPagination();
+    fetchRequests();
+  }
+
   void setFilters({
     String? project,
-    String? department,
-    String? requestedBy,
     String? status,
+    String? priority,
+    String? search,
     DateTime? from,
     DateTime? to,
+    bool clearDates = false,
+    String? department,
+    String? requestedBy,
   }) {
     if (project != null) selectedProject.value = project;
+    if (status != null) selectedStatus.value = status;
+    if (priority != null) selectedPriority.value = priority;
+    if (search != null) searchQuery.value = search;
     if (department != null) selectedDepartment.value = department;
     if (requestedBy != null) selectedRequestedBy.value = requestedBy;
-    if (status != null) selectedStatus.value = status;
-    if (from != null) dateFrom.value = from;
-    if (to != null) dateTo.value = to;
+
+    if (clearDates) {
+      dateFrom.value = null;
+      dateTo.value = null;
+    } else {
+      if (from != null) dateFrom.value = from;
+      if (to != null) dateTo.value = to;
+    }
 
     resetPagination();
     fetchRequests();
@@ -199,9 +305,15 @@ class MaterialRequestsController extends GetxController {
   String get dateRangeLabel {
     final f = dateFrom.value;
     final t = dateTo.value;
-    if (f == null || t == null) return 'May 1 - May 31, 2025';
+    if (f == null && t == null) return 'dd/mm/yyyy - dd/mm/yyyy';
     final fmt = MaterialRequestControllerDateFormatter();
-    return '${fmt.shortDate(f)} - ${fmt.shortDate(t)}';
+    if (f != null && t != null) {
+      return '${fmt.formatDdMmYyyy(f)} - ${fmt.formatDdMmYyyy(t)}';
+    } else if (f != null) {
+      return '${fmt.formatDdMmYyyy(f)} - dd/mm/yyyy';
+    } else {
+      return 'dd/mm/yyyy - ${fmt.formatDdMmYyyy(t!)}';
+    }
   }
 
   void clearDateRange() {
@@ -465,5 +577,11 @@ class MaterialRequestControllerDateFormatter {
       'December',
     ];
     return '${months[date.month - 1]} ${date.day}, ${date.year}';
+  }
+
+  String formatDdMmYyyy(DateTime date) {
+    final d = date.day.toString().padLeft(2, '0');
+    final m = date.month.toString().padLeft(2, '0');
+    return '$d/$m/${date.year}';
   }
 }

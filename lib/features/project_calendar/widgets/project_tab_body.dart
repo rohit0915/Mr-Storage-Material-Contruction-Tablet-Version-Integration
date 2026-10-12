@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import '../../../app/constants/get_builder_ids.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/project_calendar_controller.dart';
 
 class ProjectTabBody extends StatelessWidget {
@@ -15,10 +16,7 @@ class ProjectTabBody extends StatelessWidget {
       id: AppGetIds.projectCards,
       builder: (controller) {
         if (controller.isLoadingProjects) {
-          return const SizedBox(
-            height: 300,
-            child: Center(child: CircularProgressIndicator()),
-          );
+          return const _ProjectTabShimmer();
         }
 
         var list = controller.projectCards;
@@ -44,11 +42,11 @@ class ProjectTabBody extends StatelessWidget {
             children: [
               // Header
               const Padding(
-                padding: EdgeInsets.all(20),
+                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                 child: Text(
                   'Project List',
                   style: TextStyle(
-                    fontSize: 16,
+                    fontSize: 15,
                     fontWeight: FontWeight.w700,
                     color: AppColors.textPrimary,
                   ),
@@ -58,7 +56,7 @@ class ProjectTabBody extends StatelessWidget {
 
               if (list.isEmpty)
                 const SizedBox(
-                  height: 200,
+                  height: 180,
                   child: Center(
                     child: Text(
                       'No projects found',
@@ -69,140 +67,152 @@ class ProjectTabBody extends StatelessWidget {
               else
                 LayoutBuilder(
                   builder: (context, constraints) {
-                    final minTableWidth = constraints.maxWidth < 950
-                        ? 950.0
+                    final minTableWidth = constraints.maxWidth < 750
+                        ? 750.0
                         : constraints.maxWidth;
                     return SingleChildScrollView(
                       scrollDirection: Axis.horizontal,
+                      physics: const BouncingScrollPhysics(),
                       child: SizedBox(
                         width: minTableWidth,
-                        child: Column(
-                          children: [
-                            // Table Header Row
-                            Container(
-                              color: const Color(0xFFF8FAFC),
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                              child: const Row(
-                                children: [
-                                  Expanded(flex: 2, child: _TblHeader('Project ID')),
-                                  Expanded(flex: 4, child: _TblHeader('Project / Site')),
-                                  Expanded(flex: 3, child: _TblHeader('Status')),
-                                  Expanded(flex: 2, child: _TblHeader('Priority')),
-                                  Expanded(flex: 4, child: _TblHeader('Actions')),
-                                ],
+                        child: Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: AppColors.cardBorder, width: 1.0),
+                          ),
+                          child: Column(
+                            children: [
+                              // Table Header Row
+                              Container(
+                                decoration: const BoxDecoration(
+                                  color: Color(0xFFF8FAFC),
+                                  border: Border(bottom: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    _TblHeader('Project ID', flex: 2),
+                                    _TblHeader('Project / Site', flex: 4),
+                                    _TblHeader('Status', flex: 3),
+                                    _TblHeader('Priority', flex: 2),
+                                    _TblHeader('Actions', flex: 4, isLast: true),
+                                  ],
+                                ),
                               ),
-                            ),
-                            const Divider(height: 1, color: AppColors.cardBorder),
 
-                            // Table Rows
-                            ...list.asMap().entries.map((entry) {
-                              final item = entry.value;
-                              final isLast = entry.key == list.length - 1;
-                              return Column(
-                                children: [
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-                                    child: Row(
-                                      children: [
-                                        // Project ID
-                                        Expanded(
-                                          flex: 2,
-                                          child: Text(
-                                            item.projectId,
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
-                                              fontSize: 14,
-                                              color: AppColors.textPrimary,
-                                            ),
-                                          ),
-                                        ),
-                                        // Project / Site
-                                        Expanded(
-                                          flex: 4,
-                                          child: Column(
-                                            crossAxisAlignment: CrossAxisAlignment.start,
-                                            children: [
-                                              Text(
-                                                item.title,
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w600,
-                                                  fontSize: 14,
-                                                  color: AppColors.textPrimary,
-                                                ),
-                                              ),
-                                              const SizedBox(height: 4),
-                                              Text(
-                                                item.location,
-                                                style: const TextStyle(
-                                                  fontSize: 12,
-                                                  color: AppColors.textSecondary,
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        // Status
-                                        Expanded(
-                                          flex: 3,
-                                          child: Text(
-                                            item.status,
-                                            style: TextStyle(
-                                              fontWeight: FontWeight.w600,
-                                              fontSize: 13,
-                                              color: _getStatusColor(item.status),
-                                            ),
-                                          ),
-                                        ),
-                                        // Priority
-                                        Expanded(
-                                          flex: 2,
-                                          child: Align(
-                                            alignment: Alignment.centerLeft,
-                                            child: _PriorityBadge(priority: item.priority),
-                                          ),
-                                        ),
-                                        // Actions
-                                        Expanded(
-                                          flex: 4,
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              _ActionButton(
-                                                icon: Icons.calendar_today_outlined,
-                                                label: 'Calendar',
-                                                onTap: () {
-                                                  controller.selectProjectAndOpenCalendar(item);
-                                                },
-                                              ),
-                                              const SizedBox(width: 8),
-                                              _ActionButton(
-                                                label: 'View',
-                                                onTap: () {
-                                                  Get.toNamed(
-                                                    AppRoutes.projectDetails,
-                                                    arguments: {
-                                                      'id': item.realLeadId.isNotEmpty ? item.realLeadId : item.projectId,
-                                                      'title': item.title,
-                                                      'location': item.location,
-                                                      'buildingType': item.buildingType,
-                                                      'jobId': item.projectId,
-                                                      'status': item.status,
-                                                      'fromProject': true,
-                                                    },
-                                                  );
-                                                },
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                      ],
-                                    ),
+                              // Table Rows
+                              ...list.asMap().entries.map((entry) {
+                                final item = entry.value;
+                                final isLast = entry.key == list.length - 1;
+                                return Container(
+                                  decoration: BoxDecoration(
+                                    border: isLast
+                                        ? null
+                                        : const Border(bottom: BorderSide(color: AppColors.cardBorder, width: 1.0)),
                                   ),
-                                  if (!isLast) const Divider(height: 1, color: AppColors.cardBorder),
-                                ],
-                              );
-                            }),
-                          ],
+                                  child: Row(
+                                    children: [
+                                      // Project ID
+                                      _tdCell(
+                                        flex: 2,
+                                        child: Text(
+                                          item.projectId,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.w700,
+                                            fontSize: 13,
+                                            color: AppColors.textPrimary,
+                                          ),
+                                        ),
+                                      ),
+                                      // Project / Site
+                                      _tdCell(
+                                        flex: 4,
+                                        child: Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Text(
+                                              item.title,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontWeight: FontWeight.w600,
+                                                fontSize: 13,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 2),
+                                            Text(
+                                              item.location,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
+                                              style: const TextStyle(
+                                                fontSize: 11,
+                                                color: AppColors.textSecondary,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      // Status
+                                      _tdCell(
+                                        flex: 3,
+                                        child: Text(
+                                          _formatStatus(item.status),
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: TextStyle(
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 12,
+                                            color: _getStatusColor(item.status),
+                                          ),
+                                        ),
+                                      ),
+                                      // Priority
+                                      _tdCell(
+                                        flex: 2,
+                                        child: _PriorityBadge(priority: item.priority),
+                                      ),
+                                      // Actions
+                                      _tdCell(
+                                        flex: 4,
+                                        isLast: true,
+                                        child: Wrap(
+                                          spacing: 6,
+                                          runSpacing: 4,
+                                          crossAxisAlignment: WrapCrossAlignment.center,
+                                          children: [
+                                            _ActionButton(
+                                              icon: Icons.calendar_today_outlined,
+                                              label: 'Calendar',
+                                              onTap: () {
+                                                controller.selectProjectAndOpenCalendar(item);
+                                              },
+                                            ),
+                                            _ActionButton(
+                                              label: 'View',
+                                              onTap: () {
+                                                Get.toNamed(
+                                                  AppRoutes.projectDetails,
+                                                  arguments: {
+                                                    'id': item.realLeadId.isNotEmpty ? item.realLeadId : item.projectId,
+                                                    'title': item.title,
+                                                    'location': item.location,
+                                                    'buildingType': item.buildingType,
+                                                    'jobId': item.projectId,
+                                                    'status': item.status,
+                                                    'fromProject': true,
+                                                  },
+                                                );
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              }),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -217,30 +227,79 @@ class ProjectTabBody extends StatelessWidget {
     );
   }
 
+  String _formatStatus(String status) {
+    if (status.isEmpty) return 'Active';
+    final clean = status.replaceAll('_', ' ').trim();
+    if (clean.isEmpty) return 'Active';
+    return clean
+        .split(' ')
+        .map((p) => p.isEmpty
+            ? p
+            : '${p[0].toUpperCase()}${p.substring(1).toLowerCase()}')
+        .join(' ');
+  }
+
   Color _getStatusColor(String status) {
     final s = status.toLowerCase();
-    if (s.contains('released') || s.contains('material check')) {
-      return const Color(0xFFF59E0B); // Orange-yellow from screenshot
+    if (s.contains('released') || s.contains('plant') || s.contains('pending')) {
+      return const Color(0xFFD97706); // Orange-yellow
+    }
+    if (s.contains('delivered') || s.contains('complete')) {
+      return const Color(0xFF0D5C75); // Dark teal
+    }
+    if (s.contains('material') || s.contains('check')) {
+      return const Color(0xFF0F2C59); // Deep navy
     }
     return AppColors.textPrimary;
   }
 }
 
 class _TblHeader extends StatelessWidget {
-  const _TblHeader(this.label);
+  const _TblHeader(this.label, {this.flex = 1, this.isLast = false});
   final String label;
+  final int flex;
+  final bool isLast;
 
   @override
   Widget build(BuildContext context) {
-    return Text(
-      label,
-      style: const TextStyle(
-        fontSize: 13,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textPrimary,
+    return Expanded(
+      flex: flex,
+      child: Container(
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        alignment: Alignment.centerLeft,
+        child: Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+        ),
       ),
     );
   }
+}
+
+Widget _tdCell({
+  required Widget child,
+  required int flex,
+  bool isLast = false,
+  Alignment alignment = Alignment.centerLeft,
+}) {
+  return Expanded(
+    flex: flex,
+    child: Container(
+      decoration: BoxDecoration(
+        border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+      ),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+      alignment: alignment,
+      child: child,
+    ),
+  );
 }
 
 class _PriorityBadge extends StatelessWidget {
@@ -250,17 +309,17 @@ class _PriorityBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(
         color: const Color(0xFFFEF3C7),
-        borderRadius: BorderRadius.circular(6),
+        borderRadius: BorderRadius.circular(5),
       ),
       child: Text(
         priority,
         style: const TextStyle(
           color: Color(0xFFD97706),
           fontWeight: FontWeight.w600,
-          fontSize: 12,
+          fontSize: 11,
         ),
       ),
     );
@@ -280,7 +339,7 @@ class _ActionButton extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(6),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           border: Border.all(color: const Color(0xFFE2E8F0)),
           borderRadius: BorderRadius.circular(6),
@@ -289,14 +348,14 @@ class _ActionButton extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 14, color: AppColors.primaryBlue),
-              const SizedBox(width: 4),
+              Icon(icon, size: 12, color: AppColors.primaryBlue),
+              const SizedBox(width: 3),
             ],
             Text(
               label,
               style: const TextStyle(
                 color: AppColors.textPrimary,
-                fontSize: 13,
+                fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
             ),
@@ -319,7 +378,7 @@ class _ProjectPaginationBar extends StatelessWidget {
     final currLimit = controller.projectLimit;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
         color: Color(0xFFF8FAFC),
         borderRadius: BorderRadius.vertical(bottom: Radius.circular(12)),
@@ -452,6 +511,192 @@ class _ProjectPaginationBar extends StatelessWidget {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _ProjectTabShimmer extends StatelessWidget {
+  const _ProjectTabShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            child: Text(
+              'Project List',
+              style: TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+                color: AppColors.textPrimary,
+              ),
+            ),
+          ),
+          const Divider(height: 1, color: AppColors.cardBorder),
+
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final minTableWidth = constraints.maxWidth < 750
+                  ? 750.0
+                  : constraints.maxWidth;
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const BouncingScrollPhysics(),
+                child: SizedBox(
+                  width: minTableWidth,
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.cardBorder, width: 1.0),
+                    ),
+                    child: Column(
+                      children: [
+                        // Shimmer Header
+                        Container(
+                          decoration: const BoxDecoration(
+                            color: Color(0xFFF8FAFC),
+                            border: Border(bottom: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                          ),
+                          child: const Row(
+                            children: [
+                              _TblHeader('Project ID', flex: 2),
+                              _TblHeader('Project / Site', flex: 4),
+                              _TblHeader('Status', flex: 3),
+                              _TblHeader('Priority', flex: 2),
+                              _TblHeader('Actions', flex: 4, isLast: true),
+                            ],
+                          ),
+                        ),
+
+                        // Shimmer Rows matching UI exactly
+                        ...List.generate(7, (index) {
+                          final isLast = index == 6;
+                          return Container(
+                            decoration: BoxDecoration(
+                              border: isLast
+                                  ? null
+                                  : const Border(bottom: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                            ),
+                            child: Row(
+                              children: [
+                                // Project ID
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    alignment: Alignment.centerLeft,
+                                    child: const AppShimmer(width: 65, height: 14, borderRadius: 4),
+                                  ),
+                                ),
+                                // Project / Site
+                                Expanded(
+                                  flex: 4,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    alignment: Alignment.centerLeft,
+                                    child: const Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        AppShimmer(width: 130, height: 14, borderRadius: 4),
+                                        SizedBox(height: 5),
+                                        AppShimmer(width: 80, height: 11, borderRadius: 4),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                // Status
+                                Expanded(
+                                  flex: 3,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    alignment: Alignment.centerLeft,
+                                    child: const AppShimmer(width: 100, height: 14, borderRadius: 4),
+                                  ),
+                                ),
+                                // Priority
+                                Expanded(
+                                  flex: 2,
+                                  child: Container(
+                                    decoration: const BoxDecoration(
+                                      border: Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    alignment: Alignment.centerLeft,
+                                    child: const AppShimmer(width: 58, height: 22, borderRadius: 5),
+                                  ),
+                                ),
+                                // Actions
+                                Expanded(
+                                  flex: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                    child: const Row(
+                                      children: [
+                                        AppShimmer(width: 76, height: 26, borderRadius: 6),
+                                        SizedBox(width: 6),
+                                        AppShimmer(width: 52, height: 26, borderRadius: 6),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+
+          // Pagination Bar Shimmer
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: const BoxDecoration(
+              color: Color(0xFFF8FAFC),
+              border: Border(top: BorderSide(color: AppColors.cardBorder)),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(12),
+                bottomRight: Radius.circular(12),
+              ),
+            ),
+            child: const Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                AppShimmer(width: 140, height: 18, borderRadius: 4),
+                AppShimmer(width: 90, height: 24, borderRadius: 4),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -77,6 +77,80 @@ class DrawingsService extends GetxService {
     }
   }
 
+  Future<dynamic> getBuildingDrawings(String leadId) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.projectBuildingDrawings(leadId),
+      );
+      AppLogger.i(
+        'Get Building Drawings API Response: $response',
+        tag: 'DRAWINGS_SERVICE',
+      );
+      if (response is Map && response.containsKey('data')) {
+        return response['data'];
+      }
+      return response;
+    } catch (e) {
+      AppLogger.w(
+        'getBuildingDrawings failed: $e',
+        tag: 'DRAWINGS_SERVICE',
+      );
+      return null;
+    }
+  }
+
+  Future<dynamic> getMedia(String leadId) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.projectMedia(leadId),
+      );
+      AppLogger.i(
+        'Get Media API Response: $response',
+        tag: 'DRAWINGS_SERVICE',
+      );
+      if (response is Map && response.containsKey('data')) {
+        return response['data'];
+      }
+      return response;
+    } catch (e) {
+      AppLogger.w(
+        'getMedia failed: $e',
+        tag: 'DRAWINGS_SERVICE',
+      );
+      return null;
+    }
+  }
+
+  Future<dynamic> getGlobalMedia({String? type, String? search}) async {
+    try {
+      final queryParams = <String, String>{};
+      if (type != null && type.isNotEmpty && type != 'all') {
+        queryParams['type'] = type;
+      }
+      if (search != null && search.isNotEmpty) {
+        queryParams['search'] = search;
+      }
+      final uri = queryParams.isEmpty
+          ? ApiConstants.media
+          : Uri(path: ApiConstants.media, queryParameters: queryParams).toString();
+      final response = await _apiClient.get(uri);
+      AppLogger.i(
+        'Get Global Media API Response: $response',
+        tag: 'DRAWINGS_SERVICE',
+      );
+      if (response is Map && response.containsKey('data')) {
+        return response['data'];
+      }
+      return response;
+    } catch (e) {
+      AppLogger.w(
+        'getGlobalMedia failed: $e',
+        tag: 'DRAWINGS_SERVICE',
+      );
+      return null;
+    }
+  }
+
   Future<dynamic> getDrawings({String? leadId}) async {
     try {
       final response = await _apiClient.get(

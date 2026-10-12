@@ -55,93 +55,97 @@ class MaterialRequestTable extends GetView<MaterialRequestsController> {
             ),
             LayoutBuilder(
               builder: (context, constraints) {
-                final minTableWidth = constraints.maxWidth.clamp(
-                  1150.0,
-                  2400.0,
-                );
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: minTableWidth,
-                    child: Column(
-                      children: [
-                        Container(
-                          decoration: const BoxDecoration(
-                            color: AppColors.tableHeader,
-                            border: Border(
-                              bottom: BorderSide(
-                                color: AppColors.cardBorder,
-                                width: 1.5,
+                final minTableWidth =
+                    constraints.maxWidth < 1180.0 ? 1180.0 : constraints.maxWidth;
+                return Scrollbar(
+                  thumbVisibility: false,
+                  child: SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    physics: const BouncingScrollPhysics(),
+                    child: SizedBox(
+                      width: minTableWidth,
+                      child: Column(
+                        children: [
+                          Container(
+                            decoration: const BoxDecoration(
+                              color: Color(0xFFF8FAFC),
+                              border: Border(
+                                bottom: BorderSide(
+                                  color: Color(0xFFF1F5F9),
+                                  width: 1.0,
+                                ),
                               ),
                             ),
-                          ),
-                          child: Row(
-                            children: [
-                              _HeadCell(
-                                flex: 2,
-                                text: 'REQUEST ID',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 3,
-                                text: 'PROJECT / SITE',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'ITEMS',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'DATE',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'REQUIRED',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'STATUS',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'PRIORITY',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'ACTIONS',
-                                size: cellFont,
-                                isLast: true,
-                              ),
-                            ],
-                          ),
-                        ),
-                        ...rows.asMap().entries.map(
-                          (entry) => _DataRow(
-                            item: entry.value,
-                            cellFont: cellFont,
-                            isEven: entry.key % 2 == 0,
-                          ),
-                        ),
-                        if (rows.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              'No material requests found.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: cellFont,
-                                fontWeight: FontWeight.w600,
-                              ),
+                            child: Row(
+                              children: [
+                                _HeadCell(
+                                  flex: 13,
+                                  text: 'REQUEST ID',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 17,
+                                  text: 'PROJECT / SITE',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 11,
+                                  text: 'ITEMS',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 12,
+                                  text: 'DATE',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 11,
+                                  text: 'REQUIRED',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 12,
+                                  text: 'STATUS',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 11,
+                                  text: 'PRIORITY',
+                                  size: cellFont,
+                                ),
+                                _HeadCell(
+                                  flex: 11,
+                                  text: 'ACTIONS',
+                                  size: cellFont,
+                                  alignment: Alignment.center,
+                                  textAlign: TextAlign.center,
+                                  isLast: true,
+                                ),
+                              ],
                             ),
                           ),
-                      ],
+                          ...rows.asMap().entries.map(
+                            (entry) => _DataRow(
+                              item: entry.value,
+                              cellFont: cellFont,
+                              isEven: entry.key % 2 == 0,
+                            ),
+                          ),
+                          if (rows.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Text(
+                                'No material requests found.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AppColors.textSecondary,
+                                  fontSize: cellFont,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ),
                   ),
                 );
@@ -179,16 +183,19 @@ class _DataRow extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: isEven ? Colors.white : const Color(0xFFF8FAFC),
-        border: const Border(bottom: BorderSide(color: AppColors.cardBorder)),
+        color: isEven ? Colors.white : const Color(0xFFFAFAFA),
+        border: const Border(bottom: BorderSide(color: Color(0xFFF1F5F9))),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _DataCell(
-            flex: 2,
+            flex: 13,
             child: Text(
               item.id,
+              maxLines: 1,
+              softWrap: false,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontWeight: FontWeight.w800,
                 fontSize: cellFont,
@@ -197,7 +204,7 @@ class _DataRow extends StatelessWidget {
             ),
           ),
           _DataCell(
-            flex: 3,
+            flex: 17,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -226,13 +233,16 @@ class _DataRow extends StatelessWidget {
             ),
           ),
           _DataCell(
-            flex: 2,
+            flex: 11,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   '${item.requestedItemsCount} Items',
+                  maxLines: 1,
+                  softWrap: false,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: cellFont,
@@ -253,45 +263,61 @@ class _DataRow extends StatelessWidget {
             ),
           ),
           _DataCell(
-            flex: 2,
+            flex: 12,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Text(
                   dateFmt.format(item.requestDate),
+                  maxLines: 1,
+                  softWrap: false,
                   style: TextStyle(
                     fontSize: cellFont,
-                    color: AppColors.textSecondary,
+                    color: Colors.black,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
                 Text(
                   timeFmt.format(item.requestDate),
+                  maxLines: 1,
+                  softWrap: false,
                   style: TextStyle(
                     fontSize: cellFont - 1,
                     color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w400,
                   ),
                 ),
               ],
             ),
           ),
           _DataCell(
-            flex: 2,
+            flex: 11,
             child: Text(
               item.requiredBy == null ? '-' : dateFmt.format(item.requiredBy!),
+              maxLines: 1,
+              softWrap: false,
               style: TextStyle(
                 fontSize: cellFont,
-                color: AppColors.textSecondary,
+                color: Colors.black,
+                fontWeight: FontWeight.w600,
               ),
             ),
           ),
-          _DataCell(flex: 2, child: _StatusLabel(status: item.status)),
-          _DataCell(flex: 2, child: _PriorityLabel(priority: item.priority)),
           _DataCell(
-            flex: 2,
+            flex: 12,
+            child: _StatusLabel(status: item.status),
+          ),
+          _DataCell(
+            flex: 11,
+            child: _PriorityLabel(priority: item.priority),
+          ),
+          _DataCell(
+            flex: 11,
+            alignment: Alignment.center,
             isLast: true,
-            child: Align(
-              alignment: Alignment.centerLeft,
+            child: SizedBox(
+              height: 30,
               child: OutlinedButton(
                 onPressed: () async {
                   final detail = await Get.find<MaterialRequestsController>()
@@ -304,22 +330,26 @@ class _DataRow extends StatelessWidget {
                   );
                 },
                 style: OutlinedButton.styleFrom(
-                  foregroundColor: AppColors.textPrimary,
-                  backgroundColor: const Color(0xFFF9FAFB),
-                  side: const BorderSide(color: AppColors.cardBorder),
+                  foregroundColor: const Color(0xFF374151),
+                  backgroundColor: Colors.white,
+                  side: const BorderSide(color: Color(0xFFE2E8F0)),
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 8,
+                    horizontal: 14,
+                    vertical: 0,
                   ),
+                  minimumSize: const Size(60, 30),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                 ),
-                child: Text(
+                child: const Text(
                   'View',
+                  maxLines: 1,
+                  softWrap: false,
                   style: TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: cellFont,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12,
                   ),
                 ),
               ),
@@ -538,12 +568,16 @@ class _HeadCell extends StatelessWidget {
     required this.flex,
     required this.text,
     required this.size,
+    this.alignment = Alignment.centerLeft,
+    this.textAlign = TextAlign.start,
     this.isLast = false,
   });
 
   final int flex;
   final String text;
   final double size;
+  final Alignment alignment;
+  final TextAlign textAlign;
   final bool isLast;
 
   @override
@@ -551,16 +585,19 @@ class _HeadCell extends StatelessWidget {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+        alignment: alignment,
         child: Text(
           text,
-          style: TextStyle(
-            color: AppColors.textSecondary,
+          textAlign: textAlign,
+          style: const TextStyle(
+            color: Color(0xFF94A3B8),
             fontWeight: FontWeight.w700,
-            fontSize: size,
+            fontSize: 10,
             letterSpacing: 0.5,
           ),
           maxLines: 1,
+          softWrap: false,
           overflow: TextOverflow.ellipsis,
         ),
       ),
@@ -572,11 +609,13 @@ class _DataCell extends StatelessWidget {
   const _DataCell({
     required this.flex,
     required this.child,
+    this.alignment = Alignment.centerLeft,
     this.isLast = false,
   });
 
   final int flex;
   final Widget child;
+  final Alignment alignment;
   final bool isLast;
 
   @override
@@ -584,7 +623,8 @@ class _DataCell extends StatelessWidget {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        alignment: alignment,
         child: child,
       ),
     );
@@ -598,52 +638,54 @@ class _StatusLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color, bg) = switch (status) {
+    final (label, color, bg, border) = switch (status) {
       MaterialRequestStatus.pending => (
         'Pending',
-        const Color(0xFF92400E),
+        const Color(0xFFD97706),
+        const Color(0xFFFFFBEB),
         const Color(0xFFFEF3C7),
       ),
       MaterialRequestStatus.approved => (
         'Approved',
-        const Color(0xFF166534),
+        const Color(0xFF16A34A),
+        const Color(0xFFF0FDF4),
         const Color(0xFFDCFCE7),
       ),
       MaterialRequestStatus.rejected => (
         'Rejected',
-        const Color(0xFF991B1B),
+        const Color(0xFFEF4444),
+        const Color(0xFFFEF2F2),
         const Color(0xFFFEE2E2),
       ),
       MaterialRequestStatus.cancelled => (
         'Cancelled',
-        const Color(0xFF991B1B),
-        const Color(0xFFFEE2E2),
+        const Color(0xFF6B7280),
+        const Color(0xFFF9FAFB),
+        const Color(0xFFE5E7EB),
       ),
       MaterialRequestStatus.fulfilled => (
         'Fulfilled',
-        const Color(0xFF166534),
-        const Color(0xFFDCFCE7),
+        const Color(0xFF2563EB),
+        const Color(0xFFEFF6FF),
+        const Color(0xFFDBEAFE),
       ),
     };
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.w700,
-            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(
-              11.0,
-              12.0,
-            ),
-          ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border),
+      ),
+      child: Text(
+        label,
+        maxLines: 1,
+        softWrap: false,
+        style: TextStyle(
+          color: color,
+          fontWeight: FontWeight.w700,
+          fontSize: (MediaQuery.sizeOf(context).width * 0.0075).clamp(10.0, 11.0),
         ),
       ),
     );
@@ -659,34 +701,46 @@ class _PriorityLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     Color bg = const Color(0xFFF3F4F6);
     Color fg = const Color(0xFF4B5563);
-    
+    Color border = const Color(0xFFE5E7EB);
+
     final lower = priority.toLowerCase();
     if (lower.contains('low')) {
-      bg = const Color(0xFFDCFCE7);
-      fg = const Color(0xFF16A34A);
+      bg = const Color(0xFFEFF6FF);
+      fg = const Color(0xFF2563EB);
+      border = const Color(0xFFDBEAFE);
     } else if (lower.contains('medium')) {
-      bg = const Color(0xFFFEF9C3);
-      fg = const Color(0xFFD97706);
-    } else if (lower.contains('high') || lower.contains('urgent')) {
-      bg = const Color(0xFFFEE2E2);
+      bg = const Color(0xFFFEFCE8);
+      fg = const Color(0xFFCA8A04);
+      border = const Color(0xFFFEF08A);
+    } else if (lower.contains('high')) {
+      bg = const Color(0xFFFEF2F2);
       fg = const Color(0xFFEF4444);
+      border = const Color(0xFFFEE2E2);
+    } else if (lower.contains('critical') || lower.contains('urgent')) {
+      bg = const Color(0xFFFFF1F2);
+      fg = const Color(0xFFBE123C);
+      border = const Color(0xFFFECDD3);
     }
 
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-        decoration: BoxDecoration(
-          color: bg,
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: Text(
-          priority,
-          style: TextStyle(
-            color: fg,
-            fontWeight: FontWeight.w700,
-            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(11.0, 12.0),
-          ),
+    final displayText = priority.isNotEmpty
+        ? priority[0].toUpperCase() + priority.substring(1)
+        : priority;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: bg,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: border),
+      ),
+      child: Text(
+        displayText,
+        maxLines: 1,
+        softWrap: false,
+        style: TextStyle(
+          color: fg,
+          fontWeight: FontWeight.w700,
+          fontSize: (MediaQuery.sizeOf(context).width * 0.0075).clamp(10.0, 11.0),
         ),
       ),
     );

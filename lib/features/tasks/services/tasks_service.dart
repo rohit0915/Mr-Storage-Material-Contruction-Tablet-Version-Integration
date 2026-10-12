@@ -16,10 +16,21 @@ class TasksService extends GetxService {
 
   Future<List<TaskProjectOption>> getProjects() async {
     try {
-      final res = await _apiClient.get(ApiConstants.projects);
+      final res = await _apiClient.get(
+        ApiConstants.projects,
+        queryParams: const {'page': '1', 'limit': '100'},
+      );
       List items = [];
-      if (res is Map && res['data'] is List) {
-        items = res['data'] as List;
+      if (res is Map) {
+        if (res['data'] is Map && res['data']['projects'] is List) {
+          items = res['data']['projects'] as List;
+        } else if (res['projects'] is List) {
+          items = res['projects'] as List;
+        } else if (res['data'] is List) {
+          items = res['data'] as List;
+        } else if (res['items'] is List) {
+          items = res['items'] as List;
+        }
       } else if (res is List) {
         items = res;
       }

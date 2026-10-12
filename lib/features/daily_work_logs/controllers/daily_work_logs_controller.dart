@@ -44,8 +44,20 @@ class DailyWorkLogsController extends GetxController {
     totalResults.value = workLogs.length;
     totalPages.value = 1;
 
-    loadProjectsAndTasks();
-    fetchWorkLogs();
+    final args = Get.arguments;
+    if (args is Map) {
+      final pName = args['project'] ?? args['projectName'] ?? args['title'] ?? args['name'];
+      if (pName != null && pName.toString().isNotEmpty) {
+        selectedProject.value = pName.toString();
+      }
+    }
+
+    _initLoad();
+  }
+
+  Future<void> _initLoad() async {
+    await loadProjectsAndTasks();
+    await fetchWorkLogs();
   }
 
   @override
@@ -54,11 +66,31 @@ class DailyWorkLogsController extends GetxController {
     super.onClose();
   }
 
+  Future<void>? _projectsLoadingFuture;
+
   Future<void> loadProjectsAndTasks() async {
+    _projectsLoadingFuture = _fetchProjectsAndTasks();
+    await _projectsLoadingFuture;
+  }
+
+  Future<void> _fetchProjectsAndTasks() async {
     try {
       final pList = await _service.getProjects();
       if (pList.isNotEmpty) {
         projects.assignAll(pList);
+        if (selectedProject.value != 'All Projects' && selectedProject.value.isNotEmpty) {
+          final target = selectedProject.value.toLowerCase().trim();
+          final match = projects.firstWhere(
+            (p) =>
+                (p['name'] ?? '').toLowerCase() == target ||
+                (p['displayName'] ?? '').toLowerCase() == target ||
+                (p['id'] ?? '').toLowerCase() == target,
+            orElse: () => const {},
+          );
+          if (match.isNotEmpty && match['name'] != null && match['name']!.isNotEmpty) {
+            selectedProject.value = match['name']!;
+          }
+        }
       }
       final tList = await _service.getTasks();
       if (tList.isNotEmpty) {
@@ -67,16 +99,28 @@ class DailyWorkLogsController extends GetxController {
     } catch (_) {}
   }
 
+  bool _isValidObjectId(String? id) {
+    if (id == null || id.isEmpty) return false;
+    return RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(id);
+  }
+
   Future<void> fetchWorkLogs() async {
     isLoading.value = true;
     try {
       String? leadId;
       if (selectedProject.value != 'All Projects' && selectedProject.value.isNotEmpty) {
+        final target = selectedProject.value.toLowerCase().trim();
         final match = projects.firstWhere(
-          (p) => p['name'] == selectedProject.value || p['displayName'] == selectedProject.value,
-          orElse: () => {'id': ''},
+          (p) =>
+              (p['name'] ?? '').toLowerCase() == target ||
+              (p['displayName'] ?? '').toLowerCase() == target ||
+              (p['id'] ?? '').toLowerCase() == target,
+          orElse: () => const {},
         );
-        leadId = match['id'];
+        final candidateId = match['id'];
+        if (_isValidObjectId(candidateId)) {
+          leadId = candidateId;
+        }
       }
 
       final res = await _service.getWorkLogs(
@@ -90,8 +134,15 @@ class DailyWorkLogsController extends GetxController {
       if (res is Map) {
         if (res['data'] is List) {
           rawList = res['data'] as List;
-        } else if (res['data'] is Map && res['data']['items'] is List) {
-          rawList = res['data']['items'] as List;
+        } else if (res['data'] is Map) {
+          final data = res['data'] as Map;
+          if (data['logs'] is List) {
+            rawList = data['logs'] as List;
+          } else if (data['items'] is List) {
+            rawList = data['items'] as List;
+          } else if (data['workLogs'] is List) {
+            rawList = data['workLogs'] as List;
+          }
         } else if (res['logs'] is List) {
           rawList = res['logs'] as List;
         } else if (res['workLogs'] is List) {
@@ -102,6 +153,7 @@ class DailyWorkLogsController extends GetxController {
         final rawTotal = res['total'] ??
             res['totalCount'] ??
             res['totalResults'] ??
+            (res['data'] is Map ? res['data']['total'] : null) ??
             res['pagination']?['total'];
         if (rawTotal != null) {
           totalResults.value = int.tryParse(rawTotal.toString()) ?? rawList.length;
@@ -109,6 +161,7 @@ class DailyWorkLogsController extends GetxController {
 
         final rawPages = res['totalPages'] ??
             res['pages'] ??
+            (res['data'] is Map ? res['data']['totalPages'] : null) ??
             res['pagination']?['totalPages'];
         if (rawPages != null) {
           totalPages.value = int.tryParse(rawPages.toString()) ?? 1;
@@ -170,9 +223,16 @@ class DailyWorkLogsController extends GetxController {
     var filtered = List<WorkLogItem>.from(allWorkLogs);
 
     if (selectedProject.value != 'All Projects' && selectedProject.value.isNotEmpty) {
-      filtered = filtered.where((item) =>
-          item.projectName.toLowerCase() == selectedProject.value.toLowerCase() ||
-          item.jobId == selectedProject.value).toList();
+      final target = selectedProject.value.toLowerCase().trim();
+      filtered = filtered.where((item) {
+        final pName = item.projectName.toLowerCase().trim();
+        final jId = item.jobId.toLowerCase().trim();
+        final lId = item.leadId.toLowerCase().trim();
+        return pName == target ||
+            (pName.isNotEmpty && (pName.contains(target) || target.contains(pName))) ||
+            (jId.isNotEmpty && (jId == target || target.contains(jId))) ||
+            (lId.isNotEmpty && lId == target);
+      }).toList();
     }
 
     if (searchQuery.value.trim().isNotEmpty) {
@@ -216,6 +276,13 @@ class DailyWorkLogsController extends GetxController {
   }
 
   Future<void> openCreateLogDialog(BuildContext context) async {
+    if (_projectsLoadingFuture != null) {
+      await _projectsLoadingFuture;
+    } else if (projects.length <= WorkLogsService.defaultProjectsList().length) {
+      await loadProjectsAndTasks();
+    }
+    if (!context.mounted) return;
+
     final newItem = await CreateWorkLogDialog.show(
       context,
       projects: projects.toList(),

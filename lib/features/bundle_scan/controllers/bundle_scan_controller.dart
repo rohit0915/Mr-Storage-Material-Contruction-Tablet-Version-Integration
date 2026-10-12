@@ -73,9 +73,37 @@ class BundleScanController extends GetxController {
     pageIndex.value = pageToFetch - 1;
     isLoading.value = true;
     try {
+      String? apiStatus;
+      if (selectedStatus.value != 'All Statuses') {
+        final lower = selectedStatus.value.toLowerCase();
+        if (lower.contains('pending')) {
+          apiStatus = 'pending';
+        } else if (lower.contains('stag')) {
+          apiStatus = 'staged';
+        } else if (lower.contains('truck') || lower.contains('assign')) {
+          apiStatus = 'on_truck';
+        } else if (lower.contains('load')) {
+          apiStatus = 'loaded';
+        } else if (lower.contains('draft')) {
+          apiStatus = 'draft';
+        }
+      }
+
+      String? apiSortBy;
+      if (selectedSort.value.contains('Weight')) {
+        apiSortBy = 'Weight';
+      } else if (selectedSort.value == 'Oldest') {
+        apiSortBy = 'Oldest';
+      } else if (selectedSort.value == 'Latest') {
+        apiSortBy = 'Latest';
+      }
+
       final resMap = await _service.fetchBundleScansData(
         page: pageToFetch,
         limit: pageSize.value,
+        search: searchQuery.value.isNotEmpty ? searchQuery.value : null,
+        sortBy: apiSortBy,
+        status: apiStatus,
       );
       final List<BundleScanItem> list = resMap['items'] ?? [];
       final Map<String, dynamic> stats = resMap['stats'] ?? {};
@@ -105,7 +133,8 @@ class BundleScanController extends GetxController {
   }
 
   Future<bool> submitScan(String code) async {
-    final success = await _service.scanBundle(code);
+    final res = await _service.scanBundle(code);
+    final success = res != null;
     if (success) {
       await fetchBundlesFromApi();
     }
@@ -121,7 +150,7 @@ class BundleScanController extends GetxController {
       if (idx >= 0) {
         _allBundles[idx] = _allBundles[idx].copyWith(
           status: BundleScanStatus.staging,
-          statusText: 'STAGING',
+          statusText: 'Staged',
         );
       }
     }
@@ -134,24 +163,56 @@ class BundleScanController extends GetxController {
   List<BundleScanItem> get filteredBundles {
     var list = _allBundles.toList();
     if (selectedStatus.value != 'All Statuses') {
-      final status = selectedStatus.value.toLowerCase();
-      list = list.where((b) => b.statusText.toLowerCase() == status || b.status.name.toLowerCase() == status).toList();
+      final s = selectedStatus.value.toLowerCase().replaceAll('_', ' ');
+      list = list.where((b) {
+        final st = b.statusText.toLowerCase().replaceAll('_', ' ');
+        final sn = b.status.name.toLowerCase().replaceAll('_', ' ');
+        if (s.contains('truck') || s.contains('assign')) {
+          return st.contains('truck') ||
+              st.contains('assign') ||
+              sn == 'assigned';
+        }
+        if (s.contains('stag')) {
+          return st.contains('stag') || sn == 'staging';
+        }
+        if (s.contains('load')) {
+          return st.contains('load') || sn == 'ready';
+        }
+        if (s.contains('pend')) {
+          return st.contains('pend') || sn == 'pending';
+        }
+        if (s.contains('draft')) {
+          return st.contains('draft');
+        }
+        return st.contains(s) || sn.contains(s);
+      }).toList();
     }
-    
+
     if (searchQuery.value.isNotEmpty) {
       final q = searchQuery.value.toLowerCase();
-      list = list.where((b) => 
-        b.bundleId.toLowerCase().contains(q) || 
+      list = list.where((b) =>
+        b.bundleId.toLowerCase().contains(q) ||
+        b.realMongoId.toLowerCase().contains(q) ||
         b.project.toLowerCase().contains(q) ||
+        b.jobId.toLowerCase().contains(q) ||
+        b.site.toLowerCase().contains(q) ||
+        b.parts.toLowerCase().contains(q) ||
+        b.loadId.toLowerCase().contains(q) ||
+        b.shipper.toLowerCase().contains(q) ||
         b.driver.toLowerCase().contains(q) ||
-        b.totalWeight.toLowerCase().contains(q)
+        b.statusText.toLowerCase().contains(q) ||
+        b.totalWeight.toLowerCase().contains(q),
       ).toList();
     }
 
-    if (selectedSort.value == 'Weight High to Low') {
-      list.sort((a, b) => _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)));
-    } else if (selectedSort.value == 'Weight Low to High') {
-      list.sort((a, b) => _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)));
+    if (selectedSort.value.contains('Weight')) {
+      if (selectedSort.value == 'Weight Low to High') {
+        list.sort((a, b) =>
+            _parseWeight(a.totalWeight).compareTo(_parseWeight(b.totalWeight)));
+      } else {
+        list.sort((a, b) =>
+            _parseWeight(b.totalWeight).compareTo(_parseWeight(a.totalWeight)));
+      }
     } else if (selectedSort.value == 'Oldest') {
       list.sort((a, b) => a.bundleId.compareTo(b.bundleId));
     } else {
@@ -169,11 +230,13 @@ class BundleScanController extends GetxController {
   void setStatusFilter(String status) {
     selectedStatus.value = status;
     pageIndex.value = 0;
+    fetchBundlesFromApi(targetPage: 1);
   }
 
   void setSort(String sort) {
     selectedSort.value = sort;
     pageIndex.value = 0;
+    fetchBundlesFromApi(targetPage: 1);
   }
 
   int get totalPages {

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
@@ -496,15 +497,6 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
   OverlayEntry? _entry;
   bool _isOpen = false;
 
-  final List<String> _dateOptions = const [
-    'All dates',
-    'Today',
-    'Last 7 days',
-    'Last 30 days',
-    'This month',
-    'Custom range',
-  ];
-
   @override
   void dispose() {
     _removeOverlay();
@@ -531,7 +523,7 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
     }
   }
 
-  Future<void> _handleOptionSelect(String choice) async {
+  void _handlePresetSelect(String choice) {
     _removeOverlay();
     if (mounted) {
       setState(() {
@@ -544,29 +536,35 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
       return;
     }
     final now = DateUtils.dateOnly(DateTime.now());
-    if (choice == 'Custom range') {
-      final range = await showDateRangePicker(
-        context: context,
-        firstDate: DateTime(2020),
-        lastDate: DateTime(now.year + 10),
-      );
-      if (range != null) widget.onSelected(range);
-      return;
-    }
     final start = switch (choice) {
-      'Last 7 days' => now.subtract(const Duration(days: 7)),
-      'Last 30 days' => now.subtract(const Duration(days: 30)),
-      'This month' => DateTime(now.year, now.month),
+      'Last 7 Days' || 'Last 7 days' => now.subtract(const Duration(days: 7)),
+      'Last 30 Days' || 'Last 30 days' => now.subtract(const Duration(days: 30)),
+      'This Month' || 'This month' => DateTime(now.year, now.month),
       _ => now,
     };
     widget.onSelected(DateTimeRange(start: start, end: now));
   }
 
+  void _handleCustomApply(DateTimeRange? range) {
+    _removeOverlay();
+    if (mounted) {
+      setState(() {
+        _isOpen = false;
+      });
+    }
+    widget.onSelected(range);
+  }
+
   void _showOverlay() {
     final renderBox = context.findRenderObject() as RenderBox?;
-    final buttonWidth = renderBox?.size.width ?? 200.0;
-    final menuWidth = buttonWidth.clamp(180.0, 260.0);
     final size = MediaQuery.sizeOf(context);
+    const cardWidth = 320.0;
+    final targetOffset = renderBox != null
+        ? renderBox.localToGlobal(Offset.zero)
+        : Offset.zero;
+    final dxOffset = (targetOffset.dx + cardWidth > size.width - 16)
+        ? (size.width - 16 - targetOffset.dx - cardWidth)
+        : 0.0;
 
     _entry = OverlayEntry(
       builder: (context) {
@@ -588,60 +586,23 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
             CompositedTransformFollower(
               link: _link,
               showWhenUnlinked: false,
-              offset: const Offset(0, 44),
+              offset: Offset(dxOffset, 44),
               child: Material(
-                elevation: 8,
-                shadowColor: Colors.black.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(8),
-                child: Container(
-                  width: menuWidth,
-                  constraints: BoxConstraints(maxHeight: size.height * 0.38),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                  ),
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    shrinkWrap: true,
-                    children: _dateOptions.map((opt) {
-                      final isSelected = widget.value.contains(opt);
-                      return InkWell(
-                        onTap: () => _handleOptionSelect(opt),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 10,
-                          ),
-                          color: isSelected
-                              ? const Color(0xFFF8FAFC)
-                              : Colors.white,
-                          child: Row(
-                            children: [
-                              Expanded(
-                                child: Text(
-                                  opt,
-                                  style: TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: isSelected
-                                        ? FontWeight.w700
-                                        : FontWeight.w500,
-                                    color: AppColors.textPrimary,
-                                  ),
-                                ),
-                              ),
-                              if (isSelected)
-                                const Icon(
-                                  Icons.check,
-                                  size: 16,
-                                  color: AppColors.textPrimary,
-                                ),
-                            ],
-                          ),
-                        ),
-                      );
-                    }).toList(),
-                  ),
+                elevation: 10,
+                shadowColor: Colors.black.withValues(alpha: 0.14),
+                borderRadius: BorderRadius.circular(10),
+                child: _DateFilterCard(
+                  currentValue: widget.value,
+                  onPresetSelected: _handlePresetSelect,
+                  onApplyCustom: _handleCustomApply,
+                  onClose: () {
+                    _removeOverlay();
+                    if (mounted) {
+                      setState(() {
+                        _isOpen = false;
+                      });
+                    }
+                  },
                 ),
               ),
             ),
@@ -657,6 +618,11 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
     final valueSize = (size.width * 0.009).clamp(11.0, 13.0);
+    final displayLabel = widget.value == 'All dates'
+        ? 'All dates'
+        : (widget.value.startsWith('Date:')
+            ? widget.value
+            : 'Date: ${widget.value}');
 
     return CompositedTransformTarget(
       link: _link,
@@ -677,9 +643,7 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
             children: [
               Expanded(
                 child: Text(
-                  widget.value.startsWith('Date:')
-                      ? widget.value
-                      : 'Date: ${widget.value}',
+                  displayLabel,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -702,3 +666,411 @@ class _DateFilterInlineChipState extends State<_DateFilterInlineChip> {
     );
   }
 }
+
+class _DateFilterCard extends StatefulWidget {
+  const _DateFilterCard({
+    required this.currentValue,
+    required this.onPresetSelected,
+    required this.onApplyCustom,
+    required this.onClose,
+  });
+
+  final String currentValue;
+  final ValueChanged<String> onPresetSelected;
+  final ValueChanged<DateTimeRange?> onApplyCustom;
+  final VoidCallback onClose;
+
+  @override
+  State<_DateFilterCard> createState() => _DateFilterCardState();
+}
+
+class _DateFilterCardState extends State<_DateFilterCard> {
+  DateTime? _fromDate;
+  DateTime? _toDate;
+  String? _activePreset;
+  String? _activeField; // 'from' | 'to' | null
+
+  @override
+  void initState() {
+    super.initState();
+    _parseInitialDates();
+  }
+
+  void _parseInitialDates() {
+    final val = widget.currentValue.replaceFirst('Date: ', '').trim();
+    if (val == 'All dates' || val.isEmpty) {
+      _activePreset = 'All dates';
+      return;
+    }
+    if (val.contains(' - ')) {
+      final parts = val.split(' - ');
+      try {
+        final f = DateFormat('dd MMM yyyy');
+        _fromDate = f.parse(parts[0].trim());
+        _toDate = f.parse(parts[1].trim());
+      } catch (_) {}
+    }
+  }
+
+  void _onFieldTap(String field) {
+    setState(() {
+      if (_activeField == field) {
+        _activeField = null;
+      } else {
+        _activeField = field;
+      }
+    });
+  }
+
+  DateTime _safeInitialDate(DateTime? preferred, DateTime first, DateTime last) {
+    final target = preferred ?? DateTime.now();
+    if (target.isBefore(first)) return first;
+    if (target.isAfter(last)) return last;
+    return target;
+  }
+
+  void _onCalendarDateChanged(DateTime date) {
+    setState(() {
+      if (_activeField == 'from') {
+        _fromDate = date;
+        if (_toDate != null && _toDate!.isBefore(date)) {
+          _toDate = date;
+        }
+        _activeField = 'to'; // smoothly move to end date selection
+      } else {
+        _toDate = date;
+        if (_fromDate != null && date.isBefore(_fromDate!)) {
+          _fromDate = date;
+        }
+      }
+      _activePreset = null;
+    });
+  }
+
+  Widget _buildPresetChip(String label) {
+    final isSelected = _activePreset == label;
+    return InkWell(
+      onTap: () {
+        widget.onPresetSelected(label);
+      },
+      borderRadius: BorderRadius.circular(6),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? const Color(0xFFEFF6FF) : const Color(0xFFF1F5F9),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primaryBlue
+                : const Color(0xFFE2E8F0),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected
+                ? AppColors.primaryBlue
+                : const Color(0xFF334155),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+
+    return Container(
+      width: 320,
+      padding: const EdgeInsets.all(16),
+      constraints: BoxConstraints(maxHeight: size.height * 0.8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFFE2E8F0)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'FILTER BY DATE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.6,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _buildPresetChip('Today'),
+                _buildPresetChip('Last 7 Days'),
+                _buildPresetChip('Last 30 Days'),
+                _buildPresetChip('This Month'),
+                _buildPresetChip('All dates'),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'FROM DATE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: () => _onFieldTap('from'),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: _activeField == 'from'
+                        ? AppColors.primaryBlue
+                        : const Color(0xFFCBD5E1),
+                    width: _activeField == 'from' ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _fromDate != null
+                            ? DateFormat('dd/MM/yyyy').format(_fromDate!)
+                            : 'dd/mm/yyyy',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _fromDate != null
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: _activeField == 'from'
+                          ? AppColors.primaryBlue
+                          : const Color(0xFF64748B),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 10),
+            const Text(
+              'TO DATE',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+                letterSpacing: 0.5,
+                color: Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 6),
+            InkWell(
+              onTap: () => _onFieldTap('to'),
+              borderRadius: BorderRadius.circular(6),
+              child: Container(
+                height: 38,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: _activeField == 'to'
+                        ? AppColors.primaryBlue
+                        : const Color(0xFFCBD5E1),
+                    width: _activeField == 'to' ? 1.5 : 1,
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        _toDate != null
+                            ? DateFormat('dd/MM/yyyy').format(_toDate!)
+                            : 'dd/mm/yyyy',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: _toDate != null
+                              ? const Color(0xFF1E293B)
+                              : const Color(0xFF94A3B8),
+                        ),
+                      ),
+                    ),
+                    Icon(
+                      Icons.calendar_today_outlined,
+                      size: 14,
+                      color: _activeField == 'to'
+                          ? AppColors.primaryBlue
+                          : const Color(0xFF64748B),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_activeField != null) ...[
+              Container(
+                margin: const EdgeInsets.only(top: 12),
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(10, 6, 8, 2),
+                      child: Row(
+                        children: [
+                          Text(
+                            _activeField == 'from'
+                                ? 'Select Start Date'
+                                : 'Select End Date',
+                            style: const TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.primaryBlue,
+                            ),
+                          ),
+                          const Spacer(),
+                          InkWell(
+                            onTap: () {
+                              setState(() {
+                                _activeField = null;
+                              });
+                            },
+                            child: const Padding(
+                              padding: EdgeInsets.all(2),
+                              child: Icon(
+                                Icons.close,
+                                size: 16,
+                                color: Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Theme(
+                      data: Theme.of(context).copyWith(
+                        colorScheme: const ColorScheme.light(
+                          primary: AppColors.primaryBlue,
+                          onPrimary: Colors.white,
+                          surface: Color(0xFFF8FAFC),
+                          onSurface: Color(0xFF1E293B),
+                        ),
+                      ),
+                      child: SizedBox(
+                        height: 275,
+                        child: CalendarDatePicker(
+                          key: ValueKey(_activeField),
+                          initialDate: _safeInitialDate(
+                            _activeField == 'to' ? _toDate : _fromDate,
+                            DateTime(2020),
+                            DateTime(2035),
+                          ),
+                          firstDate: DateTime(2020),
+                          lastDate: DateTime(2035),
+                          onDateChanged: _onCalendarDateChanged,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                if (_fromDate != null || _toDate != null)
+                  TextButton(
+                    onPressed: () {
+                      setState(() {
+                        _fromDate = null;
+                        _toDate = null;
+                        _activeField = null;
+                        _activePreset = 'All dates';
+                      });
+                      widget.onPresetSelected('All dates');
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      minimumSize: const Size(48, 32),
+                    ),
+                    child: const Text(
+                      'Clear',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                const Spacer(),
+                ElevatedButton(
+                  onPressed: () {
+                    if (_fromDate != null && _toDate != null) {
+                      widget.onApplyCustom(
+                        DateTimeRange(start: _fromDate!, end: _toDate!),
+                      );
+                    } else if (_fromDate != null) {
+                      widget.onApplyCustom(
+                        DateTimeRange(start: _fromDate!, end: _fromDate!),
+                      );
+                    } else if (_toDate != null) {
+                      widget.onApplyCustom(
+                        DateTimeRange(start: _toDate!, end: _toDate!),
+                      );
+                    } else {
+                      widget.onApplyCustom(null);
+                    }
+                    widget.onClose();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primaryBlue,
+                    foregroundColor: Colors.white,
+                    elevation: 0,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 8,
+                    ),
+                    minimumSize: const Size(64, 34),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                  ),
+                  child: const Text(
+                    'Done',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -579,41 +579,115 @@ class _AddDeliveryDialogState extends State<AddDeliveryDialog> {
   }
 
   Widget _buildProjectDropdown(List<CalendarProjectOption> options) {
-    return DropdownButtonFormField<String>(
-      key: ValueKey(_selectedProjectId ?? 'select_project'),
-      initialValue: _selectedProjectId,
-      isExpanded: true,
-      isDense: true,
-      decoration: _inputDecoration(),
-      hint: const Text(
-        'Select Project',
-        style: TextStyle(
-          color: AppColors.textSecondary,
-          fontSize: 13,
-          fontWeight: FontWeight.w400,
+    final selectedProject = options.firstWhereOrNull(
+      (p) => p.id == _selectedProjectId,
+    );
+
+    final hasError = _errorMessage != null &&
+        (_selectedProjectId == null || _selectedProjectId!.isEmpty);
+
+    return InkWell(
+      onTap: () => _openProjectPicker(options),
+      borderRadius: BorderRadius.circular(10),
+      child: Container(
+        height: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color: hasError ? AppColors.badgeRed : AppColors.cardBorder,
+            width: hasError ? 1.4 : 1.0,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.business_rounded,
+              size: 19,
+              color: selectedProject != null
+                  ? AppColors.primaryBlue
+                  : AppColors.textSecondary,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: selectedProject == null
+                  ? const Text(
+                      'Select Project',
+                      style: TextStyle(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    )
+                  : Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            selectedProject.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                        ),
+                        if (selectedProject.code.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF1F5F9),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(
+                                color: const Color(0xFFE2E8F0),
+                              ),
+                            ),
+                            child: Text(
+                              selectedProject.code,
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF475569),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+            ),
+            const Icon(
+              Icons.keyboard_arrow_down_rounded,
+              color: AppColors.textSecondary,
+              size: 20,
+            ),
+          ],
         ),
       ),
-      icon: const Icon(
-        Icons.keyboard_arrow_down,
-        color: AppColors.textSecondary,
-        size: 20,
-      ),
-      items: options.map((p) {
-        final label = p.code.isNotEmpty ? '${p.name} (${p.code})' : p.name;
-        return DropdownMenuItem<String>(
-          value: p.id,
-          child: Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-          ),
-        );
-      }).toList(),
-      onChanged: (val) {
-        setState(() => _selectedProjectId = val);
-      },
     );
+  }
+
+  Future<void> _openProjectPicker(List<CalendarProjectOption> options) async {
+    final selectedId = await showDialog<String>(
+      context: context,
+      barrierColor: Colors.black.withValues(alpha: 0.35),
+      builder: (ctx) => _ProjectPickerDialog(
+        options: options,
+        selectedId: _selectedProjectId,
+      ),
+    );
+
+    if (selectedId != null && mounted) {
+      setState(() {
+        _selectedProjectId = selectedId;
+        _errorMessage = null;
+      });
+    }
   }
 
   Widget _buildUploadBox() {
@@ -794,6 +868,295 @@ class DeliverySuccessDialog extends StatelessWidget {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectPickerDialog extends StatefulWidget {
+  const _ProjectPickerDialog({
+    required this.options,
+    this.selectedId,
+  });
+
+  final List<CalendarProjectOption> options;
+  final String? selectedId;
+
+  @override
+  State<_ProjectPickerDialog> createState() => _ProjectPickerDialogState();
+}
+
+class _ProjectPickerDialogState extends State<_ProjectPickerDialog> {
+  final _searchCtrl = TextEditingController();
+  String _query = '';
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final dialogWidth = (size.width * 0.42).clamp(380.0, 480.0);
+    final dialogHeight = (size.height * 0.65).clamp(360.0, 520.0);
+
+    final filtered = widget.options.where((p) {
+      if (_query.isEmpty) return true;
+      final q = _query.toLowerCase();
+      return p.name.toLowerCase().contains(q) ||
+          p.code.toLowerCase().contains(q);
+    }).toList();
+
+    return Dialog(
+      backgroundColor: Colors.white,
+      surfaceTintColor: Colors.white,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: dialogWidth,
+          maxHeight: dialogHeight,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 16, 12, 12),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Select Project',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.textPrimary,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${widget.options.length} projects available',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 20),
+                    splashRadius: 18,
+                    color: AppColors.textSecondary,
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+            ),
+
+            // Search Bar
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: TextField(
+                controller: _searchCtrl,
+                autofocus: false,
+                onChanged: (val) {
+                  setState(() => _query = val.trim());
+                },
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textPrimary,
+                ),
+                decoration: InputDecoration(
+                  hintText: 'Search by project name or code...',
+                  hintStyle: const TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: 12,
+                  ),
+                  prefixIcon: const Icon(
+                    Icons.search,
+                    size: 18,
+                    color: AppColors.textSecondary,
+                  ),
+                  suffixIcon: _query.isNotEmpty
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 16),
+                          splashRadius: 16,
+                          color: AppColors.textSecondary,
+                          onPressed: () {
+                            _searchCtrl.clear();
+                            setState(() => _query = '');
+                          },
+                        )
+                      : null,
+                  isDense: true,
+                  contentPadding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 10,
+                  ),
+                  filled: true,
+                  fillColor: const Color(0xFFF8FAFC),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: Color(0xFFE2E8F0)),
+                  ),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(10),
+                    borderSide: const BorderSide(color: AppColors.primaryBlue),
+                  ),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 8),
+            const Divider(height: 1, color: Color(0xFFF1F5F9)),
+
+            // Projects List
+            Flexible(
+              child: filtered.isEmpty
+                  ? Center(
+                      child: Padding(
+                        padding: const EdgeInsets.all(24.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(
+                              Icons.search_off_rounded,
+                              size: 40,
+                              color: AppColors.textSecondary,
+                            ),
+                            const SizedBox(height: 8),
+                            const Text(
+                              'No projects found',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.textPrimary,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'No project matches "$_query"',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    )
+                  : ListView.separated(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 8,
+                      ),
+                      itemCount: filtered.length,
+                      separatorBuilder: (ctx, i) => const SizedBox(height: 4),
+                      itemBuilder: (context, index) {
+                        final p = filtered[index];
+                        final isSelected = p.id == widget.selectedId;
+
+                        return InkWell(
+                          onTap: () => Navigator.of(context).pop(p.id),
+                          borderRadius: BorderRadius.circular(8),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isSelected
+                                  ? const Color(0xFFEFF6FF)
+                                  : Colors.transparent,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: isSelected
+                                    ? const Color(0xFFBFDBFE)
+                                    : Colors.transparent,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 34,
+                                  height: 34,
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFFDBEAFE)
+                                        : const Color(0xFFF1F5F9),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    Icons.business_rounded,
+                                    size: 18,
+                                    color: isSelected
+                                        ? AppColors.primaryBlue
+                                        : const Color(0xFF64748B),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        p.name,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: isSelected
+                                              ? FontWeight.w700
+                                              : FontWeight.w600,
+                                          color: isSelected
+                                              ? AppColors.primaryBlue
+                                              : AppColors.textPrimary,
+                                        ),
+                                      ),
+                                      if (p.code.isNotEmpty) ...[
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          p.code,
+                                          style: const TextStyle(
+                                            fontSize: 11,
+                                            fontWeight: FontWeight.w500,
+                                            color: AppColors.textSecondary,
+                                          ),
+                                        ),
+                                      ],
+                                    ],
+                                  ),
+                                ),
+                                if (isSelected)
+                                  const Icon(
+                                    Icons.check_circle_rounded,
+                                    size: 20,
+                                    color: AppColors.primaryBlue,
+                                  ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
         ),
       ),
     );

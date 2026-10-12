@@ -107,7 +107,7 @@ class BundleScanView extends GetView<BundleScanController> {
                 ElevatedButton(
                   onPressed: () => BundleScanQrDialog.show(
                     context,
-                    onScanned: (bundleId) {
+                    onScanned: (bundleId, projectId) {
                       final found = controller.filteredBundles.firstWhereOrNull(
                         (b) =>
                             b.bundleId.toLowerCase() ==
@@ -117,7 +117,23 @@ class BundleScanView extends GetView<BundleScanController> {
                       );
                       Get.toNamed(
                         AppRoutes.bundleScanDetail,
-                        arguments: found ?? bundleId,
+                        arguments: found ??
+                            BundleScanItem(
+                              id: bundleId,
+                              bundleId: bundleId,
+                              realMongoId: BundleScanItem.isMongoHexId(bundleId)
+                                  ? bundleId
+                                  : '',
+                              projectId: projectId ?? '',
+                              project: 'N/A',
+                              jobId: '-',
+                              site: '-',
+                              parts: '-',
+                              totalWeight: '0.0 LBS',
+                              time: '-',
+                              status: BundleScanStatus.pending,
+                              statusText: 'Pending',
+                            ),
                       );
                     },
                   ),
@@ -147,7 +163,7 @@ class BundleScanView extends GetView<BundleScanController> {
                 ElevatedButton(
                   onPressed: () => BundleScanQrDialog.show(
                     context,
-                    onScanned: (bundleId) {
+                    onScanned: (bundleId, projectId) {
                       final found = controller.filteredBundles.firstWhereOrNull(
                         (b) =>
                             b.bundleId.toLowerCase() ==
@@ -157,7 +173,23 @@ class BundleScanView extends GetView<BundleScanController> {
                       );
                       Get.toNamed(
                         AppRoutes.bundleScanDetail,
-                        arguments: found ?? bundleId,
+                        arguments: found ??
+                            BundleScanItem(
+                              id: bundleId,
+                              bundleId: bundleId,
+                              realMongoId: BundleScanItem.isMongoHexId(bundleId)
+                                  ? bundleId
+                                  : '',
+                              projectId: projectId ?? '',
+                              project: 'N/A',
+                              jobId: '-',
+                              site: '-',
+                              parts: '-',
+                              totalWeight: '0.0 LBS',
+                              time: '-',
+                              status: BundleScanStatus.pending,
+                              statusText: 'Pending',
+                            ),
                       );
                     },
                   ),
@@ -191,26 +223,20 @@ class BundleScanView extends GetView<BundleScanController> {
               () => Row(
                 children: [
                   _SummaryCard(
-                    label: 'Bundles Scanned',
+                    label: 'BUNDLES SCANNED',
                     value: '${controller.bundlesScanned}',
-                    subtitle: '↑ 5.62% from last month',
-                    subtitleColor: AppColors.success,
                     dotColor: const Color(0xFF7C3AED),
                   ),
                   SizedBox(width: size.width * 0.010),
                   _SummaryCard(
-                    label: 'Bundles Remaining',
+                    label: 'BUNDLES REMAINING',
                     value: '${controller.bundlesRemaining}',
-                    subtitle: '↑ 11.4% from last month',
-                    subtitleColor: AppColors.success,
                     dotColor: const Color(0xFF22C55E),
                   ),
                   SizedBox(width: size.width * 0.010),
                   _SummaryCard(
-                    label: 'Bundles Loaded',
+                    label: 'BUNDLES LOADED',
                     value: '${controller.bundlesLoaded}',
-                    subtitle: '↑ 8.52% from last month',
-                    subtitleColor: AppColors.success,
                     dotColor: const Color(0xFFEAB308),
                   ),
                 ],
@@ -231,7 +257,7 @@ class BundleScanView extends GetView<BundleScanController> {
                         color: AppColors.textPrimary,
                       ),
                       decoration: InputDecoration(
-                        hintText: 'Search...',
+                        hintText: 'Search bundle history...',
                         hintStyle: TextStyle(
                           fontSize: subSize,
                           color: AppColors.textSecondary,
@@ -277,8 +303,8 @@ class BundleScanView extends GetView<BundleScanController> {
                       child: DropdownButton<String>(
                         value: controller.selectedStatus.value,
                         icon: const Icon(
-                          Icons.filter_list_rounded,
-                          size: 16,
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 18,
                           color: AppColors.textSecondary,
                         ),
                         style: TextStyle(
@@ -292,20 +318,24 @@ class BundleScanView extends GetView<BundleScanController> {
                             child: Text('All Statuses'),
                           ),
                           DropdownMenuItem(
-                            value: 'ASSIGNED TO TRUCK',
-                            child: Text('ASSIGNED TO TRUCK'),
+                            value: 'Pending',
+                            child: Text('Pending'),
                           ),
                           DropdownMenuItem(
-                            value: 'READY',
-                            child: Text('READY'),
+                            value: 'Staged',
+                            child: Text('Staged'),
                           ),
                           DropdownMenuItem(
-                            value: 'STAGING',
-                            child: Text('STAGING'),
+                            value: 'Assigned to Truck',
+                            child: Text('Assigned to Truck'),
                           ),
                           DropdownMenuItem(
-                            value: 'PENDING',
-                            child: Text('PENDING'),
+                            value: 'Loaded',
+                            child: Text('Loaded'),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Draft',
+                            child: Text('Draft'),
                           ),
                         ],
                         onChanged: (val) {
@@ -327,7 +357,9 @@ class BundleScanView extends GetView<BundleScanController> {
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
-                        value: controller.selectedSort.value,
+                        value: controller.selectedSort.value == 'Weight High to Low' || controller.selectedSort.value == 'Weight Low to High'
+                            ? 'Weight'
+                            : controller.selectedSort.value,
                         icon: const Icon(
                           Icons.keyboard_arrow_down_rounded,
                           size: 18,
@@ -344,16 +376,12 @@ class BundleScanView extends GetView<BundleScanController> {
                             child: Text('Sort by : Latest'),
                           ),
                           DropdownMenuItem(
+                            value: 'Weight',
+                            child: Text('Sort by : Weight'),
+                          ),
+                          DropdownMenuItem(
                             value: 'Oldest',
                             child: Text('Sort by : Oldest'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Weight High to Low',
-                            child: Text('Sort by : Weight High'),
-                          ),
-                          DropdownMenuItem(
-                            value: 'Weight Low to High',
-                            child: Text('Sort by : Weight Low'),
                           ),
                         ],
                         onChanged: (val) {
@@ -382,6 +410,7 @@ class BundleScanView extends GetView<BundleScanController> {
               }
               final rows = controller.pageBundles;
               return Container(
+                clipBehavior: Clip.antiAlias,
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(12),
@@ -391,38 +420,36 @@ class BundleScanView extends GetView<BundleScanController> {
                   children: [
                     // Header row
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
-                      ),
-                      decoration: BoxDecoration(
+                      decoration: const BoxDecoration(
                         color: AppColors.tableHeader,
-                        borderRadius: const BorderRadius.vertical(
-                          top: Radius.circular(12),
+                        border: Border(
+                          bottom: BorderSide(
+                            color: AppColors.cardBorder,
+                            width: 1.5,
+                          ),
                         ),
                       ),
                       child: Row(
                         children: [
-                          SizedBox(
-                            width: 20,
-                            height: 20,
-                            child: Checkbox(
-                              value: false,
-                              onChanged: null,
-                              activeColor: AppColors.primaryBlue,
-                              materialTapTargetSize:
-                                  MaterialTapTargetSize.shrinkWrap,
-                              visualDensity: VisualDensity.compact,
+                          Container(
+                            width: 48,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                right: BorderSide(
+                                  color: AppColors.cardBorder,
+                                  width: 1.0,
+                                ),
+                              ),
                             ),
                           ),
-                          const SizedBox(width: 16),
-                          headCell('Project / Site', 4, subSize),
+                          headCell('Project / Site', 3, subSize),
                           headCell('Bundle ID', 2, subSize),
-                          headCell('Parts', 2, subSize),
+                          headCell('Parts', 1, subSize),
                           headCell('Total Weight ⇅', 2, subSize),
                           headCell('Time', 2, subSize),
-                          headCell('Status', 2, subSize),
-                          headCell('Action', 2, subSize, align: TextAlign.end),
+                          headCell('Status', 3, subSize),
+                          headCell('Action', 2, subSize, align: TextAlign.center, isLast: true),
                         ],
                       ),
                     ),
@@ -470,12 +497,10 @@ class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.label,
     required this.value,
-    required this.subtitle,
-    required this.subtitleColor,
     required this.dotColor,
   });
-  final String label, value, subtitle;
-  final Color subtitleColor, dotColor;
+  final String label, value;
+  final Color dotColor;
 
   @override
   Widget build(BuildContext context) {
@@ -520,7 +545,8 @@ class _SummaryCard extends StatelessWidget {
                           style: TextStyle(
                             fontSize: labelSize,
                             color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
+                            fontWeight: FontWeight.w700,
+                            letterSpacing: 0.3,
                           ),
                         ),
                         const SizedBox(height: 6),
@@ -530,15 +556,6 @@ class _SummaryCard extends StatelessWidget {
                             fontSize: valueSize,
                             fontWeight: FontWeight.w800,
                             color: AppColors.textPrimary,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          subtitle,
-                          style: TextStyle(
-                            fontSize: labelSize - 1,
-                            color: subtitleColor,
-                            fontWeight: FontWeight.w600,
                           ),
                         ),
                       ],
@@ -634,15 +651,24 @@ Widget headCell(
   int flex,
   double size, {
   TextAlign align = TextAlign.start,
+  bool isLast = false,
 }) => Expanded(
   flex: flex,
-  child: Text(
-    text,
-    textAlign: align,
-    style: TextStyle(
-      fontSize: size,
-      fontWeight: FontWeight.w700,
-      color: AppColors.textSecondary,
+  child: Container(
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+    decoration: BoxDecoration(
+      border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+    ),
+    child: Text(
+      text,
+      textAlign: align,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: TextStyle(
+        fontSize: size,
+        fontWeight: FontWeight.w700,
+        color: AppColors.textSecondary,
+      ),
     ),
   ),
 );
@@ -664,34 +690,56 @@ class _BundleRow extends StatefulWidget {
 class _BundleRowState extends State<_BundleRow> {
   bool _checked = false;
 
+  Widget _cell({required int flex, required Widget child, bool isLast = false, Alignment alignment = Alignment.centerLeft}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+        ),
+        alignment: alignment,
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 20,
-            height: 20,
-            child: Checkbox(
-              value: _checked,
-              onChanged: (v) => setState(() => _checked = v ?? false),
-              activeColor: AppColors.primaryBlue,
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              visualDensity: VisualDensity.compact,
+          Container(
+            width: 48,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: const BoxDecoration(
+              border: Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+            ),
+            alignment: Alignment.center,
+            child: SizedBox(
+              width: 20,
+              height: 20,
+              child: Checkbox(
+                value: _checked,
+                onChanged: (v) => setState(() => _checked = v ?? false),
+                activeColor: AppColors.primaryBlue,
+                materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                visualDensity: VisualDensity.compact,
+              ),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            flex: 4,
+          _cell(
+            flex: 3,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
                   widget.item.project,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: widget.fontSize,
                     fontWeight: FontWeight.w700,
@@ -702,6 +750,8 @@ class _BundleRowState extends State<_BundleRow> {
                   widget.item.jobId.isNotEmpty
                       ? widget.item.jobId
                       : widget.item.site,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: widget.fontSize - 1,
                     color: AppColors.textSecondary,
@@ -710,73 +760,82 @@ class _BundleRowState extends State<_BundleRow> {
               ],
             ),
           ),
-          Expanded(
+          _cell(
             flex: 2,
             child: Text(
               widget.item.bundleId,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
+                fontWeight: FontWeight.w600,
+                color: AppColors.primaryBlue,
+              ),
+            ),
+          ),
+          _cell(
+            flex: 1,
+            child: Text(
+              widget.item.parts,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: widget.fontSize,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          _cell(
+            flex: 2,
+            child: Text(
+              widget.item.totalWeight,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: widget.fontSize,
+                fontWeight: FontWeight.w600,
                 color: AppColors.textPrimary,
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              widget.item.parts,
-              style: TextStyle(
-                fontSize: widget.fontSize,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Expanded(
-            flex: 2,
-            child: Text(
-              widget.item.totalWeight,
-              style: TextStyle(
-                fontSize: widget.fontSize,
-                color: AppColors.textSecondary,
-              ),
-            ),
-          ),
-          Expanded(
+          _cell(
             flex: 2,
             child: Text(
               widget.item.time,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
                 color: AppColors.textSecondary,
               ),
             ),
           ),
-          Expanded(flex: 2, child: _StatusBadge(widget.item)),
-          Expanded(
+          _cell(flex: 3, child: _StatusBadge(widget.item)),
+          _cell(
             flex: 2,
-            child: Align(
-              alignment: Alignment.centerRight,
-              child: ElevatedButton(
-                onPressed: widget.onView,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 18,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
+            isLast: true,
+            alignment: Alignment.center,
+            child: ElevatedButton(
+              onPressed: widget.onView,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryBlue,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                minimumSize: Size.zero,
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 6,
                 ),
-                child: Text(
-                  'View',
-                  style: TextStyle(
-                    fontSize: widget.fontSize,
-                    fontWeight: FontWeight.w700,
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+              ),
+              child: Text(
+                'View',
+                style: TextStyle(
+                  fontSize: widget.fontSize,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
             ),
@@ -796,42 +855,53 @@ class _StatusBadge extends StatelessWidget {
     final text = item.statusText.isNotEmpty
         ? item.statusText
         : (item.status == BundleScanStatus.ready
-              ? 'READY'
+              ? 'Ready'
               : item.status == BundleScanStatus.staging
-              ? 'STAGING'
-              : 'PENDING');
+              ? 'Staged'
+              : 'Pending');
 
+    final upper = text.toUpperCase();
     Color textColor = const Color(0xFF1D4ED8);
     Color bg = const Color(0xFFEFF6FF);
 
-    if (text.contains('READY') || text.contains('LOAD')) {
+    if (upper.contains('READY') || upper.contains('LOAD')) {
       textColor = const Color(0xFF166534);
       bg = const Color(0xFFDCFCE7);
-    } else if (text.contains('STAG') || text.contains('PEND')) {
+    } else if (upper.contains('DRAFT')) {
+      textColor = const Color(0xFF15803D);
+      bg = const Color(0xFFDCFCE7);
+    } else if (upper.contains('STAG') || upper.contains('PEND')) {
       textColor = const Color(0xFF92400E);
       bg = const Color(0xFFFEF3C7);
-    } else if (text.contains('ASSIGN') || text.contains('TRUCK')) {
+    } else if (upper.contains('ASSIGN') || upper.contains('TRUCK')) {
       textColor = const Color(0xFF1D4ED8);
       bg = const Color(0xFFDBEAFE);
     }
 
+    final displayText = upper == 'ASSIGNED_TO_TRUCK' || upper == 'ASSIGNED TO TRUCK'
+        ? 'ASSIGNED TO TRUCK'
+        : upper;
+
     return Align(
       alignment: Alignment.centerLeft,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
         decoration: BoxDecoration(
           color: bg,
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(6),
         ),
         child: Text(
-          text,
+          displayText,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: textColor,
             fontWeight: FontWeight.w800,
-            fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(
-              10.0,
+            fontSize: (MediaQuery.sizeOf(context).width * 0.0075).clamp(
+              9.5,
               11.0,
             ),
+            letterSpacing: 0.3,
           ),
         ),
       ),

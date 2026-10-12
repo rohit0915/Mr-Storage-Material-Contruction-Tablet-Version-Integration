@@ -274,28 +274,37 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                         ],
                       ),
                       const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          const Icon(
-                            Icons.location_on_outlined,
-                            size: 13,
-                            color: AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 3),
-                          Expanded(
-                            child: Text(
-                              item.location.isNotEmpty
-                                  ? item.location
-                                  : 'No location specified',
-                              style: TextStyle(
-                                fontSize: labelSize,
+                      Builder(
+                        builder: (context) {
+                          final resolvedProj = controller.resolveProjectName(item);
+                          final hasProj = resolvedProj.isNotEmpty && resolvedProj != 'Project';
+                          final hasLoc = item.location.isNotEmpty && item.location != '-';
+                          final subtitleText = hasProj && hasLoc && resolvedProj != item.location
+                              ? '$resolvedProj • ${item.location}'
+                              : (hasProj ? resolvedProj : (hasLoc ? item.location : 'No location specified'));
+
+                          return Row(
+                            children: [
+                              const Icon(
+                                Icons.location_on_outlined,
+                                size: 13,
                                 color: AppColors.textSecondary,
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
+                              const SizedBox(width: 3),
+                              Expanded(
+                                child: Text(
+                                  subtitleText,
+                                  style: TextStyle(
+                                    fontSize: labelSize,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          );
+                        },
                       ),
                     ],
                   ),

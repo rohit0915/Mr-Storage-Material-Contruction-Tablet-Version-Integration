@@ -6,6 +6,7 @@ import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/bundle_scan_detail_controller.dart';
 import '../models/bundle_scan_models.dart';
+import '../widgets/bundle_mismatch_dialog.dart';
 
 class BundleScanDetailView extends StatelessWidget {
   const BundleScanDetailView({super.key});
@@ -30,30 +31,34 @@ class BundleScanDetailView extends StatelessWidget {
 
         final bundleId = item?.bundleId ?? 'B-001';
         final project =
-            item?.project.isNotEmpty == true ? item!.project : 'Storage 0011';
+            item?.project.isNotEmpty == true ? item!.project : 'N/A';
         final loadId =
-            item?.loadId.isNotEmpty == true ? item!.loadId : 'LOAD-001';
-        final truck = item?.truck.isNotEmpty == true ? item!.truck : 'TRK-980';
+            item?.loadId.isNotEmpty == true ? item!.loadId : '-';
+        final truck = item?.truck.isNotEmpty == true ? item!.truck : '-';
         final destination =
-            item?.site.isNotEmpty == true ? item!.site : 'Site A';
+            item?.site.isNotEmpty == true ? item!.site : '-';
         final quantity =
-            item?.quantity.isNotEmpty == true ? item!.quantity : '4';
+            item?.quantity.isNotEmpty == true ? item!.quantity : '-';
         final weight = item?.totalWeight.isNotEmpty == true
             ? item!.totalWeight
-            : '4,319.1 LBS';
+            : '0.0 LBS';
         final length =
-            item?.length.isNotEmpty == true ? item!.length : '20 ft';
+            item?.length.isNotEmpty == true ? item!.length : '-';
         final shipper =
-            item?.shipper.isNotEmpty == true ? item!.shipper : 'SHP-1044';
+            item?.shipper.isNotEmpty == true ? item!.shipper : '-';
         final driver =
-            item?.driver.isNotEmpty == true ? item!.driver : 'John Miler';
+            item?.driver.isNotEmpty == true ? item!.driver : '-';
         final totalProducts = item?.totalProducts.isNotEmpty == true
             ? item!.totalProducts
-            : '4';
+            : '-';
         final parts =
-            item?.parts.isNotEmpty == true ? item!.parts : 'P-101, P-102';
+            item?.parts.isNotEmpty == true ? item!.parts : '-';
 
-        final qrPayload = '{"id":"${item?.realMongoId ?? ''}","bundleId":"$bundleId","project":"$project"}';
+        final qrPayload = item?.qrUrl.isNotEmpty == true
+            ? item!.qrUrl
+            : 'https://mr-storage-material-contruction.vercel.app/delivery-tracking/bundle-scan?bundleId=$bundleId';
+
+        final canVerify = !isVerified;
 
         final subItems = controller.subItems.isNotEmpty
             ? controller.subItems
@@ -62,11 +67,11 @@ class BundleScanDetailView extends StatelessWidget {
                   index: '1',
                   bundleId: bundleId,
                   parts: parts,
-                  time: item?.time ?? '11:25 AM',
+                  time: item?.time ?? '-',
                   weight: weight,
                   status: controller.currentStatusText.value.isNotEmpty
                       ? controller.currentStatusText.value
-                      : 'Staged',
+                      : 'Pending',
                 ),
               ];
 
@@ -295,7 +300,7 @@ class BundleScanDetailView extends StatelessWidget {
                                 isLoading: isActionLoading,
                                 onTap: isActionLoading
                                     ? null
-                                    : () => controller.reprintLabel(),
+                                    : () => controller.reprintLabel(context),
                               ),
                               const SizedBox(width: 8),
                               _ActionBtn(
@@ -309,37 +314,43 @@ class BundleScanDetailView extends StatelessWidget {
                                     : () => _showReportMismatchDialog(
                                         context, controller),
                               ),
+                              if (canVerify) ...[
+                                const SizedBox(width: 8),
+                                _ActionBtn(
+                                  label: 'Verify Bundle',
+                                  icon: Icons.check_circle_outline_rounded,
+                                  backgroundColor: const Color(0xFF059669),
+                                  isLoading: isActionLoading,
+                                  onTap: isActionLoading
+                                      ? null
+                                      : () => controller.verifyBundle(),
+                                ),
+                              ],
                               const SizedBox(width: 8),
-                              _ActionBtn(
-                                label: 'Verify Bundle',
-                                icon: isVerified
-                                    ? Icons.verified_rounded
-                                    : Icons.check_circle_outline_rounded,
-                                backgroundColor: const Color(0xFF059669),
-                                isLoading: isActionLoading,
-                                onTap: isActionLoading
-                                    ? null
-                                    : () => controller.verifyBundle(),
-                              ),
-                              const SizedBox(width: 8),
-                              _ActionBtn(
-                                label: 'Mark Loaded',
-                                icon: Icons.local_shipping_outlined,
-                                backgroundColor: const Color(0xFFD97706),
-                                isLoading: isActionLoading,
-                                onTap: isActionLoading
-                                    ? null
-                                    : () => controller.markLoaded(),
-                              ),
-                              const SizedBox(width: 8),
-                              _ActionBtn(
-                                label: 'Mark Staged',
-                                icon: Icons.inventory_2_outlined,
-                                backgroundColor: const Color(0xFF7C3AED),
-                                isLoading: isActionLoading,
-                                onTap: isActionLoading
-                                    ? null
-                                    : () => controller.markStaged(),
+                              Container(
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFFD97706),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: IconButton(
+                                  icon: const Icon(
+                                    Icons.local_shipping_rounded,
+                                    color: Colors.white,
+                                    size: 18,
+                                  ),
+                                  tooltip: 'Load / Truck Info',
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 10,
+                                    vertical: 8,
+                                  ),
+                                  constraints: const BoxConstraints(
+                                    minHeight: 36,
+                                    minWidth: 38,
+                                  ),
+                                  onPressed: isActionLoading
+                                      ? null
+                                      : () => controller.markLoaded(),
+                                ),
                               ),
                             ],
                           ),
@@ -433,7 +444,7 @@ class BundleScanDetailView extends StatelessWidget {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   children: [
                                     Text(
-                                      'project=$project',
+                                      project,
                                       style: const TextStyle(
                                         fontSize: 14,
                                         fontWeight: FontWeight.w800,
@@ -443,27 +454,27 @@ class BundleScanDetailView extends StatelessWidget {
                                     const SizedBox(height: 6),
                                     _QrDetailLine(
                                       label: 'Shipper :',
-                                      value: 'shipper=$shipper',
+                                      value: shipper,
                                     ),
                                     _QrDetailLine(
                                       label: 'Load :',
-                                      value: 'load_id=$loadId',
+                                      value: loadId,
                                     ),
                                     _QrDetailLine(
                                       label: 'Bundle :',
-                                      value: 'bundle_id=$bundleId',
+                                      value: bundleId,
                                     ),
                                     _QrDetailLine(
                                       label: 'Parts :',
-                                      value: 'parts=$parts',
+                                      value: parts,
                                     ),
                                     _QrDetailLine(
                                       label: 'Weight :',
-                                      value: 'weight=$weight',
+                                      value: weight,
                                     ),
                                     _QrDetailLine(
                                       label: 'Length :',
-                                      value: 'length=$length',
+                                      value: length,
                                     ),
                                   ],
                                 ),
@@ -562,88 +573,23 @@ class BundleScanDetailView extends StatelessWidget {
                   child: Column(
                     children: [
                       Container(
-                        color: const Color(0xFF1A1A2E),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF1A1A2E),
+                          border: Border(bottom: BorderSide(color: Color(0xFF334155), width: 1.5)),
                         ),
-                        child: const Row(
+                        child: Row(
                           children: [
-                            Expanded(
-                              flex: 1,
-                              child: Text(
-                                '#',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                'Bundle ID',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                'Parts',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                'Time',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                'Weight',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                'Status',
-                                style: TextStyle(
-                                  fontWeight: FontWeight.w700,
-                                  fontSize: 12,
-                                  color: Colors.white,
-                                ),
-                              ),
-                            ),
+                            _buildTh('#', 1),
+                            _buildTh('Bundle ID', 3),
+                            _buildTh('Parts', 3),
+                            _buildTh('Time', 2),
+                            _buildTh('Weight', 2),
+                            _buildTh('Status', 2, isLast: true),
                           ],
                         ),
                       ),
                       ...subItems.map(
                         (r) => Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 10,
-                          ),
                           decoration: const BoxDecoration(
                             border: Border(
                               bottom: BorderSide(color: AppColors.cardBorder),
@@ -651,19 +597,18 @@ class BundleScanDetailView extends StatelessWidget {
                           ),
                           child: Row(
                             children: [
-                              Expanded(
-                                flex: 1,
-                                child: Text(
+                              _buildTd(
+                                Text(
                                   r.index,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
+                                1,
                               ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(
+                              _buildTd(
+                                Text(
                                   r.bundleId,
                                   style: const TextStyle(
                                     fontSize: 13,
@@ -671,30 +616,30 @@ class BundleScanDetailView extends StatelessWidget {
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
+                                3,
                               ),
-                              Expanded(
-                                flex: 3,
-                                child: Text(
+                              _buildTd(
+                                Text(
                                   r.parts,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
+                                3,
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
+                              _buildTd(
+                                Text(
                                   r.time,
                                   style: const TextStyle(
                                     fontSize: 13,
                                     color: AppColors.textSecondary,
                                   ),
                                 ),
+                                2,
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Text(
+                              _buildTd(
+                                Text(
                                   r.weight,
                                   style: const TextStyle(
                                     fontSize: 13,
@@ -702,10 +647,10 @@ class BundleScanDetailView extends StatelessWidget {
                                     color: AppColors.textPrimary,
                                   ),
                                 ),
+                                2,
                               ),
-                              Expanded(
-                                flex: 2,
-                                child: Container(
+                              _buildTd(
+                                Container(
                                   alignment: Alignment.centerLeft,
                                   child: Container(
                                     padding: const EdgeInsets.symmetric(
@@ -724,6 +669,8 @@ class BundleScanDetailView extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                                2,
+                                isLast: true,
                               ),
                             ],
                           ),
@@ -742,29 +689,38 @@ class BundleScanDetailView extends StatelessWidget {
 
   static Color _statusBgColor(String status) {
     final s = status.toUpperCase();
-    if (s.contains('LOAD')) return const Color(0xFFFEF3C7); // Amber 100
-    if (s.contains('STAG')) return const Color(0xFFEDE9FE); // Purple 100
-    if (s.contains('READY') || s.contains('VERIF')) {
-      return const Color(0xFFD1FAE5); // Green 100
+    if (s.contains('LOAD')) return const Color(0xFFDCFCE7); // Green 100
+    if (s.contains('STAG')) return const Color(0xFFFEF3C7); // Amber 100
+    if (s.contains('ASSIGN') || s.contains('TRUCK')) {
+      return const Color(0xFFDBEAFE); // Blue 100
+    }
+    if (s.contains('READY') || s.contains('VERIF') || s.contains('DRAFT')) {
+      return const Color(0xFFDCFCE7); // Green 100
     }
     return const Color(0xFFF1F5F9); // Slate 100
   }
 
   static Color _statusTextColor(String status) {
     final s = status.toUpperCase();
-    if (s.contains('LOAD')) return const Color(0xFFB45309); // Amber 700
-    if (s.contains('STAG')) return const Color(0xFF6D28D9); // Purple 700
-    if (s.contains('READY') || s.contains('VERIF')) {
-      return const Color(0xFF047857); // Green 700
+    if (s.contains('LOAD')) return const Color(0xFF166534); // Green 700
+    if (s.contains('STAG')) return const Color(0xFF92400E); // Amber 700
+    if (s.contains('ASSIGN') || s.contains('TRUCK')) {
+      return const Color(0xFF1D4ED8); // Blue 700
+    }
+    if (s.contains('READY') || s.contains('VERIF') || s.contains('DRAFT')) {
+      return const Color(0xFF15803D); // Green 700
     }
     return const Color(0xFF475569); // Slate 700
   }
 
   static Color _statusBorderColor(String status) {
     final s = status.toUpperCase();
-    if (s.contains('LOAD')) return const Color(0xFFFDE68A); // Amber 200
-    if (s.contains('STAG')) return const Color(0xFFDDD6FE); // Purple 200
-    if (s.contains('READY') || s.contains('VERIF')) {
+    if (s.contains('LOAD')) return const Color(0xFFBBF7D0); // Green 200
+    if (s.contains('STAG')) return const Color(0xFFFDE68A); // Amber 200
+    if (s.contains('ASSIGN') || s.contains('TRUCK')) {
+      return const Color(0xFFBFDBFE); // Blue 200
+    }
+    if (s.contains('READY') || s.contains('VERIF') || s.contains('DRAFT')) {
       return const Color(0xFFA7F3D0); // Green 200
     }
     return const Color(0xFFE2E8F0); // Slate 200
@@ -774,139 +730,61 @@ class BundleScanDetailView extends StatelessWidget {
     BuildContext context,
     BundleScanDetailController controller,
   ) {
-    String selectedReason = 'Weight Mismatch';
-    final notesController = TextEditingController();
-
-    final reasons = [
-      'Weight Mismatch',
-      'Missing Parts',
-      'Damaged Bundle',
-      'Wrong Project / Job',
-      'Label Illegible',
-      'Other',
-    ];
-
-    showDialog<void>(
-      context: context,
-      builder: (ctx) {
-        return StatefulBuilder(
-          builder: (context, setState) {
-            return AlertDialog(
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              title: Row(
-                children: [
-                  const Icon(Icons.warning_amber_rounded,
-                      color: Color(0xFFDC2626)),
-                  const SizedBox(width: 8),
-                  Text(
-                    'Report Mismatch for ${controller.item.value?.bundleId ?? "Bundle"}',
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-              content: SizedBox(
-                width: 420,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Discrepancy Reason',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    DropdownButtonFormField<String>(
-                      initialValue: selectedReason,
-                      decoration: InputDecoration(
-                        isDense: true,
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              const BorderSide(color: AppColors.cardBorder),
-                        ),
-                      ),
-                      items: reasons
-                          .map((r) => DropdownMenuItem(
-                                value: r,
-                                child: Text(r,
-                                    style: const TextStyle(fontSize: 13)),
-                              ))
-                          .toList(),
-                      onChanged: (val) {
-                        if (val != null) {
-                          setState(() => selectedReason = val);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                    const Text(
-                      'Notes & Observations',
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    TextField(
-                      controller: notesController,
-                      maxLines: 3,
-                      decoration: InputDecoration(
-                        hintText:
-                            'E.g. Weight differs by 45 lbs or parts count is incorrect...',
-                        hintStyle: const TextStyle(fontSize: 13),
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 10),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide:
-                              const BorderSide(color: AppColors.cardBorder),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              actions: [
-                TextButton(
-                  onPressed: () => Navigator.of(ctx).pop(),
-                  child: const Text('Cancel'),
-                ),
-                ElevatedButton(
-                  onPressed: () {
-                    final notes = notesController.text.trim();
-                    Navigator.of(ctx).pop();
-                    controller.reportMismatch(selectedReason, notes);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFDC2626),
-                    foregroundColor: Colors.white,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                  child: const Text(
-                    'Submit Report',
-                    style: TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ],
-            );
-          },
-        );
+    final cur = controller.item.value;
+    if (cur == null) return;
+    BundleMismatchDialog.show(
+      context,
+      item: cur,
+      onSubmit: (notes, items) async {
+        await controller.reportMismatch(notes, items: items);
       },
+    );
+  }
+
+  static Widget _buildTh(String text, int flex, {bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(
+                    color: Color(0xFF334155),
+                    width: 1.0,
+                  ),
+                ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildTd(Widget child, int flex, {bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder,
+                    width: 1.0,
+                  ),
+                ),
+        ),
+        child: child,
+      ),
     );
   }
 }

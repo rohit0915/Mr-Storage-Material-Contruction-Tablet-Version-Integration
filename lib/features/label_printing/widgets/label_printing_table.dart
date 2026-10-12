@@ -5,6 +5,7 @@ import '../../../app/theme/app_colors.dart';
 import '../../tasks/widgets/task_success_dialog.dart';
 import '../controllers/label_printing_controller.dart';
 import '../models/label_printing_models.dart';
+import '../services/label_pdf_service.dart';
 import 'label_preview_dialog.dart';
 import 'label_printing_checkbox.dart';
 
@@ -57,98 +58,104 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final minWidth = constraints.maxWidth.clamp(1100.0, 2400.0);
-                return SingleChildScrollView(
-                  scrollDirection: Axis.horizontal,
-                  child: SizedBox(
-                    width: minWidth,
-                    child: Column(
-                      children: [
-                        Container(
-                          padding: EdgeInsets.symmetric(
-                            horizontal: size.width * 0.012,
-                            vertical: size.height * 0.012,
-                          ),
-                          color: AppColors.tableHeader,
-                          child: Row(
-                            children: [
-                              LabelPrintingCheckboxCell(
-                                value: allSelected && rows.isNotEmpty,
-                                onChanged: rows.isEmpty
-                                    ? null
-                                    : (_) => controller.toggleSelectAllOnPage(),
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'Bundle ID',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'Load ID',
-                                size: cellFont,
-                              ),
-                              _HeadCell(flex: 2, text: 'Parts', size: cellFont),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'Total Weight ⇅',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 1,
-                                text: 'Length',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'Status',
-                                size: cellFont,
-                              ),
-                              _HeadCell(
-                                flex: 2,
-                                text: 'Action',
-                                size: cellFont,
-                                align: TextAlign.end,
-                                isLast: true,
-                              ),
-                            ],
-                          ),
+            Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: size.width * 0.010,
+                vertical: size.height * 0.010,
+              ),
+              decoration: const BoxDecoration(
+                color: AppColors.tableHeader,
+                border: Border(
+                  bottom: BorderSide(
+                    color: AppColors.cardBorder,
+                    width: 1.5,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    padding: const EdgeInsets.only(right: 8),
+                    decoration: const BoxDecoration(
+                      border: Border(
+                        right: BorderSide(
+                          color: AppColors.cardBorder,
+                          width: 1.0,
                         ),
-                        ...rows.asMap().entries.map((entry) {
-                          final index = entry.key;
-                          final item = entry.value;
-                          final itemKey = item.realMongoId.isNotEmpty
-                              ? '${item.realMongoId}_${index}_$selectedCount'
-                              : '${item.id}_${index}_$selectedCount';
-                          return _DataRow(
-                            key: ValueKey(itemKey),
-                            item: item,
-                            cellFont: cellFont,
-                            fmtWeight: _fmtWeight,
-                            onPrint: () => _openPreview(context, item),
-                          );
-                        }),
-                        if (rows.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.all(24),
-                            child: Text(
-                              'No bundles found.',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontSize: cellFont,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ),
-                      ],
+                      ),
+                    ),
+                    child: LabelPrintingCheckboxCell(
+                      value: allSelected && rows.isNotEmpty,
+                      onChanged: rows.isEmpty
+                          ? null
+                          : (_) => controller.toggleSelectAllOnPage(),
+                      gapAfter: 0,
                     ),
                   ),
-                );
-              },
+                  _HeadCell(
+                    flex: 2,
+                    text: 'Bundle ID',
+                    size: cellFont,
+                  ),
+                  _HeadCell(
+                    flex: 2,
+                    text: 'Load ID',
+                    size: cellFont,
+                  ),
+                  _HeadCell(flex: 2, text: 'Parts', size: cellFont),
+                  _HeadCell(
+                    flex: 2,
+                    text: 'Total Weight ⇅',
+                    size: cellFont,
+                  ),
+                  _HeadCell(
+                    flex: 1,
+                    text: 'Length',
+                    size: cellFont,
+                  ),
+                  _HeadCell(
+                    flex: 2,
+                    text: 'Status',
+                    size: cellFont,
+                  ),
+                  _HeadCell(
+                    flex: 2,
+                    text: 'Action',
+                    size: cellFont,
+                    align: TextAlign.end,
+                    isLast: true,
+                  ),
+                ],
+              ),
             ),
+            ...rows.asMap().entries.map((entry) {
+              final index = entry.key;
+              final item = entry.value;
+              final itemKey = item.realMongoId.isNotEmpty
+                  ? '${item.realMongoId}_${index}_$selectedCount'
+                  : '${item.id}_${index}_$selectedCount';
+              return _DataRow(
+                key: ValueKey(itemKey),
+                item: item,
+                cellFont: cellFont,
+                fmtWeight: _fmtWeight,
+                onPrint: () => _openPreview(context, item),
+              );
+            }),
+            if (rows.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'No bundles found.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    color: AppColors.textSecondary,
+                    fontSize: cellFont,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
             const Divider(height: 1, color: AppColors.cardBorder),
             _PaginationFooter(
               currentPage: currentPage,
@@ -169,6 +176,7 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
       builder: (_) => LabelPreviewDialog(
         item: item,
         onPrint: () async {
+          await LabelPdfService.printSingleLabel(item);
           controller.markPrinted(item);
           if (!context.mounted) return;
           await showDialog<void>(
@@ -205,7 +213,7 @@ class _DataRow extends GetView<LabelPrintingController> {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: MediaQuery.sizeOf(context).width * 0.012,
-        vertical: MediaQuery.sizeOf(context).height * 0.012,
+        vertical: MediaQuery.sizeOf(context).height * 0.008,
       ),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
@@ -213,18 +221,32 @@ class _DataRow extends GetView<LabelPrintingController> {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          LabelPrintingCheckboxCell(
-            value: isSelected,
-            onChanged: (_) => controller.toggleSelect(item.id),
+          Container(
+            padding: const EdgeInsets.only(right: 12),
+            decoration: const BoxDecoration(
+              border: Border(
+                right: BorderSide(color: AppColors.cardBorder, width: 1.0),
+              ),
+            ),
+            child: LabelPrintingCheckboxCell(
+              value: isSelected,
+              onChanged: (_) => controller.toggleSelect(item.id),
+              gapAfter: 0,
+            ),
           ),
           _DataCell(
             flex: 2,
-            child: Text(
-              item.id,
-              style: TextStyle(
-                fontWeight: FontWeight.w800,
-                fontSize: cellFont,
-                color: AppColors.textPrimary,
+            child: InkWell(
+              onTap: onPrint,
+              borderRadius: BorderRadius.circular(4),
+              child: Text(
+                item.id,
+                style: TextStyle(
+                  fontWeight: FontWeight.w800,
+                  fontSize: cellFont,
+                  color: AppColors.primaryBlue,
+                  decoration: TextDecoration.underline,
+                ),
               ),
             ),
           ),
@@ -232,6 +254,8 @@ class _DataRow extends GetView<LabelPrintingController> {
             flex: 2,
             child: Text(
               item.loadId,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: cellFont,
                 color: AppColors.textSecondary,
@@ -242,6 +266,8 @@ class _DataRow extends GetView<LabelPrintingController> {
             flex: 2,
             child: Text(
               item.part,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontWeight: FontWeight.w700,
                 fontSize: cellFont,
@@ -252,7 +278,11 @@ class _DataRow extends GetView<LabelPrintingController> {
           _DataCell(
             flex: 2,
             child: Text(
-              fmtWeight(item.totalWeightLbs),
+              item.totalWeightLbs > 0
+                  ? fmtWeight(item.totalWeightLbs)
+                  : (item.rawWeight.isNotEmpty && item.rawWeight != '0'
+                      ? '${item.rawWeight} LBS'
+                      : '-'),
               style: TextStyle(
                 fontSize: cellFont,
                 color: AppColors.textSecondary,
@@ -262,7 +292,11 @@ class _DataRow extends GetView<LabelPrintingController> {
           _DataCell(
             flex: 1,
             child: Text(
-              '${item.lengthFt} ft',
+              item.lengthFt > 0
+                  ? '${item.lengthFt % 1 == 0 ? item.lengthFt.toInt() : item.lengthFt.toStringAsFixed(2)} ft'
+                  : (item.rawLength.isNotEmpty && item.rawLength != '0'
+                      ? '${item.rawLength} ft'
+                      : '0.0 ft'),
               style: TextStyle(
                 fontSize: cellFont,
                 color: AppColors.textSecondary,
@@ -359,7 +393,7 @@ class _ActionButton extends StatelessWidget {
               : const Color(0xFF2563EB),
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
           minimumSize: Size.zero,
           tapTargetSize: MaterialTapTargetSize.shrinkWrap,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -592,13 +626,14 @@ class _HeadCell extends StatelessWidget {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : Border(
+              : const Border(
                   right: BorderSide(
-                    color: AppColors.cardBorder.withValues(alpha: 0.7),
+                    color: AppColors.cardBorder,
+                    width: 1.0,
                   ),
                 ),
         ),
@@ -636,13 +671,14 @@ class _DataCell extends StatelessWidget {
     return Expanded(
       flex: flex,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           border: isLast
               ? null
-              : Border(
+              : const Border(
                   right: BorderSide(
-                    color: AppColors.cardBorder.withValues(alpha: 0.5),
+                    color: AppColors.cardBorder,
+                    width: 1.0,
                   ),
                 ),
         ),

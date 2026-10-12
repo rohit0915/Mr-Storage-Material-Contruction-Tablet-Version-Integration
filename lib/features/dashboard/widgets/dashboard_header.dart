@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../auth/services/auth_service.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
 
@@ -44,7 +45,7 @@ class DashboardHeader extends GetView<DashboardController> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Welcome, John!',
+                'Welcome, ${Get.isRegistered<AuthService>() ? AuthService.to.userName : 'Construction User'}!',
                 style: TextStyle(
                   fontSize: nameSize,
                   fontWeight: FontWeight.w700,
@@ -52,7 +53,9 @@ class DashboardHeader extends GetView<DashboardController> {
                 ),
               ),
               Text(
-                'construction@steelbuilding.depot',
+                Get.isRegistered<AuthService>()
+                    ? AuthService.to.userEmail
+                    : 'construction1@example.com',
                 style: TextStyle(
                   fontSize: emailSize,
                   color: AppColors.textSecondary,

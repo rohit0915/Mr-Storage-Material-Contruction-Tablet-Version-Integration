@@ -108,7 +108,7 @@ class BomFileDetailsView extends GetView<BomFileDetailsController> {
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: AppColors.cardBorder),
                 ),
-                padding: const EdgeInsets.all(24),
+                padding: const EdgeInsets.all(16),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -116,20 +116,20 @@ class BomFileDetailsView extends GetView<BomFileDetailsController> {
                     Text(
                       'Project: ${ctrl.projectName.value.isNotEmpty ? ctrl.projectName.value : 'Storage 0011'}',
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 16,
                         fontWeight: FontWeight.w800,
                         color: AppColors.textPrimary,
                       ),
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 12),
 
                     // BOM Summary Card
                     _buildBomSummaryBox(ctrl),
-                    const SizedBox(height: 28),
+                    const SizedBox(height: 14),
 
                     // Consolidated Bill of Materials Box (with border)
                     _buildConsolidatedHeaderBox(ctrl),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 14),
 
                     // Consolidated BOM Table
                     _buildBomTable(ctrl),
@@ -483,147 +483,144 @@ class BomFileDetailsView extends GetView<BomFileDetailsController> {
       builder: (context, constraints) {
         final tableWidth = constraints.maxWidth < 1050 ? 1050.0 : constraints.maxWidth;
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          physics: const BouncingScrollPhysics(),
-          child: SizedBox(
-            width: tableWidth,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // Table Header
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                  decoration: const BoxDecoration(
-                    border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.5)),
+        return Container(
+          decoration: BoxDecoration(
+            border: Border.all(color: const Color(0xFFCBD5E1), width: 1.0),
+            borderRadius: BorderRadius.circular(8),
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            child: SizedBox(
+              width: tableWidth,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Table Header
+                  Container(
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF1F5F9),
+                      border: Border(bottom: BorderSide(color: Color(0xFFCBD5E1), width: 1.5)),
+                    ),
+                    child: Row(
+                      children: [
+                        _th(ctrl, 'QTY', flex: 1, sortable: true),
+                        _th(ctrl, 'Mark', flex: 2, sortable: true),
+                        _th(ctrl, 'Description', flex: 3, sortable: true),
+                        _th(ctrl, 'Part Code', flex: 2, sortable: true),
+                        _th(ctrl, 'Color', flex: 1, sortable: true),
+                        _th(ctrl, 'Category', flex: 3, sortable: true),
+                        _th(ctrl, 'Bldg', flex: 1),
+                        _th(ctrl, 'Length', flex: 2, sortable: true),
+                        _th(ctrl, 'Weight (lbs)', flex: 2, sortable: true),
+                        _th(ctrl, 'Cost', flex: 2, sortable: true, isLast: true),
+                      ],
+                    ),
                   ),
-                  child: Row(
-                    children: [
-                      _th(ctrl, 'QTY', flex: 1, sortable: true),
-                      _th(ctrl, 'Mark', flex: 2, sortable: true),
-                      _th(ctrl, 'Description', flex: 3, sortable: true),
-                      _th(ctrl, 'Part Code', flex: 2, sortable: true),
-                      _th(ctrl, 'Color', flex: 1, sortable: true),
-                      _th(ctrl, 'Category', flex: 3, sortable: true),
-                      _th(ctrl, 'Bldg', flex: 1),
-                      _th(ctrl, 'Length', flex: 2, sortable: true),
-                      _th(ctrl, 'Weight (lbs)', flex: 2, sortable: true),
-                      _th(ctrl, 'Cost', flex: 2, sortable: true),
-                    ],
-                  ),
-                ),
 
-                // Table Rows
-                Obx(() {
-                  final items = ctrl.items;
-                  if (items.isEmpty) {
-                    return const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 40),
-                      child: Center(
-                        child: Text(
-                          'No BOM items found.',
-                          style: TextStyle(color: AppColors.textSecondary),
-                        ),
-                      ),
-                    );
-                  }
-
-                  return Column(
-                    children: items.map((item) {
-                      return Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: const BoxDecoration(
-                          border: Border(bottom: BorderSide(color: Color(0xFFF1F5F9), width: 1.0)),
-                        ),
-                        child: Row(
-                          children: [
-                            // QTY
-                            Expanded(
-                              flex: 1,
-                              child: Text(
-                                '${item.qty}',
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
-                              ),
-                            ),
-                            // Mark
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                item.mark,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
-                              ),
-                            ),
-                            // Description
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                item.description,
-                                style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Color(0xFF64748B)),
-                              ),
-                            ),
-                            // Part Code
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                item.partCode,
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF334155)),
-                              ),
-                            ),
-                            // Color
-                            Expanded(
-                              flex: 1,
-                              child: Text(
-                                item.color,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                              ),
-                            ),
-                            // Category
-                            Expanded(
-                              flex: 3,
-                              child: Text(
-                                item.category,
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF475569)),
-                              ),
-                            ),
-                            // Bldg
-                            Expanded(
-                              flex: 1,
-                              child: Text(
-                                item.bldg,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                              ),
-                            ),
-                            // Length
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                item.length,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),
-                              ),
-                            ),
-                            // Weight (lbs)
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                item.weight,
-                                style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
-                              ),
-                            ),
-                            // Cost
-                            Expanded(
-                              flex: 2,
-                              child: Text(
-                                item.cost,
-                                style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
-                              ),
-                            ),
-                          ],
+                  // Table Rows
+                  Obx(() {
+                    final items = ctrl.items;
+                    if (items.isEmpty) {
+                      return const Padding(
+                        padding: EdgeInsets.symmetric(vertical: 36),
+                        child: Center(
+                          child: Text(
+                            'No BOM items found.',
+                            style: TextStyle(color: AppColors.textSecondary),
+                          ),
                         ),
                       );
-                    }).toList(),
-                  );
-                }),
-              ],
+                    }
+
+                    return Column(
+                      children: items.map((item) {
+                        return Container(
+                          decoration: const BoxDecoration(
+                            border: Border(bottom: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
+                          ),
+                          child: Row(
+                            children: [
+                              _td(
+                                flex: 1,
+                                child: Text(
+                                  '${item.qty}',
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
+                                ),
+                              ),
+                              _td(
+                                flex: 2,
+                                child: Text(
+                                  item.mark,
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
+                                ),
+                              ),
+                              _td(
+                                flex: 3,
+                                child: Text(
+                                  item.description,
+                                  style: const TextStyle(fontWeight: FontWeight.w500, fontSize: 13, color: Color(0xFF64748B)),
+                                ),
+                              ),
+                              _td(
+                                flex: 2,
+                                child: Text(
+                                  item.partCode,
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13, color: Color(0xFF334155)),
+                                ),
+                              ),
+                              _td(
+                                flex: 1,
+                                child: Text(
+                                  item.color,
+                                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                ),
+                              ),
+                              _td(
+                                flex: 3,
+                                child: Text(
+                                  item.category,
+                                  style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12, color: Color(0xFF475569)),
+                                ),
+                              ),
+                              _td(
+                                flex: 1,
+                                child: Text(
+                                  item.bldg,
+                                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                ),
+                              ),
+                              _td(
+                                flex: 2,
+                                child: Text(
+                                  item.length,
+                                  style: const TextStyle(fontSize: 13, color: Color(0xFF334155)),
+                                ),
+                              ),
+                              _td(
+                                flex: 2,
+                                child: Text(
+                                  item.weight,
+                                  style: const TextStyle(fontSize: 13, color: Color(0xFF64748B)),
+                                ),
+                              ),
+                              _td(
+                                flex: 2,
+                                isLast: true,
+                                child: Text(
+                                  item.cost,
+                                  style: const TextStyle(fontWeight: FontWeight.w800, fontSize: 13, color: Color(0xFF1E293B)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      }).toList(),
+                    );
+                  }),
+                ],
+              ),
             ),
           ),
         );
@@ -631,32 +628,51 @@ class BomFileDetailsView extends GetView<BomFileDetailsController> {
     );
   }
 
-  Widget _th(BomFileDetailsController ctrl, String label, {required int flex, bool sortable = false}) {
+  Widget _th(BomFileDetailsController ctrl, String label, {required int flex, bool sortable = false, bool isLast = false}) {
     return Expanded(
       flex: flex,
       child: InkWell(
         onTap: sortable ? () => ctrl.sort(label) : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                style: const TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFF64748B),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
+          decoration: BoxDecoration(
+            border: isLast ? null : const Border(right: BorderSide(color: Color(0xFFCBD5E1), width: 1.0)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Flexible(
+                child: Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF475569),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
               ),
-            ),
-            if (sortable) ...[
-              const SizedBox(width: 4),
-              const Icon(Icons.unfold_more, size: 13, color: Color(0xFF94A3B8)),
+              if (sortable) ...[
+                const SizedBox(width: 4),
+                const Icon(Icons.unfold_more, size: 13, color: Color(0xFF94A3B8)),
+              ],
             ],
-          ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _td({required int flex, required Widget child, bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: Color(0xFFE2E8F0), width: 1.0)),
+        ),
+        child: child,
       ),
     );
   }

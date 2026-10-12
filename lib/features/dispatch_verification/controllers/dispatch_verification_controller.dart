@@ -69,6 +69,8 @@ class DispatchVerificationController extends GetxController {
         allItems[idx] = allItems[idx].copyWith(
           status: DispatchStatus.verified,
           statusText: 'VERIFIED',
+          weightVerified: true,
+          loadingVerified: true,
         );
         if (selectedItem.value?.loadId == loadId) {
           selectedItem.value = allItems[idx];
@@ -105,6 +107,68 @@ class DispatchVerificationController extends GetxController {
     }
   }
 
+  Future<void> fetchLoadDetail(DispatchItem item) async {
+    selectedItem.value = item;
+    try {
+      final res = await _service.getDispatchLoadDetail(
+        item.mongoId.isNotEmpty ? item.mongoId : item.loadId,
+        packingListId: item.packingListMongoId.isNotEmpty
+            ? item.packingListMongoId
+            : item.packingListNo,
+      );
+      if (res != null) {
+        final rawBundles =
+            res['bundles'] ?? res['items'] ?? res['bundleItems'];
+        if (rawBundles is List && rawBundles.isNotEmpty) {
+          final List<DispatchBundleItem> parsedBundles = [];
+          for (var i = 0; i < rawBundles.length; i++) {
+            final b = rawBundles[i];
+            if (b is Map) {
+              parsedBundles.add(
+                DispatchBundleItem.fromJson(Map<String, dynamic>.from(b), i),
+              );
+            } else {
+              parsedBundles.add(
+                DispatchBundleItem(
+                  index: i + 1,
+                  bundleNo: '${i + 1}',
+                  bundleId: b.toString(),
+                  weight: '-',
+                  status: 'READY',
+                  isVerified: true,
+                ),
+              );
+            }
+          }
+          final updated = item.copyWith(
+            bundleList: parsedBundles,
+            bundles: parsedBundles.length,
+          );
+          selectedItem.value = updated;
+          final idx = allItems.indexWhere((it) => it.loadId == item.loadId);
+          if (idx >= 0) allItems[idx] = updated;
+        }
+      }
+    } catch (_) {}
+  }
+
+  DispatchItem? findLoadById(String query) {
+    final clean = query.trim().toLowerCase();
+    if (clean.isEmpty) return null;
+    return allItems.firstWhereOrNull((item) {
+      return item.loadId.toLowerCase() == clean ||
+          item.displayLoadId.toLowerCase() == clean ||
+          item.displayLoadId.toLowerCase().replaceAll('-', '') ==
+              clean.replaceAll('-', '') ||
+          item.packingListNo.toLowerCase() == clean ||
+          item.packingListNo.toLowerCase().replaceAll('-', '') ==
+              clean.replaceAll('-', '') ||
+          item.mongoId.toLowerCase() == clean;
+    });
+  }
+
+  Future<String?> exportExcel() => _service.exportDispatchVerifications();
+
   List<DispatchItem> get filteredItems {
     var list = List<DispatchItem>.from(allItems);
     if (selectedStatus.value != 'All Statuses') {
@@ -122,6 +186,7 @@ class DispatchVerificationController extends GetxController {
       list = list
           .where(
             (i) =>
+                i.displayLoadId.toLowerCase().contains(q) ||
                 i.loadId.toLowerCase().contains(q) ||
                 i.packingListNo.toLowerCase().contains(q) ||
                 i.project.toLowerCase().contains(q) ||

@@ -119,20 +119,46 @@ class DeadlineItem {
   final String daysLeft;
 
   factory DeadlineItem.fromJson(Map<String, dynamic> json) {
+    final deadlineRaw = json['endDate'] ??
+        json['deadline'] ??
+        json['date'] ??
+        json['targetDate'] ??
+        json['dueDate'];
+
+    final formattedDate = _formatDashboardDate(deadlineRaw);
+
+    String daysLeftStr = 'Upcoming';
+    if (json['daysLeft'] != null) {
+      daysLeftStr = '${json['daysLeft']} Days Left';
+    } else if (deadlineRaw != null && deadlineRaw.toString().isNotEmpty) {
+      final parsedDate = DateTime.tryParse(deadlineRaw.toString());
+      if (parsedDate != null) {
+        final now = DateUtils.dateOnly(DateTime.now());
+        final target = DateUtils.dateOnly(parsedDate);
+        final diff = target.difference(now).inDays;
+        if (diff > 0) {
+          daysLeftStr = '$diff Days Left';
+        } else if (diff == 0) {
+          daysLeftStr = 'Due Today';
+        } else {
+          daysLeftStr = '${diff.abs()} Days Overdue';
+        }
+      }
+    }
+
     return DeadlineItem(
-      project:
-          json['projectName'] ?? json['project'] ?? json['title'] ?? 'Project',
-      location: json['site'] ?? json['location'] ?? json['siteLocation'] ?? '—',
-      date: _formatDashboardDate(
-        json['endDate'] ??
-            json['deadline'] ??
-            json['date'] ??
-            json['targetDate'] ??
-            json['dueDate'],
-      ),
-      daysLeft: json['daysLeft'] != null
-          ? '${json['daysLeft']} Days Left'
-          : 'Upcoming',
+      project: json['projectName'] ??
+          json['project'] ??
+          json['title'] ??
+          json['name'] ??
+          'Project',
+      location: json['site'] ??
+          json['location'] ??
+          json['siteLocation'] ??
+          json['locationName'] ??
+          '—',
+      date: formattedDate.isNotEmpty ? formattedDate : '—',
+      daysLeft: daysLeftStr,
     );
   }
 }

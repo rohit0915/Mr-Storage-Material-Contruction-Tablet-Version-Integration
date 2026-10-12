@@ -42,11 +42,27 @@ class ProjectCalendarController extends GetxController {
     );
   }
 
-  List<CalendarDayEvent> get selectedDayEvents =>
-      monthEvents[selectedDay.value] ?? const [];
+  List<CalendarDayEvent> get selectedDayEvents {
+    final list = List<CalendarDayEvent>.from(monthEvents[selectedDay.value] ?? const []);
+    list.sort((a, b) {
+      final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
+      final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+      if (aTime != bTime) return bTime.compareTo(aTime);
+      return 0;
+    });
+    return list;
+  }
 
-  List<DeliveryItem> get selectedDayDeliveries =>
-      dayDeliveriesMap[selectedDay.value] ?? const [];
+  List<DeliveryItem> get selectedDayDeliveries {
+    final list = List<DeliveryItem>.from(dayDeliveriesMap[selectedDay.value] ?? const []);
+    list.sort((a, b) {
+      final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
+      final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+      if (aTime != bTime) return bTime.compareTo(aTime);
+      return b.id.compareTo(a.id);
+    });
+    return list;
+  }
 
   static const allProjectsOption = CalendarProjectOption(
     id: '',
@@ -64,13 +80,44 @@ class ProjectCalendarController extends GetxController {
   @override
   void onReady() {
     super.onReady();
+    if (projects.length <= 1) {
+      fetchAllProjectOptions();
+    }
     // Refresh calendar data whenever screen is rendered
     fetchCalendarData();
   }
 
   Future<void> initData() async {
+    await fetchAllProjectOptions();
     await fetchProjects();
     await fetchCalendarData();
+  }
+
+  Future<void> fetchAllProjectOptions() async {
+    try {
+      final rawList = await _calendarService.getAllProjects();
+      final optionsMap = <String, CalendarProjectOption>{};
+      optionsMap[''] = allProjectsOption;
+
+      for (final item in rawList) {
+        final opt = CalendarProjectOption.fromJson(item);
+        if (opt.id.isNotEmpty) {
+          optionsMap[opt.id] = opt;
+        }
+      }
+
+      if (optionsMap.length > 1) {
+        projects = optionsMap.values.toList();
+        update([AppGetIds.projectDropdown]);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'fetchAllProjectOptions Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'CALENDAR_CTRL',
+      );
+    }
   }
 
   int projectPage = 1;
@@ -131,18 +178,27 @@ class ProjectCalendarController extends GetxController {
 
         if (projectTotalPages < 1) projectTotalPages = 1;
 
-        final parsedOptions = <CalendarProjectOption>[allProjectsOption];
+        final currentOptions = Map<String, CalendarProjectOption>.fromEntries(
+          projects.map((p) => MapEntry(p.id, p)),
+        );
+        if (!currentOptions.containsKey('')) {
+          currentOptions[''] = allProjectsOption;
+        }
+
         final parsedCards = <ProjectCardItem>[];
 
         for (final item in itemsList) {
           if (item is Map) {
             final mapItem = Map<String, dynamic>.from(item);
-            parsedOptions.add(CalendarProjectOption.fromJson(mapItem));
+            final opt = CalendarProjectOption.fromJson(mapItem);
+            if (opt.id.isNotEmpty && !currentOptions.containsKey(opt.id)) {
+              currentOptions[opt.id] = opt;
+            }
             parsedCards.add(ProjectCardItem.fromJson(mapItem));
           }
         }
 
-        projects = parsedOptions;
+        projects = currentOptions.values.toList();
         projectCards = parsedCards;
       }
     } catch (e, stackTrace) {
@@ -208,9 +264,13 @@ class ProjectCalendarController extends GetxController {
         }
 
         // 1. Process array of deliveries from backend
-        for (final dItem in rawDeliveriesList) {
+        for (int i = 0; i < rawDeliveriesList.length; i++) {
+          final dItem = rawDeliveriesList[i];
           if (dItem is Map) {
             final dMap = Map<String, dynamic>.from(dItem);
+            if (dMap['createdAt'] == null && dMap['created_at'] == null) {
+              dMap['createdAt'] = DateTime.fromMillisecondsSinceEpoch(1600000000000 + i * 1000).toIso8601String();
+            }
             final deliveryObj = DeliveryItem.fromJson(dMap);
             final eventObj = CalendarDayEvent.fromJson(dMap);
 
@@ -281,14 +341,41 @@ class ProjectCalendarController extends GetxController {
               final dayDeliveryList =
                   newDeliveriesMap.putIfAbsent(dayNum, () => []);
 
-              for (final dItem in itemsList) {
+              for (int j = 0; j < itemsList.length; j++) {
+                final dItem = itemsList[j];
                 if (dItem is Map) {
                   final dMap = Map<String, dynamic>.from(dItem);
+                  if (dMap['createdAt'] == null && dMap['created_at'] == null) {
+                    dMap['createdAt'] = DateTime.fromMillisecondsSinceEpoch(1600000000000 + j * 1000).toIso8601String();
+                  }
                   dayEventList.add(CalendarDayEvent.fromJson(dMap));
                   dayDeliveryList.add(DeliveryItem.fromJson(dMap));
                 }
               }
             }
+          });
+        }
+
+        // Sort each day's deliveries and events with most recent first
+        for (final day in newDeliveriesMap.keys) {
+          newDeliveriesMap[day]!.sort((a, b) {
+            final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
+            final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+            if (aTime != bTime) {
+              return bTime.compareTo(aTime); // descending: recent first
+            }
+            return b.id.compareTo(a.id);
+          });
+        }
+
+        for (final day in newEvents.keys) {
+          newEvents[day]!.sort((a, b) {
+            final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
+            final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+            if (aTime != bTime) {
+              return bTime.compareTo(aTime); // descending: recent first
+            }
+            return 0;
           });
         }
 
@@ -475,24 +562,31 @@ class ProjectCalendarController extends GetxController {
     final currentDeliveries =
         List<DeliveryItem>.from(dayDeliveriesMap[day] ?? []);
 
-    final eventExists = currentEvents.any((e) => e.title == result.title);
-    if (!eventExists) {
+    final eventIdx = currentEvents.indexWhere((e) => e.title == result.title);
+    if (eventIdx >= 0) {
+      final existing = currentEvents.removeAt(eventIdx);
+      currentEvents.insert(0, existing);
+    } else {
       currentEvents.insert(
         0,
         CalendarDayEvent(
           title: result.title,
           color: const Color(0xFFEC4899), // Pink dot for scheduled
+          createdAt: DateTime.now(),
         ),
       );
-      monthEvents[day] = currentEvents;
     }
+    monthEvents[day] = currentEvents;
 
-    final deliveryExists = currentDeliveries.any(
+    final deliveryIdx = currentDeliveries.indexWhere(
       (d) =>
           d.title == result.title ||
           (result.title.isNotEmpty && d.description == result.title),
     );
-    if (!deliveryExists) {
+    if (deliveryIdx >= 0) {
+      final existing = currentDeliveries.removeAt(deliveryIdx);
+      currentDeliveries.insert(0, existing);
+    } else {
       String projectName = 'Project';
       final match = projects.firstWhereOrNull((p) => p.id == result.leadId);
       if (match != null) {
@@ -543,10 +637,11 @@ class ProjectCalendarController extends GetxController {
           status: 'Scheduled',
           statusColor: const Color(0xFFEC4899),
           description: result.description ?? '',
+          createdAt: DateTime.now(),
         ),
       );
-      dayDeliveriesMap[day] = currentDeliveries;
     }
+    dayDeliveriesMap[day] = currentDeliveries;
 
     update([AppGetIds.calendarEvents]);
   }

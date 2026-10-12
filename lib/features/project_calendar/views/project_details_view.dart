@@ -4,6 +4,8 @@ import 'package:get/get.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../bundle_scan/widgets/bundle_scan_dialogs.dart';
+import '../../bundle_scan/models/bundle_scan_models.dart';
 import '../controllers/project_details_controller.dart';
 
 class ProjectDetailsView extends StatelessWidget {
@@ -95,27 +97,86 @@ class ProjectDetailsView extends StatelessWidget {
                   _ActionButton(
                     icon: Icons.local_shipping_outlined,
                     label: 'Material Delivery',
-                    onTap: () => Get.toNamed(AppRoutes.deliveryTracking, arguments: {
-                      'leadId': controller.leadId.value,
-                      'project': controller.title.value,
-                      'jobId': controller.projectId.value,
-                      'fromProject': true,
-                    }),
+                    onTap: () {
+                      final firstDelivery = controller.deliveries.isNotEmpty
+                          ? controller.deliveries.first
+                          : null;
+                      Get.toNamed(AppRoutes.deliveryDetails, arguments: {
+                        'leadId': controller.leadId.value,
+                        'id': firstDelivery?.id ?? '',
+                        'deliveryId': firstDelivery?.id ?? '',
+                        'deliveryNumber': firstDelivery?.code ?? '',
+                        'project': controller.title.value,
+                        'jobId': controller.projectId.value,
+                        'location': controller.location.value,
+                        'item': firstDelivery != null
+                            ? {
+                                'deliveryNumber': firstDelivery.code,
+                                'deliveryId': firstDelivery.id,
+                                'description': firstDelivery.description,
+                                'status': firstDelivery.status,
+                                'deliveryDate': firstDelivery.date,
+                                'project': {
+                                  'projectName': controller.title.value,
+                                  'jobId': controller.projectId.value,
+                                  'location': controller.location.value,
+                                },
+                              }
+                            : null,
+                        'fromProject': true,
+                      });
+                    },
                   ),
                   _ActionButton(
                     icon: Icons.edit_note_outlined,
                     label: 'Daily Work Logs',
-                    onTap: () {},
-                  ),
-                  _ActionButton(
-                    icon: Icons.qr_code_scanner,
-                    label: 'Bundle Scan',
-                    onTap: () => Get.toNamed(AppRoutes.bundleScan, arguments: {
+                    onTap: () => Get.toNamed(AppRoutes.dailyWorkLogs, arguments: {
                       'leadId': controller.leadId.value,
                       'project': controller.title.value,
                       'jobId': controller.projectId.value,
                       'fromProject': true,
                     }),
+                  ),
+                  _ActionButton(
+                    icon: Icons.qr_code_scanner,
+                    label: 'Bundle Scan',
+                    onTap: () {
+                      final effectiveProjectId =
+                          controller.leadId.value.isNotEmpty
+                              ? controller.leadId.value
+                              : controller.projectId.value;
+                      BundleScanQrDialog.show(
+                        context,
+                        projectId: effectiveProjectId,
+                        showProjectDropdown: false,
+                        onScanned: (scannedVal, scannedProjectId) {
+                          final cleanId = scannedVal.trim();
+                          if (cleanId.isEmpty) return;
+                          final finalPid = (scannedProjectId != null &&
+                                  scannedProjectId.isNotEmpty)
+                              ? scannedProjectId
+                              : effectiveProjectId;
+                          Get.toNamed(AppRoutes.bundleScanDetail,
+                              arguments: BundleScanItem(
+                                id: cleanId,
+                                bundleId: cleanId,
+                                realMongoId:
+                                    BundleScanItem.isMongoHexId(cleanId)
+                                        ? cleanId
+                                        : '',
+                                projectId: finalPid,
+                                project: controller.title.value,
+                                jobId: controller.projectId.value,
+                                site: '-',
+                                parts: '-',
+                                totalWeight: '0.0 LBS',
+                                time: '-',
+                                status: BundleScanStatus.pending,
+                                statusText: 'Pending',
+                              ));
+                        },
+                      );
+                    },
                   ),
                 ];
 
@@ -144,11 +205,11 @@ class ProjectDetailsView extends StatelessWidget {
                 );
               },
             ),
-            SizedBox(height: gap * 1.5),
+            SizedBox(height: gap),
 
             // Project Overview Header Card
             Obx(() => Container(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(14),
@@ -160,13 +221,13 @@ class ProjectDetailsView extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Container(
-                            width: 54,
-                            height: 54,
+                            width: 50,
+                            height: 50,
                             decoration: BoxDecoration(
                               color: AppColors.primaryBlue.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(12),
                             ),
-                            child: const Icon(Icons.account_balance, color: AppColors.primaryBlue, size: 28),
+                            child: const Icon(Icons.account_balance, color: AppColors.primaryBlue, size: 26),
                           ),
                           SizedBox(width: size.width * 0.015),
                           Expanded(
@@ -190,7 +251,7 @@ class ProjectDetailsView extends StatelessWidget {
                                     const _BadgePill(text: 'Medium Priority', color: Color(0xFF4B5563), bgColor: Color(0xFFF3F4F6)),
                                   ],
                                 ),
-                                const SizedBox(height: 6),
+                                const SizedBox(height: 4),
                                 Text(
                                   controller.projectId.value.isEmpty ? '—' : controller.projectId.value,
                                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary),
@@ -199,7 +260,7 @@ class ProjectDetailsView extends StatelessWidget {
                             ),
                           ),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                             decoration: BoxDecoration(
                               color: const Color(0xFFF8FAFC),
                               borderRadius: BorderRadius.circular(10),
@@ -232,10 +293,10 @@ class ProjectDetailsView extends StatelessWidget {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       Wrap(
                         alignment: WrapAlignment.spaceBetween,
-                        runSpacing: 14,
+                        runSpacing: 10,
                         spacing: 16,
                         children: [
                           _BottomMeta(icon: Icons.domain, label: 'Building Type', value: controller.buildingType.value.isEmpty ? '—' : controller.buildingType.value),
@@ -247,21 +308,22 @@ class ProjectDetailsView extends StatelessWidget {
                     ],
                   ),
                 )),
-            SizedBox(height: gap * 1.5),
+            SizedBox(height: gap),
 
             // Upcoming Material Delivery Data Table
             const Text(
               'Upcoming Material Delivery',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             LayoutBuilder(
               builder: (context, constraints) {
                 final minWidth = constraints.maxWidth < 900 ? 900.0 : constraints.maxWidth;
                 return Container(
+                  clipBehavior: Clip.antiAlias,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     border: Border.all(color: AppColors.cardBorder),
                   ),
                   child: SingleChildScrollView(
@@ -272,10 +334,9 @@ class ProjectDetailsView extends StatelessWidget {
                         () => Column(
                           children: [
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                               decoration: const BoxDecoration(
                                 color: Color(0xFF2E5E9E), // dark blue header
-                                borderRadius: BorderRadius.vertical(top: Radius.circular(13)),
+                                border: Border(bottom: BorderSide(color: Color(0xFF1E3A8A), width: 1.0)),
                               ),
                               child: Row(
                                 children: [
@@ -285,7 +346,7 @@ class ProjectDetailsView extends StatelessWidget {
                                   _tblHeader('Item', flex: 3, sort: true),
                                   _tblHeader('Vendor', flex: 1),
                                   _tblHeader('Carrier', flex: 1),
-                                  _tblHeader('POC', flex: 1),
+                                  _tblHeader('POC', flex: 1, isLast: true),
                                 ],
                               ),
                             ),
@@ -293,22 +354,51 @@ class ProjectDetailsView extends StatelessWidget {
                               const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
                             else if (controller.deliveries.isEmpty)
                               const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 40),
+                                padding: EdgeInsets.symmetric(vertical: 32),
                                 child: Text('No material deliveries found for this project.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
                               )
                             else
-                              ...controller.deliveries.map((item) => Padding(
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                child: Row(
-                                  children: [
-                                    Expanded(flex: 2, child: Text(item.code, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.primaryBlue))),
-                                    Expanded(flex: 2, child: Text(item.status, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: item.statusColor))),
-                                    Expanded(flex: 2, child: Text(item.date, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
-                                    Expanded(flex: 3, child: Text(item.description.isNotEmpty ? item.description : 'Material', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
-                                    const Expanded(flex: 1, child: Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                                    const Expanded(flex: 1, child: Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                                    const Expanded(flex: 1, child: Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                                  ],
+                              ...controller.deliveries.map((item) => InkWell(
+                                onTap: () {
+                                  Get.toNamed(AppRoutes.deliveryDetails, arguments: {
+                                    'leadId': controller.leadId.value,
+                                    'id': item.id,
+                                    'deliveryId': item.id,
+                                    'deliveryNumber': item.code,
+                                    'project': controller.title.value,
+                                    'projectName': controller.title.value,
+                                    'jobId': controller.projectId.value,
+                                    'location': controller.location.value,
+                                    'item': {
+                                      'deliveryNumber': item.code,
+                                      'deliveryId': item.id,
+                                      'description': item.description,
+                                      'status': item.status,
+                                      'deliveryDate': item.date,
+                                      'project': {
+                                        'projectName': controller.title.value,
+                                        'jobId': controller.projectId.value,
+                                        'location': controller.location.value,
+                                      },
+                                    },
+                                    'fromProject': true,
+                                  });
+                                },
+                                child: Container(
+                                  decoration: const BoxDecoration(
+                                    border: Border(bottom: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      _tblCell(flex: 2, child: Text(item.code, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.primaryBlue))),
+                                      _tblCell(flex: 2, child: Text(item.status, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: item.statusColor))),
+                                      _tblCell(flex: 2, child: Text(item.date, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
+                                      _tblCell(flex: 3, child: Text(item.description.isNotEmpty ? item.description : 'Material', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
+                                      _tblCell(flex: 1, child: const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
+                                      _tblCell(flex: 1, child: const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
+                                      _tblCell(flex: 1, isLast: true, child: const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
+                                    ],
+                                  ),
                                 ),
                               )),
                           ],
@@ -319,7 +409,7 @@ class ProjectDetailsView extends StatelessWidget {
                 );
               },
             ),
-            SizedBox(height: gap * 1.5),
+            SizedBox(height: gap),
 
             // Project Tasks
             Obx(() => Column(
@@ -396,25 +486,44 @@ class ProjectDetailsView extends StatelessWidget {
     );
   }
 
-  Widget _tblHeader(String label, {required int flex, bool sort = false}) {
+  Widget _tblHeader(String label, {required int flex, bool sort = false, bool isLast = false}) {
     return Expanded(
       flex: flex,
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Flexible(
-            child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: Colors.white24, width: 1.0)),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              ),
             ),
-          ),
-          if (sort) ...[
-            const SizedBox(width: 4),
-            const Icon(Icons.unfold_more, color: Colors.white70, size: 14),
+            if (sort) ...[
+              const SizedBox(width: 4),
+              const Icon(Icons.unfold_more, color: Colors.white70, size: 14),
+            ],
           ],
-        ],
+        ),
+      ),
+    );
+  }
+
+  Widget _tblCell({required int flex, required Widget child, bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+        ),
+        child: child,
       ),
     );
   }

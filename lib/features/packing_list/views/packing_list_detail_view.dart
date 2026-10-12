@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_toast.dart';
 import '../models/packing_list_models.dart';
 import '../controllers/packing_list_controller.dart';
 import '../widgets/packing_list_dialogs.dart';
@@ -17,7 +18,6 @@ class PackingListDetailView extends StatefulWidget {
 
 class _PackingListDetailViewState extends State<PackingListDetailView> {
   final _bundleListItems = <(String, String, String, String, String, String, String)>[];
-  Map<String, dynamic>? _detailData;
   bool _isLoading = true;
   int _totalItems = 0;
   int _totalBundles = 0;
@@ -38,15 +38,20 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
     final data = await controller.getPackingListDetail(item.id);
     if (data != null && mounted) {
       setState(() {
-        _detailData = data;
         
         List<dynamic> rawBundles = [];
-        if (data['bundles'] is List) {
+        final Map target = data.containsKey('packingList') ? data['packingList'] : data;
+        
+        if (target['bundles'] is List) {
+          rawBundles = target['bundles'] as List;
+        } else if (target['items'] is List) {
+          rawBundles = target['items'] as List;
+        } else if (target['bundleItems'] is List) {
+          rawBundles = target['bundleItems'] as List;
+        } else if (data['bundles'] is List) {
           rawBundles = data['bundles'] as List;
         } else if (data['items'] is List) {
           rawBundles = data['items'] as List;
-        } else if (data['bundleItems'] is List) {
-          rawBundles = data['bundleItems'] as List;
         }
 
         _totalItems = (data['totalItems'] ?? data['itemsCount'] ?? rawBundles.length) is num
@@ -181,7 +186,28 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
                                   }
                                 },
                         ),
-                        _ActionBtn(label: 'PRINT PACKING LIST', onTap: null),
+                        _ActionBtn(
+                          label: 'PRINT PACKING LIST',
+                          onTap: item == null
+                              ? null
+                              : () async {
+                                  final url = await controller.downloadPdf(
+                                    item.realMongoId.isNotEmpty ? item.realMongoId : item.id,
+                                  );
+                                  if (url != null) {
+                                    final uri = Uri.parse(url);
+                                    if (await canLaunchUrl(uri)) {
+                                      await launchUrl(uri, mode: LaunchMode.externalApplication);
+                                    }
+                                  }
+                                  if (context.mounted) {
+                                    AppToast.showSuccess(
+                                      title: 'Printed',
+                                      description: 'Packing List sent to printer',
+                                    );
+                                  }
+                                },
+                        ),
                         _ActionBtn(
                           label: 'EXPORT EXCEL',
                           onTap: () async {
@@ -325,100 +351,25 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
                     children: [
                     // Dark Header
                     Container(
-                      color: const Color(0xFF1A1A2E),
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16,
-                        vertical: 10,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF1A1A2E),
+                        border: Border(bottom: BorderSide(color: Color(0xFF334155), width: 1.5)),
                       ),
-                      child: const Row(
+                      child: Row(
                         children: [
-                          Expanded(
-                            flex: 1,
-                            child: Text(
-                              '#',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              'BUNDLE ID',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 4,
-                            child: Text(
-                              'PART CODE / DESCRIPTION',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'QUANTITY',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              'LENGTH',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              'WEIGHT',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            flex: 3,
-                            child: Text(
-                              'MARK IDS / STATUS',
-                              style: TextStyle(
-                                fontWeight: FontWeight.w700,
-                                fontSize: 12,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
+                          _buildTh('#', 1),
+                          _buildTh('BUNDLE ID', 3),
+                          _buildTh('PART CODE / DESCRIPTION', 4),
+                          _buildTh('QUANTITY', 2),
+                          _buildTh('LENGTH', 2),
+                          _buildTh('WEIGHT', 3),
+                          _buildTh('MARK IDS / STATUS', 3, isLast: true),
                         ],
                       ),
                     ),
                     // Data Rows
                     ..._bundleListItems.map(
                       (r) => Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 16,
-                          vertical: 10,
-                        ),
                         decoration: const BoxDecoration(
                           border: Border(
                             bottom: BorderSide(color: AppColors.cardBorder),
@@ -426,19 +377,18 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
                         ),
                         child: Row(
                           children: [
-                            Expanded(
-                              flex: 1,
-                              child: Text(
+                            _buildTd(
+                              Text(
                                 r.$1,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              1,
                             ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(
+                            _buildTd(
+                              Text(
                                 r.$2,
                                 style: const TextStyle(
                                   fontSize: 13,
@@ -446,50 +396,50 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
                                   color: AppColors.textPrimary,
                                 ),
                               ),
+                              3,
                             ),
-                            Expanded(
-                              flex: 4,
-                              child: Text(
+                            _buildTd(
+                              Text(
                                 r.$3,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              4,
                             ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
+                            _buildTd(
+                              Text(
                                 r.$4,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              2,
                             ),
-                            Expanded(
-                              flex: 2,
-                              child: Text(
+                            _buildTd(
+                              Text(
                                 r.$5,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              2,
                             ),
-                            Expanded(
-                              flex: 3,
-                              child: Text(
+                            _buildTd(
+                              Text(
                                 r.$6,
                                 style: const TextStyle(
                                   fontSize: 13,
                                   color: AppColors.textSecondary,
                                 ),
                               ),
+                              3,
                             ),
-                            Expanded(
-                              flex: 3,
-                              child: Container(
+                            _buildTd(
+                              Container(
                                 padding: const EdgeInsets.symmetric(
                                   horizontal: 8,
                                   vertical: 3,
@@ -507,6 +457,8 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
                                   ),
                                 ),
                               ),
+                              3,
+                              isLast: true,
                             ),
                           ],
                         ),
@@ -580,6 +532,53 @@ class _PackingListDetailViewState extends State<PackingListDetailView> {
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  static Widget _buildTh(String text, int flex, {bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(
+                    color: Color(0xFF334155),
+                    width: 1.0,
+                  ),
+                ),
+        ),
+        child: Text(
+          text,
+          style: const TextStyle(
+            fontWeight: FontWeight.w700,
+            fontSize: 12,
+            color: Colors.white,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildTd(Widget child, int flex, {bool isLast = false}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast
+              ? null
+              : const Border(
+                  right: BorderSide(
+                    color: AppColors.cardBorder,
+                    width: 1.0,
+                  ),
+                ),
+        ),
+        child: child,
       ),
     );
   }

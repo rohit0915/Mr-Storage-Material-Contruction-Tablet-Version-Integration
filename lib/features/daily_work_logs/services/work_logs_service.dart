@@ -52,6 +52,12 @@ class WorkLogsService extends GetxService {
       'displayName': 'Storage 0011 (#2026014)',
     },
     {
+      'id': 'lead-namra-01',
+      'name': 'Storage Namra LLC 01',
+      'jobId': 'LOAD-001',
+      'displayName': 'Storage Namra LLC 01 (#LOAD-001)',
+    },
+    {
       'id': 'lead-002',
       'name': 'Lucas project',
       'jobId': 'PRO-002',
@@ -101,50 +107,87 @@ class WorkLogsService extends GetxService {
       merged[def['name']!] = def;
     }
 
+    void addProjectItem(Map item) {
+      final id = (item['_id'] ?? item['id'] ?? '').toString();
+      final name = (item['projectName'] ?? item['name'] ?? '').toString();
+      final jobId = (item['jobId'] ?? item['code'] ?? '').toString();
+      final buildingType = (item['buildingType'] ?? '').toString();
+      final location = (item['location'] ?? '').toString();
+
+      String label = name;
+      if (label.isEmpty) {
+        if (buildingType.isNotEmpty && location.isNotEmpty) {
+          label = '$buildingType - $location';
+        } else if (jobId.isNotEmpty) {
+          label = 'Project #$jobId';
+        }
+      }
+
+      if (label.isNotEmpty) {
+        final displayName = jobId.isNotEmpty ? '$label (#$jobId)' : label;
+        merged[label] = {
+          'id': id.isNotEmpty ? id : 'lead-$label',
+          'name': label,
+          'jobId': jobId,
+          'displayName': displayName,
+        };
+      }
+    }
+
+    // 1. Fetch from projects API with pagination parameters (limit 100)
     try {
-      final res = await _apiClient.get(ApiConstants.projects);
+      final res = await _apiClient.get(
+        ApiConstants.projects,
+        queryParams: const {'page': '1', 'limit': '100'},
+      );
       List items = [];
-      if (res is Map && res['data'] is List) {
-        items = res['data'] as List;
+      if (res is Map) {
+        if (res['data'] is Map && res['data']['projects'] is List) {
+          items = res['data']['projects'] as List;
+        } else if (res['projects'] is List) {
+          items = res['projects'] as List;
+        } else if (res['data'] is List) {
+          items = res['data'] as List;
+        } else if (res['items'] is List) {
+          items = res['items'] as List;
+        }
       } else if (res is List) {
         items = res;
       }
       for (final item in items) {
         if (item is Map) {
-          final id = (item['_id'] ?? item['id'] ?? '').toString();
-          final name = (item['projectName'] ?? item['name'] ?? '').toString();
-          final jobId = (item['jobId'] ?? item['code'] ?? '').toString();
-          if (name.isNotEmpty) {
-            merged[name] = {
-              'id': id.isNotEmpty ? id : 'lead-$name',
-              'name': name,
-              'jobId': jobId,
-              'displayName': jobId.isNotEmpty ? '$name (#$jobId)' : name,
-            };
-          }
+          addProjectItem(item);
         }
       }
-    } catch (_) {}
+    } catch (e) {
+      AppLogger.w('Failed to get projects from ApiConstants.projects: $e', tag: 'WORK_LOGS_SVC');
+    }
 
-    // Fallback: try dashboardFilters
+    // 2. Fetch from dashboardFilters API
     try {
       final res = await _apiClient.get(ApiConstants.dashboardFilters);
       if (res is Map && res['data'] is Map && res['data']['projects'] is List) {
         final pList = res['data']['projects'] as List;
         for (final item in pList) {
           if (item is Map) {
-            final id = (item['_id'] ?? item['id'] ?? '').toString();
-            final name = (item['projectName'] ?? item['name'] ?? '').toString();
-            final jobId = (item['jobId'] ?? '').toString();
-            if (name.isNotEmpty) {
-              merged[name] = {
-                'id': id.isNotEmpty ? id : 'lead-$name',
-                'name': name,
-                'jobId': jobId,
-                'displayName': jobId.isNotEmpty ? '$name (#$jobId)' : name,
-              };
-            }
+            addProjectItem(item);
           }
+        }
+      }
+    } catch (_) {}
+
+    // 3. Fallback: try projectCalendar
+    try {
+      final res = await _apiClient.get(ApiConstants.projectCalendar);
+      List pList = [];
+      if (res is Map && res['data'] is List) {
+        pList = res['data'] as List;
+      } else if (res is List) {
+        pList = res;
+      }
+      for (final item in pList) {
+        if (item is Map) {
+          addProjectItem(item);
         }
       }
     } catch (_) {}

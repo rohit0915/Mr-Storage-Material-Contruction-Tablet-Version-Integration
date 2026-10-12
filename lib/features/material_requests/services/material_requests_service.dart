@@ -35,40 +35,78 @@ class MaterialRequestsService extends GetxService {
     return const [];
   }
 
+  Future<Map<String, dynamic>?> getFilters() async {
+    try {
+      final res = await _apiClient.get(ApiConstants.materialRequestsFilters);
+      if (res is Map && res['data'] is Map) {
+        return Map<String, dynamic>.from(res['data'] as Map);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'getFilters Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'MAT_REQ_SVC',
+      );
+    }
+    return null;
+  }
+
   Future<Map<String, dynamic>?> getMaterialRequests({
     int page = 1,
     int limit = 10,
     String? project,
-    String? department,
     String? status,
-    String? requestedBy,
+    String? priority,
+    String? search,
     String? dateFrom,
     String? dateTo,
+    String? department,
+    String? requestedBy,
   }) async {
     try {
       final query = <String, String>{};
       query['page'] = page.toString();
       query['limit'] = limit.toString();
       if (project != null && project.isNotEmpty && project != 'All Projects') {
+        query['leadId'] = project;
+        query['projectId'] = project;
         query['project'] = project;
+      }
+      if (status != null &&
+          status.isNotEmpty &&
+          status != 'All Statuses' &&
+          status != 'All Status') {
+        query['status'] = status.toLowerCase();
+      }
+      if (priority != null &&
+          priority.isNotEmpty &&
+          priority != 'All Priorities') {
+        query['priority'] = priority.toLowerCase();
+      }
+      if (search != null && search.trim().isNotEmpty) {
+        query['search'] = search.trim();
+      }
+      if (dateFrom != null && dateFrom.isNotEmpty) {
+        query['dateFrom'] = dateFrom;
+        query['fromDate'] = dateFrom;
+        query['startDate'] = dateFrom;
+      }
+      if (dateTo != null && dateTo.isNotEmpty) {
+        query['dateTo'] = dateTo;
+        query['toDate'] = dateTo;
+        query['endDate'] = dateTo;
       }
       if (department != null &&
           department.isNotEmpty &&
           department != 'All Departments') {
         query['department'] = department;
       }
-      if (status != null && status.isNotEmpty && status != 'All Status') {
-        query['status'] = status.toLowerCase();
-      }
       if (requestedBy != null &&
           requestedBy.isNotEmpty &&
           requestedBy != 'All') {
         query['requestedBy'] = requestedBy;
       }
-      if (dateFrom != null && dateFrom.isNotEmpty) {
-        query['startDate'] = dateFrom;
-      }
-      if (dateTo != null && dateTo.isNotEmpty) query['endDate'] = dateTo;
 
       final res = await _apiClient.get(
         ApiConstants.materialRequests,

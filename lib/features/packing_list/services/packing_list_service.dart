@@ -94,8 +94,9 @@ class PackingListService {
         tag: 'PACKING_LIST',
       );
       if (res is Map) {
-        if (res['data'] is Map)
+        if (res['data'] is Map) {
           return Map<String, dynamic>.from(res['data'] as Map);
+        }
         return Map<String, dynamic>.from(res);
       }
     } catch (e, st) {
@@ -112,8 +113,21 @@ class PackingListService {
   Future<String?> exportPackingLists() async {
     try {
       final res = await _apiClient.get(ApiConstants.packingListExport);
-      if (res is Map && res['url'] != null) {
-        return res['url'].toString();
+      if (res is Map) {
+        final url = res['url'] ??
+            res['data']?['url'] ??
+            res['downloadUrl'] ??
+            res['data']?['downloadUrl'] ??
+            res['fileUrl'] ??
+            res['data']?['fileUrl'] ??
+            res['path'] ??
+            res['data']?['path'];
+        if (url != null && url.toString().isNotEmpty) {
+          return url.toString();
+        }
+      } else if (res is String &&
+          (res.startsWith('http://') || res.startsWith('https://'))) {
+        return res;
       }
     } catch (e, st) {
       AppLogger.e(

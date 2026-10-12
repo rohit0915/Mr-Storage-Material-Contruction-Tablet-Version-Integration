@@ -18,14 +18,28 @@ class DispatchBundleItem {
   final bool isVerified;
 
   factory DispatchBundleItem.fromJson(Map<String, dynamic> json, int idx) {
-    final rawId = (json['bundleId'] ?? json['_id'] ?? json['id'] ?? '')
+    final rawId = (json['bundleId'] ??
+            json['bundleNumber'] ??
+            json['bundleNo'] ??
+            json['code'] ??
+            json['id'] ??
+            json['_id'] ??
+            'B-${(idx + 1).toString().padLeft(3, '0')}')
         .toString();
-    final bNo = (json['bundleNo'] ?? json['code'] ?? '').toString();
-    final w = json['weight'] != null
-        ? '${json['weight']} LBS'
-        : (json['totalWeight']?.toString() ?? '');
-    final st = (json['status'] ?? '').toString();
-    final ver = json['isVerified'] == true || json['verified'] == true;
+    final bNo = (json['bundleNo'] ??
+            json['bundleNumber'] ??
+            json['bundleId'] ??
+            json['code'] ??
+            '${idx + 1}')
+        .toString();
+    final wVal =
+        json['weight'] ?? json['totalWeight'] ?? json['weightLbs'] ?? '-';
+    final w = wVal.toString().contains('LBS') ? wVal.toString() : '$wVal LBS';
+    final st = (json['status'] ?? 'READY').toString().toUpperCase();
+    final ver = json['isVerified'] == true ||
+        json['verified'] == true ||
+        st == 'VERIFIED' ||
+        st == 'READY';
 
     return DispatchBundleItem(
       index: idx + 1,
@@ -41,6 +55,8 @@ class DispatchBundleItem {
 class DispatchItem {
   const DispatchItem({
     required this.loadId,
+    this.displayLoadId = '',
+    this.mongoId = '',
     this.packingListNo = '',
     this.packingListMongoId = '',
     this.project = '',
@@ -59,6 +75,8 @@ class DispatchItem {
   });
 
   final String loadId;
+  final String displayLoadId;
+  final String mongoId;
   final String packingListNo;
   final String packingListMongoId;
   final String project;
@@ -101,6 +119,28 @@ class DispatchItem {
       pkl = json['packingListNo'].toString();
     }
 
+    // Determine clean human-readable Load ID (e.g. LOAD-001, LOAD-002, etc.)
+    String displayId = '';
+    for (final k in ['loadNumber', 'loadNo', 'loadCode', 'code']) {
+      if (json[k] != null && json[k].toString().isNotEmpty) {
+        displayId = json[k].toString();
+        break;
+      }
+    }
+    if (displayId.isEmpty && json['loadId'] != null && json['loadId'].toString().length != 24) {
+      displayId = json['loadId'].toString();
+    }
+    if (displayId.isEmpty && pkl.isNotEmpty) {
+      displayId = 'LOAD-${pkl.replaceAll('PL-', '')}';
+    }
+    if (displayId.isEmpty) {
+      if (rawId.length == 24) {
+        displayId = 'LOAD-${rawId.substring(rawId.length - 4).toUpperCase()}';
+      } else {
+        displayId = rawId;
+      }
+    }
+
     String pName = '';
     String jId = '';
     if (json['project'] is Map) {
@@ -126,11 +166,11 @@ class DispatchItem {
 
     final List<DispatchBundleItem> parsedBundles = [];
     int bCount = 0;
-    if (json['bundles'] is List) {
-      final bList = json['bundles'] as List;
-      bCount = bList.length;
-      for (var i = 0; i < bList.length; i++) {
-        final b = bList[i];
+    final rawBundles = json['bundles'] ?? json['items'] ?? json['bundleItems'];
+    if (rawBundles is List) {
+      bCount = rawBundles.length;
+      for (var i = 0; i < rawBundles.length; i++) {
+        final b = rawBundles[i];
         if (b is Map) {
           parsedBundles.add(
             DispatchBundleItem.fromJson(Map<String, dynamic>.from(b), i),
@@ -139,11 +179,11 @@ class DispatchItem {
           parsedBundles.add(
             DispatchBundleItem(
               index: i + 1,
-              bundleNo: '',
+              bundleNo: '${i + 1}',
               bundleId: b.toString(),
-              weight: '',
-              status: '',
-              isVerified: false,
+              weight: '-',
+              status: 'READY',
+              isVerified: true,
             ),
           );
         }
@@ -154,6 +194,8 @@ class DispatchItem {
 
     return DispatchItem(
       loadId: lId,
+      displayLoadId: displayId,
+      mongoId: rawId.length == 24 ? rawId : '',
       packingListNo: pkl,
       packingListMongoId: pklMongoId,
       project: pName,
@@ -182,25 +224,43 @@ class DispatchItem {
   }
 
   DispatchItem copyWith({
+    String? loadId,
+    String? displayLoadId,
+    String? mongoId,
+    String? packingListNo,
+    String? packingListMongoId,
+    String? project,
+    String? jobId,
+    String? truck,
+    String? driver,
+    int? bundles,
+    String? totalWeight,
+    String? destination,
     DispatchStatus? status,
     String? statusText,
+    bool? weightVerified,
+    bool? loadingVerified,
+    List<DispatchBundleItem>? bundleList,
     bool? isSelected,
   }) {
     return DispatchItem(
-      loadId: loadId,
-      packingListNo: packingListNo,
-      project: project,
-      jobId: jobId,
-      truck: truck,
-      driver: driver,
-      bundles: bundles,
-      totalWeight: totalWeight,
-      destination: destination,
+      loadId: loadId ?? this.loadId,
+      displayLoadId: displayLoadId ?? this.displayLoadId,
+      mongoId: mongoId ?? this.mongoId,
+      packingListNo: packingListNo ?? this.packingListNo,
+      packingListMongoId: packingListMongoId ?? this.packingListMongoId,
+      project: project ?? this.project,
+      jobId: jobId ?? this.jobId,
+      truck: truck ?? this.truck,
+      driver: driver ?? this.driver,
+      bundles: bundles ?? this.bundles,
+      totalWeight: totalWeight ?? this.totalWeight,
+      destination: destination ?? this.destination,
       status: status ?? this.status,
       statusText: statusText ?? this.statusText,
-      weightVerified: weightVerified,
-      loadingVerified: loadingVerified,
-      bundleList: bundleList,
+      weightVerified: weightVerified ?? this.weightVerified,
+      loadingVerified: loadingVerified ?? this.loadingVerified,
+      bundleList: bundleList ?? this.bundleList,
       isSelected: isSelected ?? this.isSelected,
     );
   }

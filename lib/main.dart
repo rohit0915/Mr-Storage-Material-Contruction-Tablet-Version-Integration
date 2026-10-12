@@ -5,6 +5,7 @@ import 'package:get/get.dart';
 import 'package:toastification/toastification.dart';
 
 import 'app/routes/app_pages.dart';
+import 'app/routes/app_routes.dart';
 import 'app/services/api_client.dart';
 import 'app/services/construction_socket_service.dart';
 import 'app/shell/app_shell_controller.dart';
@@ -39,14 +40,19 @@ Future<void> main() async {
     socketService.connect();
   }
 
-  Get.put(AuthService(), permanent: true);
+  final authService = Get.put(AuthService(), permanent: true);
   Get.put(AppShellController(), permanent: true);
 
-  runApp(const SteelBuildingApp());
+  final initialRoute =
+      authService.isLoggedIn ? AppRoutes.dashboard : AppRoutes.login;
+
+  runApp(SteelBuildingApp(initialRoute: initialRoute));
 }
 
 class SteelBuildingApp extends StatelessWidget {
-  const SteelBuildingApp({super.key});
+  const SteelBuildingApp({super.key, this.initialRoute = AppRoutes.login});
+
+  final String initialRoute;
 
   @override
   Widget build(BuildContext context) {
@@ -63,7 +69,7 @@ class SteelBuildingApp extends StatelessWidget {
           fontFamily: 'Roboto',
           scaffoldBackgroundColor: AppColors.dashboardBg,
         ),
-        initialRoute: AppPages.initial,
+        initialRoute: initialRoute,
         getPages: AppPages.routes,
       ),
     );

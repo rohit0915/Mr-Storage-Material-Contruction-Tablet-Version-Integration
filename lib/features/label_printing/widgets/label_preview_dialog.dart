@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
-import '../../../app/theme/app_colors.dart';
 import '../models/label_printing_models.dart';
 
 class LabelPreviewDialog extends StatelessWidget {
@@ -17,86 +16,122 @@ class LabelPreviewDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
-    final width = (size.width * 0.52).clamp(520.0, 680.0);
-    final maxHeight = size.height * 0.85;
-    final fontSize = (size.width * 0.010).clamp(12.0, 14.0);
+    final width = (size.width * 0.55).clamp(540.0, 700.0);
+    final maxHeight = size.height * 0.88;
+
+    final cleanProject = item.project.isNotEmpty && item.project != '-'
+        ? item.project.replaceAll(' ', '')
+        : 'WoodWorkshop';
+
+    final shipperVal = item.shipper.isNotEmpty && item.shipper != '-'
+        ? item.shipper
+        : (item.jobId.isNotEmpty ? item.jobId : 'PRO-007');
+
+    final loadVal = item.loadId.isNotEmpty && item.loadId != '-'
+        ? item.loadId
+        : '';
+
+    final bundleVal = item.id.isNotEmpty ? item.id : 'B-001';
+
+    final partsVal = item.part.isNotEmpty && item.part != '-' ? item.part : '-';
+
+    final weightVal = item.rawWeight.isNotEmpty
+        ? item.rawWeight
+        : (item.totalWeightLbs > 0
+            ? (item.totalWeightLbs % 1 == 0
+                ? item.totalWeightLbs.toInt().toString()
+                : item.totalWeightLbs.toString())
+            : '0');
+
+    final lengthVal = item.rawLength.isNotEmpty
+        ? item.rawLength
+        : (item.lengthFt > 0
+            ? (item.lengthFt % 1 == 0
+                ? item.lengthFt.toInt().toString()
+                : item.lengthFt.toString())
+            : '0');
+
+    final qrData = item.realMongoId.isNotEmpty
+        ? 'https://mr-storage-vendor.vercel.app/bundle/${item.realMongoId}'
+        : 'https://mr-storage-vendor.vercel.app/bundle/${item.id}';
 
     return Dialog(
       backgroundColor: Colors.white,
       surfaceTintColor: Colors.white,
       insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: Material(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(20),
         child: ConstrainedBox(
           constraints: BoxConstraints(maxWidth: width, maxHeight: maxHeight),
           child: SingleChildScrollView(
-            padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+            padding: const EdgeInsets.fromLTRB(28, 24, 28, 28),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
+                // Top header: Back button on left, Title in center
+                Stack(
+                  alignment: Alignment.center,
                   children: [
-                    InkWell(
-                      onTap: () => Navigator.of(context).pop(),
-                      borderRadius: BorderRadius.circular(8),
-                      child: const Padding(
-                        padding: EdgeInsets.symmetric(
-                          vertical: 4,
-                          horizontal: 2,
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton(
+                        onPressed: () => Navigator.of(context).pop(),
+                        style: OutlinedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF334155),
+                          side: const BorderSide(color: Color(0xFFE2E8F0)),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 8,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          elevation: 0,
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.arrow_back_ios_new_rounded,
-                              size: 14,
-                              color: AppColors.textSecondary,
-                            ),
-                            SizedBox(width: 6),
-                            Text(
-                              'Back',
-                              style: TextStyle(
-                                color: AppColors.textSecondary,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
-                          ],
+                        child: const Text(
+                          'Back',
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
                         ),
                       ),
                     ),
-                    Expanded(
-                      child: Text(
-                        'Label Preview',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: (size.width * 0.014).clamp(16.0, 20.0),
-                          fontWeight: FontWeight.w800,
-                          color: AppColors.textPrimary,
-                        ),
+                    const Text(
+                      'Label Preview',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.w800,
+                        color: Color(0xFF111827),
                       ),
                     ),
-                    const SizedBox(width: 56),
                   ],
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 32),
+
+                // Content row: QR Code on left, details on right
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: Container(
-                        width: 150,
-                        height: 150,
+                    Container(
+                      width: 170,
+                      height: 170,
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
                         color: Colors.white,
-                        child: QrImageView(
-                          data: 'project=${item.project}\nshipper=${item.shipper}\nload_id=${item.loadId}\nbundle_id=${item.id}\npart=${item.part}\nweight=${item.totalWeightLbs}\nlength=${item.lengthFt}',
-                          version: QrVersions.auto,
-                          size: 150.0,
-                          padding: const EdgeInsets.all(8),
-                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: const Color(0xFFF1F5F9)),
+                      ),
+                      child: QrImageView(
+                        data: qrData,
+                        version: QrVersions.auto,
+                        size: 162.0,
+                        padding: const EdgeInsets.all(4),
                       ),
                     ),
                     const SizedBox(width: 24),
@@ -105,64 +140,83 @@ class LabelPreviewDialog extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'project=${item.project}',
-                            style: TextStyle(
-                              fontSize: fontSize + 2,
+                            'project=$cleanProject',
+                            style: const TextStyle(
+                              fontSize: 19,
                               fontWeight: FontWeight.w800,
-                              color: AppColors.textPrimary,
+                              color: Color(0xFF0F172A),
+                              letterSpacing: -0.3,
                             ),
                           ),
                           const SizedBox(height: 14),
                           _DetailRow(
-                            label: 'Shipper',
-                            value: 'shipper=${item.shipper}',
+                            label: 'Shipper :',
+                            value: 'shipper=$shipperVal',
                           ),
                           _DetailRow(
-                            label: 'Load',
-                            value: 'load_id=${item.loadId}',
+                            label: 'Load :',
+                            value: 'load_id=$loadVal',
                           ),
                           _DetailRow(
-                            label: 'Bundle',
-                            value: 'bundle_id=${item.id}',
+                            label: 'Bundle :',
+                            value: 'bundle_id=$bundleVal',
                           ),
                           _DetailRow(
-                            label: 'Part#',
-                            value: 'part=${item.part}',
+                            label: 'Parts :',
+                            value: 'parts=$partsVal',
                           ),
                           _DetailRow(
-                            label: 'Weight',
-                            value: 'weight=${item.totalWeightLbs}',
+                            label: 'Weight :',
+                            value: 'weight=$weightVal',
                           ),
                           _DetailRow(
-                            label: 'Length',
-                            value: 'length=${item.lengthFt}',
+                            label: 'Length :',
+                            value: 'Length=$lengthVal',
                           ),
                         ],
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 48,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.of(context).pop();
-                      onPrint();
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryBlue,
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                const SizedBox(height: 32),
+
+                // Centered Print button
+                Center(
+                  child: Container(
+                    width: 320,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF2563EB), Color(0xFF4F46E5)],
                       ),
+                      borderRadius: BorderRadius.circular(16),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x332563EB),
+                          blurRadius: 12,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: const Text(
-                      'Print',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 16,
+                    child: ElevatedButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                        onPrint();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.transparent,
+                        shadowColor: Colors.transparent,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                      ),
+                      child: const Text(
+                        'Print',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                     ),
                   ),
@@ -184,33 +238,29 @@ class _DetailRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final fontSize = (MediaQuery.sizeOf(context).width * 0.010).clamp(
-      12.0,
-      14.0,
-    );
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.only(bottom: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           SizedBox(
-            width: 68,
+            width: 76,
             child: Text(
-              '$label:',
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w600,
-                color: AppColors.textSecondary,
+              label,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF94A3B8),
               ),
             ),
           ),
           Expanded(
             child: Text(
               value,
-              style: TextStyle(
-                fontSize: fontSize,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textPrimary,
+              style: const TextStyle(
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                color: Color(0xFF1E293B),
               ),
             ),
           ),

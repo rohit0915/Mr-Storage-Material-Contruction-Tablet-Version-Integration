@@ -14,24 +14,39 @@ class DeliveryDetailsController extends GetxController {
   final isActionLoading = false.obs;
   final delivery = <String, dynamic>{}.obs;
   String deliveryId = '';
+  String leadId = '';
+  String projectNameArg = '';
+  String jobIdArg = '';
+  String locationArg = '';
+  bool fromProject = false;
 
   @override
   void onInit() {
     super.onInit();
     final args = Get.arguments;
     if (args is Map) {
-      deliveryId = (args['id'] ?? args['deliveryId'] ?? '').toString();
+      fromProject = args['fromProject'] == true;
+      leadId = (args['leadId'] ?? args['projectId'] ?? '').toString();
+      deliveryId = (args['id'] ?? args['deliveryId'] ?? args['deliveryNumber'] ?? '').toString();
+      projectNameArg = (args['project'] ?? args['projectName'] ?? '').toString();
+      jobIdArg = (args['jobId'] ?? '').toString();
+      locationArg = (args['location'] ?? '').toString();
+
       _seedFromItem(args['item'] ?? args['delivery']);
+      if (projectNameArg.isNotEmpty && delivery['project'] == null) {
+        delivery['project'] = {
+          'projectName': projectNameArg,
+          'name': projectNameArg,
+          'jobId': jobIdArg,
+          'location': locationArg,
+        };
+      }
     } else if (args != null) {
       _seedFromItem(args);
     }
 
     if (deliveryId.isEmpty) {
-      deliveryId = value(['deliveryNumber', 'code', 'deliveryId'], fallback: 'DEL-0020');
-    }
-
-    if (delivery.isEmpty) {
-      _seedDefaultData();
+      deliveryId = value(['deliveryNumber', 'code', 'deliveryId', '_id', 'id'], fallback: '');
     }
 
     fetchDetails();
@@ -41,28 +56,29 @@ class DeliveryDetailsController extends GetxController {
     if (item == null) return;
     if (item is Map) {
       delivery.addAll(Map<String, dynamic>.from(item));
+      if (deliveryId.isEmpty) {
+        deliveryId = value(['deliveryNumber', 'code', 'deliveryId', '_id', 'id'], fallback: '');
+      }
       return;
     }
     // Handle DeliveryItem model
     try {
       delivery.addAll({
-        'deliveryNumber': (item as dynamic).id,
-        'deliveryId': (item as dynamic).realMongoId.isNotEmpty ? (item as dynamic).realMongoId : (item as dynamic).id,
-        'description': (item as dynamic).title,
-        'materialType': '—',
-        'status': (item as dynamic).status.name == 'staged'
-            ? 'CONFIRMED'
-            : (item as dynamic).status.name.toString().toUpperCase(),
-        'priority': (item as dynamic).priority?.name ?? '—',
-        'loadWeight': (item as dynamic).quantity,
-        'stagingArea': (item as dynamic).stagingArea.isNotEmpty ? (item as dynamic).stagingArea : '—',
+        'deliveryNumber': (item as dynamic).code ?? (item as dynamic).id,
+        'deliveryId': (item as dynamic).id,
+        'description': (item as dynamic).description ?? (item as dynamic).title,
+        'materialType': '-',
+        'status': (item as dynamic).status.toString().toUpperCase(),
+        'priority': (item as dynamic).priority?.name ?? '-',
+        'loadWeight': (item as dynamic).quantity ?? '-',
+        'stagingArea': (item as dynamic).stagingArea ?? '-',
         'location': (item as dynamic).location,
-        'destination': (item as dynamic).finalDestination.isNotEmpty ? (item as dynamic).finalDestination : (item as dynamic).location,
-        'notes': (item as dynamic).notes.isNotEmpty ? (item as dynamic).notes : 'No special instructions provided.',
-        'eta': (item as dynamic).eta,
+        'destination': (item as dynamic).finalDestination ?? (item as dynamic).location,
+        'notes': (item as dynamic).notes ?? 'No special instructions provided.',
+        'eta': (item as dynamic).eta ?? '-',
         'project': {
-          'projectName': (item as dynamic).project,
-          'name': (item as dynamic).project,
+          'projectName': (item as dynamic).projectName ?? (item as dynamic).project,
+          'name': (item as dynamic).projectName ?? (item as dynamic).project,
           'jobId': (item as dynamic).jobId,
           'location': (item as dynamic).location,
         },
@@ -73,70 +89,128 @@ class DeliveryDetailsController extends GetxController {
           'phone': (item as dynamic).phone,
         },
         'siteContact': {
-          'contactName': '—',
-          'phone': (item as dynamic).phone.isNotEmpty && (item as dynamic).phone != '-' ? (item as dynamic).phone : 'gh',
+          'contactName': '-',
+          'phone': (item as dynamic).phone ?? '-',
           'role': 'Site Receiving Lead',
         },
         'schedule': {
           'arrivalAtPlant': (item as dynamic).arrivalAtPlant,
           'departureFromPlant': (item as dynamic).departureFromPlant,
-          'deliveryDate': (item as dynamic).departureFromPlant.isNotEmpty ? (item as dynamic).departureFromPlant : 'Oct 22, 2026',
+          'deliveryDate': (item as dynamic).date ?? (item as dynamic).departureFromPlant,
         },
       });
+      if (deliveryId.isEmpty) {
+        deliveryId = (item as dynamic).id?.toString() ?? '';
+      }
     } catch (_) {}
   }
 
-  void _seedDefaultData() {
-    delivery.assignAll({
-      'deliveryNumber': 'DEL-0020',
-      'deliveryId': 'DEL-0020',
-      'description': '22 bundle(s) for bundle plan BP-0018',
-      'status': 'CONFIRMED',
-      'priority': '—',
-      'project': {
-        'projectName': 'Storage 0011',
-        'name': 'Storage 0011',
-      },
-      'receivingPoc': '—',
-      'deliveryDate': 'Oct 22, 2026',
-      'timeWindow': '—',
-      'siteDeliveryAddress': '—',
-      'materialType': '—',
-      'pickupDate': '—',
-      'pickupTime': '—',
-      'carrier': {
-        'name': 'nads',
-        'carrierName': 'nads',
-        'phone': '—',
-      },
-      'loadWeight': '55,789.2 lbs',
-      'packageCount': '—',
-      'stagingArea': '—',
-      'requiredLoadingEquipment': '—',
-      'specialInstructions': 'No special instructions provided.',
-      'siteContact': {
-        'contactName': '—',
-        'phone': 'gh',
-        'role': 'Site Receiving Lead',
-      },
-      'origin': '—',
-      'destination': '—',
-    });
-  }
 
   Future<void> fetchDetails() async {
     if (delivery.isEmpty) {
       isLoading.value = true;
     }
     try {
-      final result = await _service.getDeliveryDetail(deliveryId);
-      if (result != null) {
-        final raw = result['delivery'] is Map
-            ? result['delivery'] as Map
-            : result;
+      Map<String, dynamic>? detail;
+
+      // 1. If we have a deliveryId, try to fetch it directly
+      if (deliveryId.isNotEmpty) {
+        detail = await _service.getDeliveryDetail(deliveryId);
+      }
+
+      // 2. If detail not found, and we have a leadId:
+      if ((detail == null || detail.isEmpty) && leadId.isNotEmpty) {
+        final matRes = await _service.getProjectMaterialDeliveries(leadId);
+        List deliveriesList = [];
+        if (matRes is Map) {
+          final dData = matRes.containsKey('data') ? matRes['data'] : matRes;
+          if (dData is Map && dData['deliveries'] is List) {
+            deliveriesList = dData['deliveries'] as List;
+          } else if (dData is List) {
+            deliveriesList = dData;
+          }
+        } else if (matRes is List) {
+          deliveriesList = matRes;
+        }
+
+        // 3. Fallback to project details if material-deliveries was empty
+        if (deliveriesList.isEmpty) {
+          final projRes = await _service.getProjectDetails(leadId);
+          if (projRes is Map) {
+            final pData = projRes.containsKey('data') ? projRes['data'] : projRes;
+            if (pData is Map && pData['deliveries'] is List) {
+              deliveriesList = pData['deliveries'] as List;
+            }
+          }
+        }
+
+        // 4. Match the delivery or take first
+        if (deliveriesList.isNotEmpty) {
+          dynamic matched;
+          if (deliveryId.isNotEmpty) {
+            matched = deliveriesList.firstWhere(
+              (d) =>
+                  d is Map &&
+                  ((d['_id'] ?? '').toString() == deliveryId ||
+                      (d['deliveryId'] ?? '').toString() == deliveryId ||
+                      (d['deliveryNumber'] ?? '').toString() == deliveryId ||
+                      (d['code'] ?? '').toString() == deliveryId),
+              orElse: () => null,
+            );
+          }
+          matched ??= deliveriesList.first;
+
+          if (matched is Map) {
+            final foundId = (matched['_id'] ??
+                    matched['deliveryId'] ??
+                    matched['deliveryNumber'] ??
+                    matched['id'] ??
+                    '')
+                .toString();
+            _seedFromItem(matched);
+            if (foundId.isNotEmpty) {
+              detail = await _service.getDeliveryDetail(foundId);
+            }
+          }
+        }
+      }
+
+      // 5. Merge API response
+      if (detail != null && detail.isNotEmpty) {
+        final raw = detail['delivery'] is Map ? detail['delivery'] as Map : detail;
         delivery.addAll(Map<String, dynamic>.from(raw));
-      } else if (delivery.isEmpty) {
-        _seedDefaultData();
+        if (deliveryId.isEmpty) {
+          deliveryId = value(['deliveryNumber', 'code', 'deliveryId', '_id', 'id'], fallback: '');
+        }
+      }
+
+      // 6. Ensure project info is retained if provided in args
+      if (projectNameArg.isNotEmpty) {
+        final existingProj = delivery['project'];
+        if (existingProj == null) {
+          delivery['project'] = {
+            'projectName': projectNameArg,
+            'name': projectNameArg,
+            'jobId': jobIdArg,
+            'location': locationArg,
+          };
+        } else if (existingProj is Map) {
+          final pMap = Map<String, dynamic>.from(existingProj);
+          if (pMap['projectName'] == null || pMap['projectName'].toString().isEmpty) {
+            pMap['projectName'] = projectNameArg;
+          }
+          if (locationArg.isNotEmpty && (pMap['location'] == null || pMap['location'].toString().isEmpty)) {
+            pMap['location'] = locationArg;
+          }
+          delivery['project'] = pMap;
+        } else if (existingProj is String && existingProj.length == 24) {
+          delivery['project'] = {
+            'projectName': projectNameArg,
+            'name': projectNameArg,
+            'jobId': jobIdArg,
+            'location': locationArg,
+          };
+        }
       }
     } catch (error, stackTrace) {
       AppLogger.e(
@@ -145,9 +219,6 @@ class DeliveryDetailsController extends GetxController {
         stackTrace: stackTrace,
         tag: 'DELIVERY_DETAILS',
       );
-      if (delivery.isEmpty) {
-        _seedDefaultData();
-      }
     } finally {
       isLoading.value = false;
     }
@@ -226,6 +297,8 @@ class DeliveryDetailsController extends GetxController {
       } else {
         AppToast.showSuccess(title: 'Download link received', description: url);
       }
+    } catch (e) {
+      AppToast.showError(title: 'Failed to download document');
     } finally {
       isActionLoading.value = false;
     }

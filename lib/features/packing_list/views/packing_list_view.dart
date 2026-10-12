@@ -74,26 +74,39 @@ class PackingListView extends GetView<PackingListController> {
                     ],
                   ),
                 ),
-                OutlinedButton.icon(
-                  onPressed: () {},
-                  icon: const Icon(Icons.download_rounded, size: 14),
-                  label: Text(
-                    'Export',
-                    style: TextStyle(
-                      fontSize: btnSize,
-                      fontWeight: FontWeight.w600,
+                Obx(
+                  () => OutlinedButton.icon(
+                    onPressed: controller.isExporting.value
+                        ? null
+                        : () => controller.exportReport(),
+                    icon: controller.isExporting.value
+                        ? const SizedBox(
+                            width: 14,
+                            height: 14,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: AppColors.primaryBlue,
+                            ),
+                          )
+                        : const Icon(Icons.download_rounded, size: 14),
+                    label: Text(
+                      controller.isExporting.value ? 'Exporting...' : 'Export',
+                      style: TextStyle(
+                        fontSize: btnSize,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
-                  ),
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: AppColors.textPrimary,
-                    backgroundColor: Colors.white,
-                    side: const BorderSide(color: AppColors.cardBorder),
-                    padding: EdgeInsets.symmetric(
-                      horizontal: size.width * 0.012,
-                      vertical: size.height * 0.010,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.textPrimary,
+                      backgroundColor: Colors.white,
+                      side: const BorderSide(color: AppColors.cardBorder),
+                      padding: EdgeInsets.symmetric(
+                        horizontal: size.width * 0.012,
+                        vertical: size.height * 0.010,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                   ),
                 ),
@@ -104,32 +117,40 @@ class PackingListView extends GetView<PackingListController> {
             // Summary cards section (Adaptive for Landscape and Portrait modes)
             Obx(() {
               final isLandscape = MediaQuery.sizeOf(context).width > 700;
+              
+              final t1Up = controller.apiTotalTrendType.value == 'up';
               final card1 = _StatCard(
                 label: 'Total Packing List',
                 value: '${controller.totalPackingList}',
-                subtitle: '↑ 5.62% from last month',
-                subtitleColor: AppColors.success,
+                subtitle: '${t1Up ? '↑' : '↓'} ${controller.apiTotalTrend.value}% from last month',
+                subtitleColor: t1Up ? AppColors.success : const Color(0xFFEF4444),
                 bgColor: const Color(0xFF7C3AED),
               );
+              
+              final t2Up = controller.apiReadyTrendType.value == 'up';
               final card2 = _StatCard(
                 label: 'Loads Ready For Dispatch',
                 value: '${controller.loadsReadyForDispatch}',
-                subtitle: '↑ 11.4% from last month',
-                subtitleColor: AppColors.success,
+                subtitle: '${t2Up ? '↑' : '↓'} ${controller.apiReadyTrend.value}% from last month',
+                subtitleColor: t2Up ? AppColors.success : const Color(0xFFEF4444),
                 bgColor: const Color(0xFF22C55E),
               );
+              
+              final t3Up = controller.apiBundlesAssignedTrendType.value == 'up';
               final card3 = _StatCard(
                 label: 'Bundles Assigned',
                 value: '${controller.bundlesAssigned}',
-                subtitle: '↑ 8.52% from last month',
-                subtitleColor: AppColors.success,
+                subtitle: '${t3Up ? '↑' : '↓'} ${controller.apiBundlesAssignedTrend.value}% from last month',
+                subtitleColor: t3Up ? AppColors.success : const Color(0xFFEF4444),
                 bgColor: const Color(0xFFEAB308),
               );
+              
+              final t4Up = controller.apiDispatchTodayTrendType.value == 'up';
               final card4 = _StatCard(
                 label: 'Loads Dispatch Today',
                 value: '${controller.loadsDispatchToday}',
-                subtitle: '↓ 7.45% from last month',
-                subtitleColor: const Color(0xFFEF4444),
+                subtitle: '${t4Up ? '↑' : '↓'} ${controller.apiDispatchTodayTrend.value}% from last month',
+                subtitleColor: t4Up ? AppColors.success : const Color(0xFFEF4444),
                 bgColor: const Color(0xFFEF4444),
               );
 
@@ -333,72 +354,89 @@ class PackingListView extends GetView<PackingListController> {
                 ),
                 child: LayoutBuilder(
                   builder: (context, constraints) {
-                    final minTableWidth = constraints.maxWidth.clamp(
-                      720.0,
-                      2000.0,
-                    );
-                    return SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: SizedBox(
-                        width: minTableWidth,
-                        child: Column(
-                          children: [
-                            // Header row
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 10,
-                              ),
-                              decoration: const BoxDecoration(
-                                color: AppColors.tableHeader,
-                                borderRadius: BorderRadius.vertical(
-                                  top: Radius.circular(12),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const SizedBox(width: 32),
-                                  _headCell('Packing List', 3, subSize),
-                                  _headCell('Project / Job', 3, subSize),
-                                  _headCell('Truck', 3, subSize),
-                                  _headCell('Bundles', 2, subSize),
-                                  _headCell('Total Weight', 3, subSize),
-                                  _headCell('Destination', 3, subSize),
-                                  _headCell('Status', 3, subSize),
-                                  _headCell('Action', 2, subSize),
-                                ],
-                              ),
-                            ),
-                            // Table Rows
-                            ...rows.map(
-                              (item) => _PackingListRow(
-                                item: item,
-                                fontSize: subSize,
-                                onView: () => Get.toNamed(
-                                  AppRoutes.packingListDetail,
-                                  arguments: item,
-                                ),
-                              ),
-                            ),
-                            if (rows.isEmpty)
-                              Padding(
-                                padding: const EdgeInsets.all(24),
-                                child: Center(
-                                  child: Text(
-                                    'No packing lists found.',
-                                    style: TextStyle(
-                                      fontSize: subSize,
-                                      color: AppColors.textSecondary,
+                    final minTableWidth = constraints.maxWidth < 1180.0
+                        ? 1180.0
+                        : constraints.maxWidth;
+                    return Container(
+                      clipBehavior: Clip.antiAlias,
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      child: SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: SizedBox(
+                          width: minTableWidth,
+                          child: Column(
+                            children: [
+                              // Header row
+                              Container(
+                                decoration: const BoxDecoration(
+                                  color: AppColors.tableHeader,
+                                  border: Border(
+                                    bottom: BorderSide(
+                                      color: AppColors.cardBorder,
+                                      width: 1.5,
                                     ),
                                   ),
                                 ),
+                                child: Row(
+                                  children: [
+                                    Container(
+                                      width: 48,
+                                      padding: const EdgeInsets.symmetric(vertical: 10),
+                                      decoration: const BoxDecoration(
+                                        border: Border(
+                                          right: BorderSide(
+                                            color: AppColors.cardBorder,
+                                            width: 1.0,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    _headCell('Packing List', 12, subSize),
+                                    _headCell('Project / Job', 16, subSize),
+                                    _headCell('Truck', 13, subSize),
+                                    _headCell('Bundles', 9, subSize),
+                                    _headCell('Total Weight', 13, subSize),
+                                    _headCell('Destination', 13, subSize),
+                                    _headCell('Status', 13, subSize),
+                                    _headCell('Action', 11, subSize, isLast: true),
+                                  ],
+                                ),
                               ),
-                            // Pagination Bar
-                            _PaginationBar(
-                              controller: controller,
-                              fontSize: subSize,
-                            ),
-                          ],
+                              // Table Rows
+                              ...rows.map(
+                                (item) => _PackingListRow(
+                                  item: item,
+                                  fontSize: subSize,
+                                  onView: () => Get.toNamed(
+                                    AppRoutes.packingListDetail,
+                                    arguments: item,
+                                  ),
+                                ),
+                              ),
+                              if (rows.isEmpty)
+                                Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Center(
+                                    child: Text(
+                                      'No packing lists found.',
+                                      style: TextStyle(
+                                        fontSize: subSize,
+                                        color: AppColors.textSecondary,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              // Pagination Bar
+                              _PaginationBar(
+                                controller: controller,
+                                fontSize: subSize,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -412,16 +450,30 @@ class PackingListView extends GetView<PackingListController> {
     );
   }
 
-  static Widget _headCell(String text, int flex, double size) => Expanded(
+  static Widget _headCell(String text, int flex, double size, {bool isLast = false}) => Expanded(
     flex: flex,
-    child: Text(
-      text,
-      maxLines: 1,
-      overflow: TextOverflow.ellipsis,
-      style: TextStyle(
-        fontSize: size,
-        fontWeight: FontWeight.w700,
-        color: AppColors.textSecondary,
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        border: isLast
+            ? null
+            : const Border(
+                right: BorderSide(
+                  color: AppColors.cardBorder,
+                  width: 1.0,
+                ),
+              ),
+      ),
+      child: Text(
+        text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
+        style: TextStyle(
+          fontSize: size,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textSecondary,
+        ),
       ),
     ),
   );
@@ -616,17 +668,35 @@ class _PackingListRow extends StatefulWidget {
 class _PackingListRowState extends State<_PackingListRow> {
   bool _checked = false;
 
+  Widget _cell({required int flex, required Widget child, bool isLast = false, Alignment alignment = Alignment.centerLeft}) {
+    return Expanded(
+      flex: flex,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+        ),
+        alignment: alignment,
+        child: child,
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.cardBorder)),
       ),
       child: Row(
         children: [
-          SizedBox(
-            width: 32,
+          Container(
+            width: 48,
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            decoration: const BoxDecoration(
+              border: Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
+            ),
+            alignment: Alignment.center,
             child: Checkbox(
               value: _checked,
               onChanged: (v) => setState(() => _checked = v ?? false),
@@ -635,11 +705,12 @@ class _PackingListRowState extends State<_PackingListRow> {
               visualDensity: VisualDensity.compact,
             ),
           ),
-          Expanded(
-            flex: 3,
+          _cell(
+            flex: 12,
             child: Text(
               widget.item.packingListId,
               maxLines: 1,
+              softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
@@ -648,8 +719,8 @@ class _PackingListRowState extends State<_PackingListRow> {
               ),
             ),
           ),
-          Expanded(
-            flex: 3,
+          _cell(
+            flex: 16,
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisAlignment: MainAxisAlignment.center,
@@ -657,6 +728,7 @@ class _PackingListRowState extends State<_PackingListRow> {
                 Text(
                   widget.item.project,
                   maxLines: 1,
+                  softWrap: false,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: widget.fontSize,
@@ -667,6 +739,7 @@ class _PackingListRowState extends State<_PackingListRow> {
                 Text(
                   widget.item.jobId,
                   maxLines: 1,
+                  softWrap: false,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: widget.fontSize - 1,
@@ -676,11 +749,12 @@ class _PackingListRowState extends State<_PackingListRow> {
               ],
             ),
           ),
-          Expanded(
-            flex: 3,
+          _cell(
+            flex: 13,
             child: Text(
               widget.item.truck,
               maxLines: 1,
+              softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
@@ -688,11 +762,12 @@ class _PackingListRowState extends State<_PackingListRow> {
               ),
             ),
           ),
-          Expanded(
-            flex: 2,
+          _cell(
+            flex: 9,
             child: Text(
               '${widget.item.bundles}',
               maxLines: 1,
+              softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
@@ -700,11 +775,12 @@ class _PackingListRowState extends State<_PackingListRow> {
               ),
             ),
           ),
-          Expanded(
-            flex: 3,
+          _cell(
+            flex: 13,
             child: Text(
               widget.item.totalWeight,
               maxLines: 1,
+              softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
@@ -712,11 +788,12 @@ class _PackingListRowState extends State<_PackingListRow> {
               ),
             ),
           ),
-          Expanded(
-            flex: 3,
+          _cell(
+            flex: 13,
             child: Text(
               widget.item.destination,
               maxLines: 1,
+              softWrap: false,
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: widget.fontSize,
@@ -724,22 +801,24 @@ class _PackingListRowState extends State<_PackingListRow> {
               ),
             ),
           ),
-          Expanded(
-            flex: 3,
+          _cell(
+            flex: 13,
             child: Align(
               alignment: Alignment.centerLeft,
               child: _StatusBadge(item: widget.item),
             ),
           ),
-          Expanded(
-            flex: 2,
+          _cell(
+            flex: 11,
+            isLast: true,
+            alignment: Alignment.center,
             child: ElevatedButton(
               onPressed: widget.onView,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryBlue,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                minimumSize: Size.zero,
+                minimumSize: const Size(60, 30),
                 tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 padding: const EdgeInsets.symmetric(
                   horizontal: 14,
@@ -751,6 +830,8 @@ class _PackingListRowState extends State<_PackingListRow> {
               ),
               child: Text(
                 'View',
+                maxLines: 1,
+                softWrap: false,
                 style: TextStyle(
                   fontSize: widget.fontSize,
                   fontWeight: FontWeight.w700,
@@ -798,6 +879,9 @@ class _StatusBadge extends StatelessWidget {
       ),
       child: Text(
         text,
+        maxLines: 1,
+        softWrap: false,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: (MediaQuery.sizeOf(context).width * 0.008).clamp(
             10.0,

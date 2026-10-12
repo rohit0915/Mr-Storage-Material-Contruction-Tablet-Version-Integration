@@ -19,8 +19,6 @@ class LabelPrintingSummaryCards extends GetView<LabelPrintingController> {
             child: _SummaryCard(
               label: 'Total Bundles',
               value: '${controller.totalBundles}',
-              subtitle: '5.62% from last month',
-              isUp: true,
               themeColor: const Color(0xFF7C3AED), // Vibrant purple
               iconData: Icons.description_outlined,
             ),
@@ -30,8 +28,6 @@ class LabelPrintingSummaryCards extends GetView<LabelPrintingController> {
             child: _SummaryCard(
               label: 'Labels Printed',
               value: '${controller.labelsPrinted}',
-              subtitle: '11.4% from last month',
-              isUp: true,
               themeColor: const Color(0xFF10B981), // Emerald green
               iconData: Icons.check_circle_outline_rounded,
             ),
@@ -41,8 +37,6 @@ class LabelPrintingSummaryCards extends GetView<LabelPrintingController> {
             child: _SummaryCard(
               label: 'Labels Pending',
               value: '${controller.labelsPending}',
-              subtitle: '8.52% from last month',
-              isUp: true,
               themeColor: const Color(0xFFF59E0B), // Amber / Gold
               iconData: Icons.hourglass_empty_rounded,
             ),
@@ -52,8 +46,6 @@ class LabelPrintingSummaryCards extends GetView<LabelPrintingController> {
             child: _SummaryCard(
               label: 'Labels Printed Today',
               value: '${controller.labelsPrintedToday}',
-              subtitle: '7.45% from last month',
-              isUp: false,
               themeColor: const Color(0xFFEF4444), // Crimson Red
               iconData: Icons.error_outline_rounded,
             ),
@@ -68,16 +60,12 @@ class _SummaryCard extends StatelessWidget {
   const _SummaryCard({
     required this.label,
     required this.value,
-    required this.subtitle,
-    required this.isUp,
     required this.themeColor,
     required this.iconData,
   });
 
   final String label;
   final String value;
-  final String subtitle;
-  final bool isUp;
   final Color themeColor;
   final IconData iconData;
 
@@ -86,10 +74,7 @@ class _SummaryCard extends StatelessWidget {
     final size = MediaQuery.sizeOf(context);
     final labelSize = (size.width * 0.009).clamp(11.0, 13.0);
     final valueSize = (size.width * 0.018).clamp(22.0, 28.0);
-    final subSize = (size.width * 0.008).clamp(10.0, 12.0);
     final circleSize = (size.width * 0.038).clamp(38.0, 44.0);
-
-    final subColor = isUp ? const Color(0xFF10B981) : const Color(0xFFEF4444);
 
     return Container(
       clipBehavior: Clip.antiAlias,
@@ -168,33 +153,6 @@ class _SummaryCard extends StatelessWidget {
                         iconData,
                         color: Colors.white,
                         size: circleSize * 0.55,
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: size.height * 0.008),
-
-                // Subtitle Row with Trend Arrow
-                Row(
-                  children: [
-                    Icon(
-                      isUp
-                          ? Icons.north_east_rounded
-                          : Icons.south_east_rounded,
-                      size: subSize + 2,
-                      color: subColor,
-                    ),
-                    const SizedBox(width: 3),
-                    Expanded(
-                      child: Text(
-                        subtitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: subColor,
-                          fontWeight: FontWeight.w700,
-                          fontSize: subSize,
-                        ),
                       ),
                     ),
                   ],

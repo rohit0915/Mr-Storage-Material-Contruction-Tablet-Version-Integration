@@ -40,12 +40,19 @@ class ApiConstants {
       '/construction/projects/$leadId/consolidated-bom';
   static String bomFiles(String leadId) =>
       '/construction/projects/$leadId/bom-files';
+  static String projectMaterialDeliveries(String leadId) =>
+      '/construction/projects/$leadId/material-deliveries';
   static const String projectCalendar = '/construction/projects/calendar';
 
   // Drawings & Attachments
   static const String drawings = '/construction/drawings';
+  static const String media = '/construction/media';
   static String projectDrawings(String leadId) =>
       '/construction/drawings/$leadId';
+  static String projectBuildingDrawings(String leadId) =>
+      '/construction/projects/$leadId/building-drawings';
+  static String projectMedia(String leadId) =>
+      '/construction/media/$leadId';
 
   // Tasks & Work Logs
   static const String taskStats = '/construction/tasks/stats';
@@ -55,6 +62,8 @@ class ApiConstants {
 
   // Material Requests
   static const String materialRequests = '/construction/material-requests';
+  static const String materialRequestsFilters =
+      '/construction/material-requests/filters';
   static String materialRequestDetail(String requestId) =>
       '/construction/material-requests/$requestId';
   static String materialRequestStatus(String requestId) =>
@@ -70,6 +79,7 @@ class ApiConstants {
 
   // Delivery Tracking
   static const String deliveries = '/construction/deliveries';
+  static const String deliveryFilters = '/construction/deliveries/filters';
   static String deliveryDetail(String deliveryId) =>
       '/construction/deliveries/$deliveryId';
   static String markDeliveryReceived(String deliveryId) =>
@@ -105,8 +115,25 @@ class ApiConstants {
 
   // Bundle Scan
   static const String bundleScan = '/construction/bundle-scan';
-  static String bundleScanUrl({int page = 1, int limit = 10}) =>
-      '/construction/bundle-scan?page=$page&limit=$limit';
+  static String bundleScanUrl({
+    int page = 1,
+    int limit = 10,
+    String? search,
+    String? sortBy,
+    String? status,
+  }) {
+    final params = <String>[
+      'page=$page',
+      'limit=$limit',
+      if (search != null && search.isNotEmpty)
+        'search=${Uri.encodeComponent(search)}',
+      if (sortBy != null && sortBy.isNotEmpty)
+        'sortBy=${Uri.encodeComponent(sortBy)}',
+      if (status != null && status.isNotEmpty)
+        'status=${Uri.encodeComponent(status)}',
+    ];
+    return '/construction/bundle-scan?${params.join('&')}';
+  }
   static const String bundleScanSubmit = '/construction/bundle-scan/scan';
   static const String bundleScanExport = '/construction/bundle-scan/export';
   static String bundleDetail(String id) => '/construction/bundles/$id';

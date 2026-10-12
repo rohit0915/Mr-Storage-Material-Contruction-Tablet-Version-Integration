@@ -167,13 +167,22 @@ class ProjectDetailsController extends GetxController {
         if (res['deliveries'] is List) {
           final list = res['deliveries'] as List;
           final parsed = <DeliveryItem>[];
-          for (final item in list) {
+          for (int i = 0; i < list.length; i++) {
+            final item = list[i];
             if (item is Map) {
-              parsed.add(
-                DeliveryItem.fromJson(Map<String, dynamic>.from(item)),
-              );
+              final mItem = Map<String, dynamic>.from(item);
+              if (mItem['createdAt'] == null && mItem['created_at'] == null) {
+                mItem['createdAt'] = DateTime.fromMillisecondsSinceEpoch(1600000000000 + i * 1000).toIso8601String();
+              }
+              parsed.add(DeliveryItem.fromJson(mItem));
             }
           }
+          parsed.sort((a, b) {
+            final aTime = a.createdAt?.millisecondsSinceEpoch ?? 0;
+            final bTime = b.createdAt?.millisecondsSinceEpoch ?? 0;
+            if (aTime != bTime) return bTime.compareTo(aTime);
+            return b.id.compareTo(a.id);
+          });
           deliveries.assignAll(parsed);
         }
 

@@ -9,6 +9,7 @@ class DeliveryItem {
     required this.id,
     this.realMongoId = '',
     this.jobId = '',
+    this.leadId = '',
     required this.title,
     required this.location,
     required this.project,
@@ -32,6 +33,7 @@ class DeliveryItem {
   final String id;
   final String realMongoId;
   final String jobId;
+  final String leadId;
   final String title;
   final String location;
   final String project;
@@ -65,24 +67,87 @@ class DeliveryItem {
         ? json['deliveryLocation'].toString()
         : (project['location'] ?? json['pickupLocation'] ?? '').toString();
 
-    String projName = 'Project';
+    // Comprehensive Project Name extraction
+    String projName = '';
     String jId = '';
     String pMongoId = '';
+    String lId = (json['leadId'] ?? json['projectId'] ?? '').toString();
+
     if (json['project'] is Map) {
-      projName =
-          (json['project']['projectName'] ??
-                  json['project']['name'] ??
-                  'Project')
-              .toString();
-      jId = (json['project']['jobId'] ?? json['project']['code'] ?? '')
+      final pMap = json['project'] as Map;
+      projName = (pMap['projectName'] ??
+              pMap['name'] ??
+              pMap['title'] ??
+              pMap['projectTitle'] ??
+              '')
           .toString();
-      pMongoId = (json['project']['_id'] ?? json['project']['id'] ?? '').toString();
+      jId = (pMap['jobId'] ?? pMap['code'] ?? '').toString();
+      pMongoId = (pMap['_id'] ?? pMap['id'] ?? '').toString();
+      if (lId.isEmpty && pMap['leadId'] != null) {
+        lId = pMap['leadId'].toString();
+      }
     } else if (json['project'] != null &&
-        json['project'].toString().isNotEmpty) {
-      projName = json['project'].toString();
+        json['project'].toString().trim().isNotEmpty) {
+      final pStr = json['project'].toString().trim();
+      // If it's not a raw 24-char hex mongo ObjectId, it's a name
+      if (!RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(pStr)) {
+        projName = pStr;
+      } else {
+        if (pMongoId.isEmpty) pMongoId = pStr;
+        if (lId.isEmpty) lId = pStr;
+      }
     }
+
+    if (json['lead'] is String && json['lead'].toString().trim().isNotEmpty) {
+      final lStr = json['lead'].toString().trim();
+      if (!RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(lStr)) {
+        if (projName.isEmpty) projName = lStr;
+      } else {
+        if (lId.isEmpty) lId = lStr;
+        if (pMongoId.isEmpty) pMongoId = lStr;
+      }
+    }
+
+    if (projName.isEmpty && json['projectName'] != null && json['projectName'].toString().trim().isNotEmpty) {
+      projName = json['projectName'].toString().trim();
+    }
+    if (projName.isEmpty && json['lead'] is Map) {
+      final leadMap = json['lead'] as Map;
+      projName = (leadMap['projectName'] ?? leadMap['name'] ?? leadMap['title'] ?? '').toString().trim();
+      if (jId.isEmpty) {
+        jId = (leadMap['jobId'] ?? leadMap['code'] ?? '').toString();
+      }
+      if (lId.isEmpty) {
+        lId = (leadMap['_id'] ?? leadMap['id'] ?? '').toString();
+      }
+      if (pMongoId.isEmpty) {
+        pMongoId = (leadMap['_id'] ?? leadMap['id'] ?? '').toString();
+      }
+    }
+    if (projName.isEmpty && json['leadName'] != null && json['leadName'].toString().trim().isNotEmpty) {
+      projName = json['leadName'].toString().trim();
+    }
+    if (projName.isEmpty && json['projectTitle'] != null && json['projectTitle'].toString().trim().isNotEmpty) {
+      projName = json['projectTitle'].toString().trim();
+    }
+    if (json['bundlePlan'] is Map) {
+      final bp = json['bundlePlan'] as Map;
+      if (projName.isEmpty) {
+        projName = (bp['projectName'] ?? bp['name'] ?? bp['bundlePlanName'] ?? '').toString().trim();
+      }
+      if (lId.isEmpty && bp['leadId'] != null) lId = bp['leadId'].toString();
+      if (pMongoId.isEmpty && bp['projectId'] != null) pMongoId = bp['projectId'].toString();
+      if (jId.isEmpty && bp['jobId'] != null) jId = bp['jobId'].toString();
+    }
+    if (projName.isEmpty && json['bundlePlanName'] != null && json['bundlePlanName'].toString().trim().isNotEmpty) {
+      projName = json['bundlePlanName'].toString().trim();
+    }
+
     if (jId.isEmpty && json['jobId'] != null) {
       jId = json['jobId'].toString();
+    }
+    if (projName.isEmpty) {
+      projName = 'Project';
     }
 
     final weight = json['loadWeight'] != null
@@ -160,6 +225,7 @@ class DeliveryItem {
       project: projName,
       projectMongoId: pMongoId,
       jobId: jId,
+      leadId: lId,
       quantity: weight,
       stagingArea: staging,
       carrier: carrierName,
@@ -186,13 +252,21 @@ class DeliveryItem {
     );
   }
 
-  DeliveryItem copyWith({DeliveryStatus? status}) {
+  DeliveryItem copyWith({
+    DeliveryStatus? status,
+    String? project,
+    String? jobId,
+    String? leadId,
+  }) {
     return DeliveryItem(
       id: id,
       realMongoId: realMongoId,
       title: title,
       location: location,
-      project: project,
+      project: project ?? this.project,
+      projectMongoId: projectMongoId,
+      jobId: jobId ?? this.jobId,
+      leadId: leadId ?? this.leadId,
       quantity: quantity,
       stagingArea: stagingArea,
       carrier: carrier,

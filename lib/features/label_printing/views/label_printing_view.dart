@@ -3,8 +3,10 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_toast.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/label_printing_controller.dart';
+import '../services/label_pdf_service.dart';
 import '../widgets/label_print_success_dialog.dart';
 import '../widgets/label_printing_summary_cards.dart';
 import '../widgets/label_printing_table.dart';
@@ -105,14 +107,20 @@ class LabelPrintingView extends GetView<LabelPrintingController> {
                   final count = controller.selectedCount;
                   return ElevatedButton(
                     onPressed: count == 0
-                        ? () async {
-                            await LabelPrintSuccessDialog.show(
-                              title: '20 Labels Printed successfully',
+                        ? () {
+                            AppToast.showWarning(
+                              title: 'Selection Required',
+                              description:
+                                  'Please select at least 1 bundle to print.',
                             );
                           }
                         : () async {
                             final printCount = count;
-                            controller.markSelectedAsPrinted();
+                            final selectedBundles = controller.bundles
+                                .where((b) => controller.selectedIds.contains(b.id))
+                                .toList();
+                            await LabelPdfService.printLabels(selectedBundles);
+                            await controller.markSelectedAsPrinted();
                             await LabelPrintSuccessDialog.show(
                               title: '$printCount Labels Printed successfully',
                             );

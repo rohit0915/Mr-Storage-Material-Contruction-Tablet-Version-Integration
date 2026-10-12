@@ -49,6 +49,51 @@ class ProjectCalendarService extends GetxService {
     }
   }
 
+  /// Get all available projects without tight pagination (for dropdowns / selectors)
+  Future<List<Map<String, dynamic>>> getAllProjects() async {
+    try {
+      final res = await getProjects(page: 1, limit: 100);
+      List items = [];
+      if (res is Map) {
+        if (res['projects'] is List) {
+          items = res['projects'] as List;
+        } else if (res['data'] is List) {
+          items = res['data'] as List;
+        } else if (res['items'] is List) {
+          items = res['items'] as List;
+        }
+      } else if (res is List) {
+        items = res;
+      }
+      final list = <Map<String, dynamic>>[];
+      for (final it in items) {
+        if (it is Map) {
+          list.add(Map<String, dynamic>.from(it));
+        }
+      }
+      if (list.isNotEmpty) return list;
+    } catch (e) {
+      AppLogger.w('getAllProjects initial fetch failed, trying fallback: $e', tag: 'PROJECTS');
+    }
+
+    // Fallback: try dashboardFilters
+    try {
+      final res = await _apiClient.get(ApiConstants.dashboardFilters);
+      if (res is Map && res['data'] is Map && res['data']['projects'] is List) {
+        final pList = res['data']['projects'] as List;
+        final list = <Map<String, dynamic>>[];
+        for (final item in pList) {
+          if (item is Map) {
+            list.add(Map<String, dynamic>.from(item));
+          }
+        }
+        if (list.isNotEmpty) return list;
+      }
+    } catch (_) {}
+
+    return [];
+  }
+
   /// Get details of a single project by leadId / id
   Future<Map<String, dynamic>?> getProjectDetails(String leadId) async {
     try {

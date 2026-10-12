@@ -21,7 +21,7 @@ class CalendarProjectOption {
     final idStr = json['_id'] ?? json['leadId'] ?? json['id'] ?? '';
     final nameStr =
         json['projectName'] ?? json['name'] ?? json['title'] ?? 'Project';
-    final codeStr = json['jobId'] ?? json['leadNumber'] ?? json['code'] ?? '';
+    final codeStr = json['jobId'] ?? json['leadNumber'] ?? json['projectId'] ?? json['code'] ?? '';
     return CalendarProjectOption(
       id: idStr.toString(),
       name: nameStr.toString(),
@@ -35,10 +35,12 @@ class CalendarDayEvent {
   const CalendarDayEvent({
     required this.title,
     this.color = const Color(0xFF2563EB),
+    this.createdAt,
   });
 
   final String title;
   final Color color;
+  final DateTime? createdAt;
 
   factory CalendarDayEvent.fromJson(Map<String, dynamic> json) {
     String tStr = 'Event';
@@ -75,7 +77,24 @@ class CalendarDayEvent {
       eventColor = const Color(0xFFEC4899);
     }
 
-    return CalendarDayEvent(title: tStr, color: eventColor);
+    DateTime? created;
+    final rawCreated = json['createdAt'] ?? json['created_at'] ?? json['updatedAt'] ?? json['updated_at'];
+    if (rawCreated != null && rawCreated.toString().trim().isNotEmpty) {
+      created = DateTime.tryParse(rawCreated.toString().trim());
+    }
+    if (created == null) {
+      final idStr = (json['_id'] ?? json['id'] ?? '').toString();
+      if (idStr.length >= 8) {
+        try {
+          final seconds = int.parse(idStr.substring(0, 8), radix: 16);
+          if (seconds > 1500000000 && seconds < 2500000000) {
+            created = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+          }
+        } catch (_) {}
+      }
+    }
+
+    return CalendarDayEvent(title: tStr, color: eventColor, createdAt: created);
   }
 }
 
@@ -90,6 +109,7 @@ class DeliveryItem {
     required this.statusColor,
     this.description = '',
     this.title = '',
+    this.createdAt,
   });
 
   final String id;
@@ -101,6 +121,7 @@ class DeliveryItem {
   final Color statusColor;
   final String description;
   final String title;
+  final DateTime? createdAt;
 
   factory DeliveryItem.fromJson(Map<String, dynamic> json) {
     final deliveryCode =
@@ -215,6 +236,23 @@ class DeliveryItem {
       sColor = AppColors.badgeRed;
     }
 
+    DateTime? created;
+    final rawCreated = json['createdAt'] ?? json['created_at'] ?? json['updatedAt'] ?? json['updated_at'];
+    if (rawCreated != null && rawCreated.toString().trim().isNotEmpty) {
+      created = DateTime.tryParse(rawCreated.toString().trim());
+    }
+    if (created == null) {
+      final idStr = (json['_id'] ?? json['id'] ?? deliveryCode ?? '').toString();
+      if (idStr.length >= 8) {
+        try {
+          final seconds = int.parse(idStr.substring(0, 8), radix: 16);
+          if (seconds > 1500000000 && seconds < 2500000000) {
+            created = DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
+          }
+        } catch (_) {}
+      }
+    }
+
     return DeliveryItem(
       id: json['_id'] ?? json['id'] ?? deliveryCode.toString(),
       code: deliveryCode.toString(),
@@ -225,6 +263,7 @@ class DeliveryItem {
       status: statusStr,
       statusColor: sColor,
       description: descStr,
+      createdAt: created,
     );
   }
 }

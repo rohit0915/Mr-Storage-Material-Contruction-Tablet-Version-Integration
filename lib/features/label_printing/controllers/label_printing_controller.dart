@@ -35,21 +35,33 @@ class LabelPrintingController extends GetxController {
   final hasApiStats = false.obs;
 
   int get totalBundles =>
-      hasApiStats.value ? apiTotalBundles.value : bundles.length;
-  int get labelsPrinted => hasApiStats.value
-      ? apiLabelsPrinted.value
-      : bundles.where((b) => b.status == LabelPrintStatus.printed).length;
-  int get labelsPending => hasApiStats.value
-      ? apiLabelsPending.value
-      : bundles
-            .where(
-              (b) =>
-                  b.status == LabelPrintStatus.pending ||
-                  b.status == LabelPrintStatus.assigned,
-            )
-            .length;
-  int get labelsPrintedToday =>
-      hasApiStats.value ? apiLabelsPrintedToday.value : 0;
+      hasApiStats.value && apiTotalBundles.value > 0 ? apiTotalBundles.value : bundles.length;
+  int get labelsPrinted {
+    final localCount = bundles.where((b) => b.status == LabelPrintStatus.printed).length;
+    if (hasApiStats.value && apiLabelsPrinted.value > 0) {
+      return apiLabelsPrinted.value;
+    }
+    return localCount;
+  }
+  int get labelsPending {
+    final localCount = bundles
+        .where(
+          (b) =>
+              b.status == LabelPrintStatus.pending ||
+              b.status == LabelPrintStatus.assigned,
+        )
+        .length;
+    if (hasApiStats.value && apiLabelsPending.value > 0) {
+      return apiLabelsPending.value;
+    }
+    return localCount;
+  }
+  int get labelsPrintedToday {
+    if (hasApiStats.value && apiLabelsPrintedToday.value > 0) {
+      return apiLabelsPrintedToday.value;
+    }
+    return bundles.where((b) => b.status == LabelPrintStatus.printed).length;
+  }
 
   int get selectedCount => selectedIds.length;
 
@@ -210,17 +222,24 @@ class LabelPrintingController extends GetxController {
     var filtered = bundles.toList();
     
     if (selectedStatus.value != 'All Statuses') {
-      final status = selectedStatus.value.toLowerCase();
-      filtered = filtered.where((b) => b.statusText.toLowerCase() == status || b.status.name.toLowerCase() == status).toList();
+      final status = selectedStatus.value.toLowerCase().replaceAll(' ', '_');
+      filtered = filtered.where((b) {
+        final st = b.statusText.toLowerCase().replaceAll(' ', '_');
+        final nm = b.status.name.toLowerCase();
+        return st.contains(status) || nm.contains(status) || status.contains(st);
+      }).toList();
     }
     
     if (searchQuery.value.isNotEmpty) {
       final q = searchQuery.value.toLowerCase();
       filtered = filtered.where((b) => 
         b.id.toLowerCase().contains(q) || 
+        b.realMongoId.toLowerCase().contains(q) ||
         b.project.toLowerCase().contains(q) ||
         b.loadId.toLowerCase().contains(q) ||
-        b.part.toLowerCase().contains(q)
+        b.part.toLowerCase().contains(q) ||
+        b.shipper.toLowerCase().contains(q) ||
+        b.statusText.toLowerCase().contains(q)
       ).toList();
     }
 

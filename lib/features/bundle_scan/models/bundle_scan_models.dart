@@ -8,6 +8,10 @@ class BundleSubItem {
     required this.time,
     required this.weight,
     required this.status,
+    this.itemCode = 'ITEM-1',
+    this.color = '-',
+    this.quantity = 1,
+    this.receivedQuantity = 1,
   });
 
   final String index;
@@ -16,8 +20,21 @@ class BundleSubItem {
   final String time;
   final String weight;
   final String status;
+  final String itemCode;
+  final String color;
+  final int quantity;
+  final int receivedQuantity;
 
   factory BundleSubItem.fromJson(Map<String, dynamic> json, int idx) {
+    final qty = (json['quantity'] ?? json['qty'] ?? json['count'] ?? 1);
+    final parsedQty = qty is num
+        ? qty.toInt()
+        : (int.tryParse(qty.toString()) ?? 1);
+    final recQty = (json['receivedQuantity'] ?? json['receivedQty'] ?? parsedQty);
+    final parsedRecQty = recQty is num
+        ? recQty.toInt()
+        : (int.tryParse(recQty.toString()) ?? parsedQty);
+
     return BundleSubItem(
       index: (idx + 1).toString(),
       bundleId: (json['bundleId'] ??
@@ -36,11 +53,15 @@ class BundleSubItem {
       time: (json['time'] ??
               json['scannedAt'] ??
               json['createdAt'] ??
-              '11:25 AM')
+              '-')
           .toString(),
-      weight: (json['weight'] ?? json['totalWeight'] ?? '4,319.1 LBS')
+      weight: (json['weight'] ?? json['totalWeight'] ?? '0.0 LBS')
           .toString(),
       status: (json['status'] ?? 'Staged').toString(),
+      itemCode: (json['itemCode'] ?? json['code'] ?? 'ITEM-${idx + 1}').toString(),
+      color: (json['color'] ?? '-').toString(),
+      quantity: parsedQty,
+      receivedQuantity: parsedRecQty,
     );
   }
 }
@@ -58,6 +79,7 @@ class BundleScanItem {
     required this.time,
     required this.status,
     required this.statusText,
+    this.projectId = '',
     this.loadId = '',
     this.truck = '',
     this.quantity = '',
@@ -65,7 +87,11 @@ class BundleScanItem {
     this.shipper = '',
     this.driver = '',
     this.totalProducts = '',
+    this.type = 'Mixed',
+    this.title = 'MIXED Bundle',
+    this.packingListNo = '-',
     this.isVerified = false,
+    this.qrUrl = '',
     this.subItems = const [],
   });
 
@@ -80,6 +106,7 @@ class BundleScanItem {
   final String time;
   final BundleScanStatus status;
   final String statusText;
+  final String projectId;
   final String loadId;
   final String truck;
   final String quantity;
@@ -87,12 +114,33 @@ class BundleScanItem {
   final String shipper;
   final String driver;
   final String totalProducts;
+  final String type;
+  final String title;
+  final String packingListNo;
   final bool isVerified;
+  final String qrUrl;
   final List<BundleSubItem> subItems;
 
-  factory BundleScanItem.fromJson(Map<String, dynamic> json) {
-    final statusStr =
-        (json['status'] ?? json['bundleStatus'] ?? 'ASSIGNED TO TRUCK')
+  /// Helper to check if string is raw 24-character hexadecimal Mongo ObjectId
+  static bool isMongoHexId(String? s) {
+    if (s == null || s.trim().isEmpty) return false;
+    final clean = s.trim();
+    return clean.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(clean);
+  }
+
+  factory BundleScanItem.fromJson(Map<String, dynamic> rawInput) {
+    Map<String, dynamic> target = rawInput;
+    if (rawInput['data'] is Map) {
+      target = Map<String, dynamic>.from(rawInput['data'] as Map);
+    }
+    if (target['bundle'] is Map) {
+      target = Map<String, dynamic>.from(target['bundle'] as Map);
+    } else if (rawInput['bundle'] is Map) {
+      target = Map<String, dynamic>.from(rawInput['bundle'] as Map);
+    }
+    final json = target;
+    final rawStatus =
+        (json['status'] ?? json['bundleStatus'] ?? 'PENDING')
             .toString()
             .toUpperCase();
 
@@ -105,30 +153,38 @@ class BundleScanItem {
 
     String pName = '';
     String jId = '';
+    String pId = '';
     if (json['project'] is Map) {
-      pName = (json['project']['projectName'] ?? json['project']['name'] ?? '')
-          .toString();
-      jId = (json['project']['jobId'] ?? json['project']['code'] ?? '')
+      final pMap = json['project'] as Map;
+      pName = (pMap['projectName'] ?? pMap['name'] ?? '').toString();
+      jId = (pMap['jobId'] ?? pMap['code'] ?? '').toString();
+      pId = (pMap['_id'] ?? pMap['id'] ?? pMap['leadId'] ?? pMap['projectId'] ?? '')
           .toString();
     } else if (json['project'] != null &&
         json['project'].toString().isNotEmpty) {
-      pName = json['project'].toString();
+      final pStr = json['project'].toString();
+      if (isMongoHexId(pStr)) {
+        pId = pStr;
+      } else {
+        pName = pStr;
+      }
       jId = json['jobId']?.toString() ?? '';
     }
 
-    BundleScanStatus st = BundleScanStatus.ready;
-    if (statusStr.contains('STAG')) {
-      st = BundleScanStatus.staging;
-    } else if (statusStr.contains('PEND')) {
-      st = BundleScanStatus.pending;
-    } else if (statusStr.contains('ASSIGN') || statusStr.contains('TRUCK')) {
-      st = BundleScanStatus.assigned;
+    if (pId.isEmpty) {
+      pId = (json['projectId'] ?? json['leadId'] ?? '').toString();
+    }
+    if (pId.isEmpty && json['lead'] is Map) {
+      pId = (json['lead']['_id'] ?? json['lead']['id'] ?? '').toString();
     }
 
-    // Helper to check if string is raw 24-character hexadecimal Mongo ObjectId
-    bool isMongoHexId(String? s) {
-      if (s == null || s.isEmpty) return false;
-      return s.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(s);
+    BundleScanStatus st = BundleScanStatus.pending;
+    if (rawStatus.contains('STAG')) {
+      st = BundleScanStatus.staging;
+    } else if (rawStatus.contains('ASSIGN') || rawStatus.contains('TRUCK')) {
+      st = BundleScanStatus.assigned;
+    } else if (rawStatus.contains('LOAD') || rawStatus.contains('READY')) {
+      st = BundleScanStatus.ready;
     }
 
     String foundBundleCode = '';
@@ -215,8 +271,7 @@ class BundleScanItem {
       }
     }
 
-    // 5. Fallback: If only 24-char Mongo ID is available, NEVER show 24-char string.
-    // Instead convert to clean human-readable identifier (e.g. B-005, B-002, B-022, etc.) using consistent hash
+    // 5. Fallback: If only 24-char Mongo ID is available
     if (foundBundleCode.isEmpty || isMongoHexId(foundBundleCode)) {
       final rawId = (json['_id'] ?? json['id'] ?? json['bundleId'] ?? '')
           .toString();
@@ -231,8 +286,28 @@ class BundleScanItem {
         json['updatedAt'];
     final String formattedTime = _fmtTime(rawTime);
 
-    final realId = (json['_id'] ?? json['id'] ?? json['bundleId'] ?? '')
-        .toString();
+    String realId = '';
+    for (final candidate in [
+      json['_id'],
+      json['id'],
+      rawInput['_id'],
+      rawInput['id'],
+      if (rawInput['bundle'] is Map) rawInput['bundle']['_id'],
+      if (rawInput['bundle'] is Map) rawInput['bundle']['id'],
+      if (rawInput['data'] is Map) rawInput['data']['_id'],
+      if (rawInput['data'] is Map) rawInput['data']['id'],
+      if (json['bundle'] is Map) json['bundle']['_id'],
+      if (json['bundle'] is Map) json['bundle']['id'],
+      if (json['bundleId'] is Map) json['bundleId']['_id'],
+      if (json['bundleId'] is Map) json['bundleId']['id'],
+      json['bundleId'],
+      rawInput['bundleId'],
+    ]) {
+      if (candidate != null && isMongoHexId(candidate.toString())) {
+        realId = candidate.toString().trim();
+        break;
+      }
+    }
 
     final isVer = json['isVerified'] == true ||
         json['verified'] == true ||
@@ -241,27 +316,73 @@ class BundleScanItem {
     final shipperVal = (json['shipper'] ??
             json['shipperNo'] ??
             json['shipperId'] ??
-            'SHP-1044')
+            '-')
         .toString();
 
     final driverVal = (json['driver'] ??
             json['driverName'] ??
             json['carrier'] ??
-            'John Miler')
+            '-')
         .toString();
 
     final totalProductsVal = (json['totalProducts'] ??
             json['productCount'] ??
             json['products'] ??
-            '4')
+            '1')
         .toString();
 
-    final loadVal = (json['loadId'] ?? json['load'] ?? 'LOAD-001').toString();
+    final loadVal = (json['loadId'] ?? json['load'] ?? '-').toString();
     final truckVal =
-        (json['truck'] ?? json['vehicle'] ?? 'TRK-980').toString();
-    final qtyVal = (json['quantity'] ?? json['qty'] ?? '4').toString();
+        (json['truck'] ?? json['vehicle'] ?? '-').toString();
+    final qtyVal = (json['quantity'] ?? json['qty'] ?? json['totalQty'] ?? '1').toString();
     final lengthVal =
-        (json['length'] ?? json['lengthFt'] ?? '20 ft').toString();
+        (json['length'] ?? json['lengthFt'] ?? json['maxLengthFeet'] ?? '0 ft').toString();
+
+    final plNo = (json['packingListNo'] ??
+            json['packingList'] ??
+            json['packingListNumber'] ??
+            json['plNo'] ??
+            '-')
+        .toString();
+    final typeVal =
+        (json['type'] ?? json['bundleType'] ?? 'Mixed').toString();
+    final titleVal = (json['title'] ??
+            json['bundleTitle'] ??
+            (typeVal.toLowerCase().contains('bundle')
+                ? typeVal
+                : '$typeVal Bundle'))
+        .toString();
+
+    String foundPart = '-';
+    final rawParts = json['parts'] ??
+        json['part'] ??
+        json['partNumber'] ??
+        json['description'] ??
+        json['name'];
+    if (rawParts is List && rawParts.isNotEmpty) {
+      foundPart = rawParts
+          .map((p) => p is Map ? (p['partCode'] ?? p['name'] ?? p['code'] ?? '') : p.toString())
+          .where((s) => s.isNotEmpty && !RegExp(r'^\.+$').hasMatch(s))
+          .join(', ');
+    } else if (rawParts != null) {
+      final pStr = rawParts.toString().trim();
+      if (pStr.isNotEmpty && !RegExp(r'^\.+$').hasMatch(pStr)) {
+        foundPart = pStr;
+      }
+    }
+
+    String formattedStatusText = rawStatus.replaceAll('_', ' ');
+    if (rawStatus == 'ASSIGNED_TO_TRUCK') {
+      formattedStatusText = 'Assigned to Truck';
+    } else if (rawStatus == 'PENDING') {
+      formattedStatusText = 'Pending';
+    } else if (rawStatus == 'STAGED' || rawStatus == 'STAGING') {
+      formattedStatusText = 'Staged';
+    } else if (rawStatus == 'LOADED') {
+      formattedStatusText = 'Loaded';
+    } else if (rawStatus == 'DRAFT') {
+      formattedStatusText = 'Draft';
+    }
 
     final rawSubItems = json['subItems'] ??
         json['items'] ??
@@ -284,7 +405,7 @@ class BundleScanItem {
           parts: entry.value.toString(),
           time: formattedTime,
           weight: formattedWeight,
-          status: statusStr.contains('STAG') ? 'Staged' : 'Loaded',
+          status: formattedStatusText,
         );
       }).toList();
     } else {
@@ -292,53 +413,59 @@ class BundleScanItem {
         BundleSubItem(
           index: '1',
           bundleId: foundBundleCode,
-          parts: (json['parts'] ?? json['part'] ?? 'P-101 (Steel Girders)')
-              .toString(),
+          parts: foundPart,
           time: formattedTime,
           weight: formattedWeight,
-          status: statusStr.contains('STAG')
-              ? 'Staged'
-              : (statusStr.contains('LOAD') ? 'Loaded' : 'Ready'),
+          status: formattedStatusText,
         ),
       ];
     }
+
+    final qrLink = (json['qrUrl'] ??
+            json['qrCodeUrl'] ??
+            json['url'] ??
+            json['link'] ??
+            json['trackingUrl'] ??
+            'https://mr-storage-material-contruction.vercel.app/delivery-tracking/bundle-scan?bundleId=$foundBundleCode')
+        .toString();
 
     return BundleScanItem(
       id: realId.isNotEmpty ? realId : foundBundleCode,
       realMongoId: realId,
       bundleId: foundBundleCode,
-      project: pName.isNotEmpty ? pName : 'Storage 0011',
-      jobId: jId.isNotEmpty ? jId : 'JOB-0011',
+      project: pName.isNotEmpty ? pName : 'N/A',
+      projectId: pId,
+      jobId: jId.isNotEmpty ? jId : '-',
       site: (json['site'] ??
               json['location'] ??
               json['destination'] ??
-              'Site A')
+              '-')
           .toString(),
-      parts: (json['parts'] ??
-              json['part'] ??
-              json['partNumber'] ??
-              'P-101, P-102')
-          .toString(),
+      parts: foundPart,
       totalWeight: formattedWeight,
       time: formattedTime,
       status: st,
-      statusText: statusStr.replaceAll('_', ' '),
-      loadId: loadVal,
-      truck: truckVal,
+      statusText: formattedStatusText,
+      loadId: loadVal.isNotEmpty && !isMongoHexId(loadVal) ? loadVal : '-',
+      truck: truckVal.isNotEmpty ? truckVal : '-',
       quantity: qtyVal,
       length: lengthVal,
-      shipper: shipperVal,
-      driver: driverVal,
+      shipper: shipperVal.isNotEmpty && !isMongoHexId(shipperVal) ? shipperVal : '-',
+      driver: driverVal.isNotEmpty ? driverVal : '-',
       totalProducts: totalProductsVal,
+      type: typeVal,
+      title: titleVal,
+      packingListNo: plNo,
       isVerified: isVer,
+      qrUrl: qrLink,
       subItems: parsedSubItems,
     );
   }
 
   static String _fmtTime(dynamic raw) {
-    if (raw == null) return '11:25 AM';
+    if (raw == null) return '-';
     final s = raw.toString();
-    if (s.isEmpty || s == '-') return '11:25 AM';
+    if (s.isEmpty || s == '-') return '-';
     if (s.contains('AM') ||
         s.contains('PM') ||
         s.contains('am') ||
@@ -358,7 +485,7 @@ class BundleScanItem {
   }
 
   static String _fmtWeight(double lbs) {
-    if (lbs == 0) return '4,319.1 LBS';
+    if (lbs == 0) return '0.0 LBS';
     final isInt = lbs == lbs.roundToDouble();
     final s = isInt ? lbs.toInt().toString() : lbs.toStringAsFixed(1);
     final parts = s.split('.');
@@ -374,10 +501,14 @@ class BundleScanItem {
   }
 
   BundleScanItem copyWith({
+    String? id,
+    String? realMongoId,
     BundleScanStatus? status,
     String? statusText,
     String? bundleId,
     String? project,
+    String? projectId,
+    String? jobId,
     String? site,
     String? totalWeight,
     String? time,
@@ -388,15 +519,20 @@ class BundleScanItem {
     String? shipper,
     String? driver,
     String? totalProducts,
+    String? type,
+    String? title,
+    String? packingListNo,
     bool? isVerified,
+    String? qrUrl,
     List<BundleSubItem>? subItems,
   }) =>
       BundleScanItem(
-        id: id,
-        realMongoId: realMongoId,
+        id: id ?? this.id,
+        realMongoId: realMongoId ?? this.realMongoId,
         bundleId: bundleId ?? this.bundleId,
         project: project ?? this.project,
-        jobId: jobId,
+        projectId: projectId ?? this.projectId,
+        jobId: jobId ?? this.jobId,
         site: site ?? this.site,
         parts: parts,
         totalWeight: totalWeight ?? this.totalWeight,
@@ -410,7 +546,11 @@ class BundleScanItem {
         shipper: shipper ?? this.shipper,
         driver: driver ?? this.driver,
         totalProducts: totalProducts ?? this.totalProducts,
+        type: type ?? this.type,
+        title: title ?? this.title,
+        packingListNo: packingListNo ?? this.packingListNo,
         isVerified: isVerified ?? this.isVerified,
+        qrUrl: qrUrl ?? this.qrUrl,
         subItems: subItems ?? this.subItems,
       );
 }

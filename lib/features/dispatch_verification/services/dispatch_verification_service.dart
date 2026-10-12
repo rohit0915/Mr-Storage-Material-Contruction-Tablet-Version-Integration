@@ -115,14 +115,36 @@ class DispatchVerificationService {
     return (res['items'] as List<DispatchItem>?) ?? [];
   }
 
-  Future<Map<String, dynamic>?> getDispatchLoadDetail(String loadId) async {
+  Future<Map<String, dynamic>?> getDispatchLoadDetail(
+    String loadId, {
+    String? packingListId,
+  }) async {
     try {
-      final res = await _apiClient.get(
-        ApiConstants.dispatchVerificationDetail(loadId),
-      );
-      if (res is Map) {
-        final data = res['data'] ?? res;
-        if (data is Map) return Map<String, dynamic>.from(data);
+      if (loadId.isNotEmpty) {
+        final res = await _apiClient.get(
+          ApiConstants.dispatchVerificationDetail(loadId),
+        );
+        if (res is Map) {
+          final data = res['data'] ?? res;
+          if (data is Map) {
+            final map = Map<String, dynamic>.from(data);
+            final b = map['bundles'] ?? map['items'];
+            if (b is List && b.isNotEmpty) {
+              return map;
+            }
+          }
+        }
+      }
+
+      // Fallback: If bundles not present in load detail, fetch from packing list
+      if (packingListId != null && packingListId.isNotEmpty) {
+        final pklRes = await _apiClient.get(
+          ApiConstants.packingListDetail(packingListId),
+        );
+        if (pklRes is Map) {
+          final data = pklRes['data'] ?? pklRes;
+          if (data is Map) return Map<String, dynamic>.from(data);
+        }
       }
     } catch (e, st) {
       AppLogger.e(
@@ -131,6 +153,25 @@ class DispatchVerificationService {
         stackTrace: st,
         tag: 'DISPATCH_VERIFICATION',
       );
+    }
+    return null;
+  }
+
+  Future<String?> exportDispatchVerifications() async {
+    try {
+      final res = await _apiClient.get('/construction/dispatch-verification/export');
+      if (res is Map) {
+        final url = res['url'] ??
+            res['downloadUrl'] ??
+            res['fileUrl'] ??
+            res['data']?['url'] ??
+            res['data']?['downloadUrl'];
+        if (url != null && url.toString().isNotEmpty) return url.toString();
+      } else if (res is String && res.startsWith('http')) {
+        return res;
+      }
+    } catch (e) {
+      AppLogger.w('Export dispatch verifications error: $e', tag: 'DISPATCH_VERIFICATION');
     }
     return null;
   }

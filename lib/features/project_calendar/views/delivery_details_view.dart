@@ -30,46 +30,147 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
           );
         }
 
-        final deliveryNumber = ctrl.value(['deliveryNumber', 'code', 'deliveryId'], fallback: 'DEL-0020');
-        final description = ctrl.value(['description', 'title', 'materialType'], fallback: '22 bundle(s) for bundle plan BP-0018');
-        final rawStatus = ctrl.value(['status', 'deliveryStatus'], fallback: 'CONFIRMED');
+        if (ctrl.fromProject && ctrl.delivery.isEmpty) {
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(24.0),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 500),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 32,
+                  vertical: 40,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.cardBorder),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFEF3C7),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(
+                        Icons.warning_amber_rounded,
+                        color: Color(0xFFD97706),
+                        size: 36,
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'No Material Delivery Found',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    const Text(
+                      'There are no material deliveries scheduled or assigned for this project yet.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: AppColors.textSecondary,
+                        height: 1.4,
+                      ),
+                    ),
+                    const SizedBox(height: 28),
+                    ElevatedButton.icon(
+                      onPressed: Get.back,
+                      icon: const Icon(Icons.arrow_back, size: 16),
+                      label: const Text(
+                        'Back to Project',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final deliveryNumber = ctrl.value(['deliveryNumber', 'code', 'deliveryId'], fallback: '-');
+        final description = ctrl.value(['description', 'title', 'materialType'], fallback: '-');
+        final rawStatus = ctrl.value(['status', 'deliveryStatus'], fallback: 'SCHEDULED');
         final statusUpper = rawStatus.toUpperCase();
         final isConfirmed = statusUpper.contains('CONFIRM') || statusUpper.contains('STAGED');
         final statusDisplay = isConfirmed ? 'Confirmed' : _formatTitle(rawStatus);
 
         final projectMap = ctrl.mapValue(['project']);
-        final projectName = ctrl.nestedValue(projectMap, ['projectName', 'name', 'jobId'], fallback: ctrl.value(['projectName', 'jobName'], fallback: 'Storage 0011'));
-        final receivingPoc = ctrl.value(['receivingPoc', 'pocName'], fallback: '—');
+        String projectName = '-';
+        if (projectMap.isNotEmpty) {
+          projectName = ctrl.nestedValue(projectMap, ['projectName', 'name', 'jobId'], fallback: '-');
+        }
+        if (projectName == '-' || projectName.isEmpty) {
+          final pVal = ctrl.value(['projectName', 'jobName']);
+          if (pVal != '-' && pVal != '—' && pVal.isNotEmpty) {
+            projectName = pVal;
+          } else if (ctrl.projectNameArg.isNotEmpty) {
+            projectName = ctrl.projectNameArg;
+          }
+        }
+
+        final receivingPoc = ctrl.value(['receivingPoc', 'pocName'], fallback: ctrl.nestedValue(ctrl.mapValue(['siteContact']), ['contactName', 'name'], fallback: '-'));
 
         final scheduleMap = ctrl.mapValue(['schedule']);
-        final rawDeliveryDate = ctrl.nestedValue(scheduleMap, ['deliveryDate', 'departureFromPlant'], fallback: ctrl.value(['deliveryDate', 'expectedArrival'], fallback: 'Oct 22, 2026'));
-        final deliveryDate = _formatDate(rawDeliveryDate, fallback: 'Oct 22, 2026');
+        final rawDeliveryDate = ctrl.nestedValue(scheduleMap, ['deliveryDate', 'departureFromPlant'], fallback: ctrl.value(['deliveryDate', 'expectedArrival'], fallback: ''));
+        final deliveryDate = _formatDate(rawDeliveryDate, fallback: '-');
 
-        final timeWindow = ctrl.value(['timeWindow', 'eta', 'timeWindowEta'], fallback: '—');
-        final siteAddress = ctrl.nestedValue(projectMap, ['location', 'siteLocation'], fallback: ctrl.value(['siteDeliveryAddress', 'deliveryLocation', 'destination', 'location'], fallback: '—'));
+        final timeWindow = ctrl.nestedValue(scheduleMap, ['deliveryTime', 'timings'], fallback: ctrl.value(['timeWindow', 'eta', 'timeWindowEta', 'deliveryTime'], fallback: '-'));
+        final siteAddress = ctrl.value(['siteDeliveryAddress', 'deliveryLocation', 'destination', 'location'], fallback: ctrl.nestedValue(projectMap, ['location', 'siteLocation'], fallback: ctrl.locationArg.isNotEmpty ? ctrl.locationArg : '-'));
 
-        final materialType = ctrl.value(['materialType'], fallback: '—');
-        final pickupDate = _formatDate(ctrl.nestedValue(scheduleMap, ['pickupDate', 'arrivalAtPlant'], fallback: ctrl.value(['pickupDate'], fallback: '—')));
-        final pickupTime = ctrl.nestedValue(scheduleMap, ['pickupTime'], fallback: ctrl.value(['pickupTime'], fallback: '—'));
+        final materialType = ctrl.value(['materialType'], fallback: '-');
+        final pickupDate = _formatDate(ctrl.nestedValue(scheduleMap, ['pickupDate', 'arrivalAtPlant'], fallback: ctrl.value(['pickupDate'], fallback: '')), fallback: '-');
+        final pickupTime = ctrl.nestedValue(scheduleMap, ['pickupTime'], fallback: ctrl.value(['pickupTime'], fallback: '-'));
 
         final carrierMap = ctrl.mapValue(['carrier']);
-        final carrierName = ctrl.nestedValue(carrierMap, ['name', 'carrierName', 'company'], fallback: ctrl.value(['carrierName', 'carrier'], fallback: 'nads'));
-        final carrierPhone = ctrl.nestedValue(carrierMap, ['phone'], fallback: ctrl.value(['carrierPhone', 'phone'], fallback: '—'));
+        final rawCarrier = ctrl.nestedValue(carrierMap, ['driverName', 'name', 'carrierName', 'company'], fallback: ctrl.value(['carrierName', 'carrier'], fallback: '-'));
+        final carrierName = (rawCarrier.isNotEmpty && rawCarrier != '—' && rawCarrier != '-' && rawCarrier.toLowerCase() != 'null') ? rawCarrier : 'Assigned Carrier';
+        final carrierPhone = ctrl.nestedValue(carrierMap, ['driverPhone', 'phone'], fallback: ctrl.value(['carrierPhone', 'phone'], fallback: '-'));
 
-        final loadWeight = ctrl.value(['loadWeight', 'weight', 'quantity', 'totalWeight'], fallback: '55,789.2 lbs');
-        final packageCount = ctrl.value(['packageCount', 'bundleCount'], fallback: '—');
-        final stagingArea = ctrl.value(['stagingArea', 'plant'], fallback: '—');
+        final rawWeight = ctrl.value(['loadWeight', 'weight', 'quantity', 'totalWeight'], fallback: '-');
+        final loadWeight = (rawWeight != '-' && rawWeight != '—' && double.tryParse(rawWeight.replaceAll(RegExp(r'[^0-9.]'), '')) != null)
+            ? (rawWeight.contains('lbs') ? rawWeight : '$rawWeight lbs')
+            : (rawWeight != '—' ? rawWeight : '-');
+        final rawPackages = ctrl.value(['packageCount', 'bundleCount'], fallback: '-');
+        final packageCount = (rawPackages != '-' && rawPackages != '—')
+            ? (rawPackages.toLowerCase().contains('package') ? rawPackages : '$rawPackages Packages')
+            : '-';
+        final stagingArea = ctrl.value(['stagingArea', 'plant'], fallback: '-');
 
-        final reqEquipment = ctrl.value(['requiredLoadingEquipment', 'equipment'], fallback: '—');
+        final reqEquipment = ctrl.value(['requiredLoadingEquipment', 'equipment', 'loadingEquipment'], fallback: '-');
         final instructions = ctrl.value(['specialInstructions', 'notes', 'instructions'], fallback: 'No special instructions provided.');
 
         final contactMap = ctrl.mapValue(['siteContact']);
-        final contactName = ctrl.nestedValue(contactMap, ['contactName', 'name'], fallback: ctrl.value(['contactName'], fallback: '—'));
+        final contactName = ctrl.nestedValue(contactMap, ['contactName', 'name'], fallback: ctrl.value(['contactName'], fallback: '-'));
         final contactRole = ctrl.nestedValue(contactMap, ['role', 'contactTitle', 'title'], fallback: 'Site Receiving Lead');
-        final contactPhone = ctrl.nestedValue(contactMap, ['phone', 'contactPhone'], fallback: ctrl.value(['contactPhone', 'phone'], fallback: 'gh'));
+        final contactPhone = ctrl.nestedValue(contactMap, ['phone', 'contactPhone'], fallback: ctrl.value(['contactPhone', 'pickupContactPhone', 'pocPhone'], fallback: '-'));
 
-        final origin = ctrl.value(['origin', 'pickupLocation'], fallback: '—');
-        final destination = ctrl.value(['destination', 'finalDestination', 'deliveryLocation'], fallback: siteAddress.isNotEmpty && siteAddress != '—' ? siteAddress : '—');
+        final origin = ctrl.value(['origin', 'pickupLocation'], fallback: '-');
+        final destination = ctrl.value(['destination', 'finalDestination', 'deliveryLocation', 'location'], fallback: siteAddress != '-' ? siteAddress : '-');
 
         final isDelivered = statusUpper.contains('DELIVER') || statusUpper.contains('RECEIV');
 
@@ -154,7 +255,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
               ),
 
               // ─── Operational Actions (Bottom bar if not completed) ───
-              if (!isDelivered) ...[
+              if (!isDelivered && !ctrl.fromProject) ...[
                 const SizedBox(height: 24),
                 _buildWarehouseActions(context, ctrl, projectName),
               ],
@@ -179,6 +280,10 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
       builder: (context, constraints) {
         final isCompact = constraints.maxWidth < 700;
 
+        final subText = (description.isNotEmpty && description != '-' && description != '—')
+            ? '$deliveryNumber • $description'
+            : deliveryNumber;
+
         if (isCompact) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -202,7 +307,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
               ),
               const SizedBox(height: 6),
               Text(
-                '$deliveryNumber • $description',
+                subText,
                 style: const TextStyle(
                   fontSize: 13,
                   fontWeight: FontWeight.w500,
@@ -248,7 +353,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '$deliveryNumber • $description',
+                    subText,
                     style: const TextStyle(
                       fontSize: 13,
                       fontWeight: FontWeight.w500,
@@ -686,7 +791,9 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
               ),
               const SizedBox(height: 14),
               Text(
-                carrierName.isNotEmpty ? carrierName : '—',
+                carrierName.isNotEmpty && carrierName != '—' && carrierName != '-'
+                    ? carrierName
+                    : 'Assigned Carrier',
                 style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w800,
@@ -699,7 +806,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
                   const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF94A3B8)),
                   const SizedBox(width: 6),
                   Text(
-                    carrierPhone.isNotEmpty ? carrierPhone : '—',
+                    carrierPhone.isNotEmpty && carrierPhone != '—' ? carrierPhone : '-',
                     style: const TextStyle(
                       fontSize: 13,
                       color: Color(0xFF64748B),
@@ -732,7 +839,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
                 ],
               ),
               const SizedBox(height: 14),
-              _kvRow('LOAD WEIGHT:', loadWeight, isBold: true),
+              _kvRow('LOAD WEIGHT:', loadWeight),
               const SizedBox(height: 8),
               _kvRow('PACKAGE COUNT:', packageCount),
               const SizedBox(height: 8),
@@ -873,6 +980,17 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
 
   // Card 1: DELIVERY STATUS
   Widget _buildDeliveryStatusCard(String statusDisplay, String statusUpper) {
+    Color dotColor = const Color(0xFF155DFC);
+    if (statusUpper.contains('CONFIRM') ||
+        statusUpper.contains('RECEIV') ||
+        statusUpper.contains('DELIVER')) {
+      dotColor = const Color(0xFF00C853);
+    } else if (statusUpper.contains('STAGE')) {
+      dotColor = const Color(0xFFCA8A04);
+    } else if (statusUpper.contains('TRANSIT')) {
+      dotColor = const Color(0xFF2563EB);
+    }
+
     return _CardBox(
       padding: const EdgeInsets.all(18),
       child: Column(
@@ -893,8 +1011,8 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
               Container(
                 width: 8,
                 height: 8,
-                decoration: const BoxDecoration(
-                  color: Color(0xFF22C55E),
+                decoration: BoxDecoration(
+                  color: dotColor,
                   shape: BoxShape.circle,
                 ),
               ),
@@ -941,14 +1059,14 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
                 width: 36,
                 height: 36,
                 decoration: const BoxDecoration(
-                  color: Color(0xFF2563EB),
+                  color: Color(0xFFEFF6FF),
                   shape: BoxShape.circle,
                 ),
                 alignment: Alignment.center,
                 child: const Text(
                   'POC',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: Color(0xFF2563EB),
                     fontWeight: FontWeight.w800,
                     fontSize: 11,
                   ),
@@ -988,7 +1106,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
               const Icon(Icons.phone_outlined, size: 14, color: Color(0xFF64748B)),
               const SizedBox(width: 6),
               Text(
-                contactPhone.isNotEmpty ? contactPhone : 'gh',
+                contactPhone.isNotEmpty && contactPhone != '—' && contactPhone != 'gh' ? contactPhone : '-',
                 style: const TextStyle(
                   fontSize: 13,
                   color: Color(0xFF64748B),
@@ -1236,9 +1354,24 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
   // ──────────────────────────────────────────────────────────────────────────
 
   Widget _buildStatusPill(String statusUpper) {
-    final isConfirmed = statusUpper.contains('CONFIRM') || statusUpper.contains('STAGED');
-    final bg = isConfirmed ? const Color(0xFFDCFCE7) : const Color(0xFFEFF6FF);
-    final fg = isConfirmed ? const Color(0xFF16A34A) : const Color(0xFF2563EB);
+    Color bg = const Color(0xFFE6F0FF);
+    Color fg = const Color(0xFF155DFC);
+
+    if (statusUpper.contains('CONFIRM') ||
+        statusUpper.contains('RECEIV') ||
+        statusUpper.contains('DELIVER')) {
+      bg = const Color(0xFFE6FFEF);
+      fg = const Color(0xFF00C853);
+    } else if (statusUpper.contains('SCHEDUL')) {
+      bg = const Color(0xFFE6F0FF);
+      fg = const Color(0xFF155DFC);
+    } else if (statusUpper.contains('TRANSIT')) {
+      bg = const Color(0xFFEFF6FF);
+      fg = const Color(0xFF2563EB);
+    } else if (statusUpper.contains('STAGE')) {
+      bg = const Color(0xFFFEFCE8);
+      fg = const Color(0xFFCA8A04);
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1247,7 +1380,7 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
         borderRadius: BorderRadius.circular(20),
       ),
       child: Text(
-        statusUpper.isNotEmpty ? statusUpper : 'CONFIRMED',
+        statusUpper.isNotEmpty ? statusUpper : 'SCHEDULED',
         style: TextStyle(
           color: fg,
           fontSize: 11,
@@ -1496,8 +1629,8 @@ Future<void> _updateContact(BuildContext context, DeliveryDetailsController c) a
   if (result != null) await c.updateSiteContact(result);
 }
 
-String _formatDate(String raw, {String fallback = '—'}) {
-  if (raw == '—' || raw.isEmpty) return fallback;
+String _formatDate(String raw, {String fallback = '-'}) {
+  if (raw == '—' || raw == '-' || raw.isEmpty) return fallback;
   final parsed = DateTime.tryParse(raw);
   if (parsed != null) {
     return DateFormat('MMM d, yyyy').format(parsed.toLocal());

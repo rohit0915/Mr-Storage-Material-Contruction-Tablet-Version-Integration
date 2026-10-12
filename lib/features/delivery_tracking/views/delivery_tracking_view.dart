@@ -121,7 +121,7 @@ class DeliveryTrackingView extends GetView<DeliveryTrackingController> {
                       ),
                       decoration: InputDecoration(
                         hintText:
-                            'Search delivery #, material, description, location...',
+                            'Search delivery #, project, material, description...',
                         hintStyle: const TextStyle(
                           fontSize: 12,
                           color: AppColors.textSecondary,
@@ -131,27 +131,42 @@ class DeliveryTrackingView extends GetView<DeliveryTrackingController> {
                           size: 18,
                           color: AppColors.textSecondary,
                         ),
+                        suffixIcon: Obx(
+                          () => controller.searchQuery.value.isNotEmpty
+                              ? InkWell(
+                                  onTap: () {
+                                    controller.searchController.clear();
+                                    controller.onSearch('');
+                                  },
+                                  child: const Icon(
+                                    Icons.clear,
+                                    size: 16,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
                         filled: true,
                         fillColor: Colors.white,
                         contentPadding: const EdgeInsets.symmetric(
                           horizontal: 12,
                         ),
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: AppColors.cardBorder,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.cardBorder,
+                            ),
                           ),
-                        ),
-                        enabledBorder: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(8),
-                          borderSide: const BorderSide(
-                            color: AppColors.cardBorder,
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: const BorderSide(
+                              color: AppColors.cardBorder,
+                            ),
                           ),
                         ),
                       ),
                     ),
                   ),
-                ),
                 const SizedBox(width: 10),
                 Obx(
                   () => Container(
@@ -724,6 +739,7 @@ class _AdvancedFiltersPanel extends StatelessWidget {
         height: 40,
         child: TextField(
           controller: controller.materialTypeController,
+          onChanged: controller.setMaterialType,
           style: const TextStyle(
             fontSize: 13,
             color: AppColors.textPrimary,
@@ -733,6 +749,18 @@ class _AdvancedFiltersPanel extends StatelessWidget {
             hintStyle: const TextStyle(
               fontSize: 12,
               color: AppColors.textSecondary,
+            ),
+            suffixIcon: Obx(
+              () => controller.materialTypeQuery.value.isNotEmpty
+                  ? InkWell(
+                      onTap: () => controller.setMaterialType(''),
+                      child: const Icon(
+                        Icons.clear,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                    )
+                  : const SizedBox.shrink(),
             ),
             filled: true,
             fillColor: Colors.white,
