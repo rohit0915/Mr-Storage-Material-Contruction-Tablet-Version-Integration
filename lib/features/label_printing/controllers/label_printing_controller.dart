@@ -26,7 +26,14 @@ class LabelPrintingController extends GetxController {
   final selectedIds = <String>{}.obs;
   final filteredBundles = <LabelBundleItem>[].obs;
   final pageIndex = 0.obs;
-  final pageSize = 10;
+  final pageSize = 10.obs;
+  final pageSizeOptions = const [10, 15, 20, 25, 50];
+
+  void setPageSize(int size) {
+    if (pageSize.value == size) return;
+    pageSize.value = size;
+    pageIndex.value = 0;
+  }
 
   final apiTotalBundles = 0.obs;
   final apiLabelsPrinted = 0.obs;
@@ -67,14 +74,14 @@ class LabelPrintingController extends GetxController {
 
   List<LabelBundleItem> get pageBundles {
     if (filteredBundles.isEmpty) return [];
-    final startIndex = pageIndex.value * pageSize;
-    return filteredBundles.skip(startIndex).take(pageSize).toList();
+    final startIndex = pageIndex.value * pageSize.value;
+    return filteredBundles.skip(startIndex).take(pageSize.value).toList();
   }
 
   int get totalPages {
     final total = filteredBundles.length;
     if (total == 0) return 1;
-    return (total / pageSize).ceil();
+    return (total / pageSize.value).ceil();
   }
 
   bool get isAllOnPageSelected {

@@ -981,13 +981,68 @@ class _PaginationBar extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Text(
-              'Showing 10 Results',
-              style: TextStyle(
-                fontSize: fontSize,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-              ),
+            Row(
+              children: [
+                Text(
+                  'Showing',
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Container(
+                  height: 28,
+                  padding: const EdgeInsets.symmetric(horizontal: 6),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: AppColors.cardBorder),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<int>(
+                      value: [10, 15, 20, 25, 50].contains(controller.pageSize.value)
+                          ? controller.pageSize.value
+                          : 10,
+                      isDense: true,
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down,
+                        size: 16,
+                        color: AppColors.textSecondary,
+                      ),
+                      style: TextStyle(
+                        fontSize: fontSize,
+                        color: AppColors.textPrimary,
+                        fontWeight: FontWeight.w700,
+                      ),
+                      dropdownColor: Colors.white,
+                      items: const [10, 15, 20, 25, 50]
+                          .map(
+                            (val) => DropdownMenuItem(
+                              value: val,
+                              child: Text('$val'),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          controller.setPageSize(val);
+                        }
+                      },
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  'Results',
+                  style: TextStyle(
+                    fontSize: fontSize,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
             ),
             const Spacer(),
             _PageBtn(

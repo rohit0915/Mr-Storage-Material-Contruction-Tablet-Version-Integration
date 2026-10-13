@@ -956,7 +956,7 @@ class _PaginationBar extends StatelessWidget {
                   ),
                   child: DropdownButtonHideUnderline(
                     child: DropdownButton<int>(
-                      value: [10, 20, 50].contains(limit) ? limit : 10,
+                      value: [10, 15, 20, 50].contains(limit) ? limit : 10,
                       isDense: true,
                       style: const TextStyle(
                         fontSize: 13,
@@ -965,6 +965,7 @@ class _PaginationBar extends StatelessWidget {
                       ),
                       items: const [
                         DropdownMenuItem(value: 10, child: Text('10')),
+                        DropdownMenuItem(value: 15, child: Text('15')),
                         DropdownMenuItem(value: 20, child: Text('20')),
                         DropdownMenuItem(value: 50, child: Text('50')),
                       ],

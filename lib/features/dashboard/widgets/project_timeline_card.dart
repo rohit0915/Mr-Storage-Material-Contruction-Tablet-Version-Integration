@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/constants/get_builder_ids.dart';
+import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
@@ -33,23 +34,31 @@ class ProjectTimelineCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Row(
-                children: [
-                  Text(
-                    'View Full Timeline',
-                    style: TextStyle(
-                      fontSize: itemSize,
-                      color: const Color(0xFF475569),
-                      fontWeight: FontWeight.w600,
-                    ),
+              InkWell(
+                onTap: () => Get.toNamed(AppRoutes.projectCalendar),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        'View Full Timeline',
+                        style: TextStyle(
+                          fontSize: itemSize,
+                          color: const Color(0xFF475569),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      const Icon(
+                        Icons.chevron_right_rounded,
+                        size: 18,
+                        color: Color(0xFF475569),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 4),
-                  const Icon(
-                    Icons.keyboard_arrow_down_rounded,
-                    size: 18,
-                    color: Color(0xFF475569),
-                  ),
-                ],
+                ),
               ),
             ],
           ),

@@ -16,10 +16,22 @@ class MaterialRequestsService extends GetxService {
         ApiConstants.projects,
         queryParams: const {'page': '1', 'limit': '100'},
       );
-      final data = res is Map ? res['data'] : null;
-      final items = data is Map ? data['projects'] : null;
-      if (items is List) {
-        return items
+      List rawList = const [];
+      if (res is Map) {
+        if (res['data'] is Map && res['data']['projects'] is List) {
+          rawList = res['data']['projects'] as List;
+        } else if (res['projects'] is List) {
+          rawList = res['projects'] as List;
+        } else if (res['data'] is List) {
+          rawList = res['data'] as List;
+        } else if (res['items'] is List) {
+          rawList = res['items'] as List;
+        }
+      } else if (res is List) {
+        rawList = res;
+      }
+      if (rawList.isNotEmpty) {
+        return rawList
             .whereType<Map>()
             .map((item) => Map<String, dynamic>.from(item))
             .toList();
@@ -32,14 +44,30 @@ class MaterialRequestsService extends GetxService {
         tag: 'MAT_REQ_SVC',
       );
     }
+
+    // Fallback: try dashboard filters
+    try {
+      final res = await _apiClient.get(ApiConstants.dashboardFilters);
+      if (res is Map && res['data'] is Map && res['data']['projects'] is List) {
+        final pList = res['data']['projects'] as List;
+        return pList
+            .whereType<Map>()
+            .map((item) => Map<String, dynamic>.from(item))
+            .toList();
+      }
+    } catch (_) {}
+
     return const [];
   }
 
   Future<Map<String, dynamic>?> getFilters() async {
     try {
       final res = await _apiClient.get(ApiConstants.materialRequestsFilters);
-      if (res is Map && res['data'] is Map) {
-        return Map<String, dynamic>.from(res['data'] as Map);
+      if (res is Map) {
+        if (res['data'] is Map) {
+          return Map<String, dynamic>.from(res['data'] as Map);
+        }
+        return Map<String, dynamic>.from(res);
       }
     } catch (e, stackTrace) {
       AppLogger.e(

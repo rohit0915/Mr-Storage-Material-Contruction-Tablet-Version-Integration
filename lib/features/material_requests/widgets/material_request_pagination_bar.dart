@@ -18,8 +18,8 @@ class MaterialRequestPaginationBar extends GetView<MaterialRequestsController> {
         return const SizedBox.shrink();
       }
 
-      final start = controller.pageIndex.value * controller.pageSize + 1;
-      final end = (start + controller.pageSize - 1).clamp(1, total);
+      final start = controller.pageIndex.value * controller.pageSize.value + 1;
+      final end = (start + controller.pageSize.value - 1).clamp(1, total);
 
       final current = controller.pageIndex.value;
       final pages = controller.totalPages;

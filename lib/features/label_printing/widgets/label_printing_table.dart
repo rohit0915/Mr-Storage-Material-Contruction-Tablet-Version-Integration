@@ -161,7 +161,7 @@ class LabelPrintingTable extends GetView<LabelPrintingController> {
               currentPage: currentPage,
               totalPages: totalPages,
               totalCount: totalCount,
-              pageSize: controller.pageSize,
+              pageSize: controller.pageSize.value,
             ),
           ],
         ),
@@ -445,32 +445,42 @@ class _PaginationFooter extends GetView<LabelPrintingController> {
               ),
               const SizedBox(width: 6),
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 6,
-                ),
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 8),
                 decoration: BoxDecoration(
                   border: Border.all(color: AppColors.cardBorder),
                   borderRadius: BorderRadius.circular(8),
                   color: Colors.white,
                 ),
-                child: Row(
-                  children: [
-                    Text(
-                      '$pageSize',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: fontSize,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                    const SizedBox(width: 4),
-                    Icon(
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<int>(
+                    value: [10, 15, 20, 25, 50].contains(pageSize) ? pageSize : 10,
+                    icon: const Icon(
                       Icons.keyboard_arrow_down,
                       size: 16,
                       color: AppColors.textSecondary,
                     ),
-                  ],
+                    isDense: true,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w700,
+                      fontSize: fontSize,
+                      color: AppColors.textPrimary,
+                    ),
+                    dropdownColor: Colors.white,
+                    items: const [10, 15, 20, 25, 50]
+                        .map(
+                          (val) => DropdownMenuItem(
+                            value: val,
+                            child: Text('$val'),
+                          ),
+                        )
+                        .toList(),
+                    onChanged: (val) {
+                      if (val != null) {
+                        controller.setPageSize(val);
+                      }
+                    },
+                  ),
                 ),
               ),
               const SizedBox(width: 6),

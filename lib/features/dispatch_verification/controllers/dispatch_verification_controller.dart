@@ -19,7 +19,14 @@ class DispatchVerificationController extends GetxController {
   final selectedStatus = 'All Statuses'.obs;
   final selectedSort = 'Latest'.obs;
   final pageIndex = 0.obs;
-  final pageSize = 10;
+  final pageSize = 10.obs;
+  final pageSizeOptions = const [10, 15, 20, 25, 50];
+
+  void setPageSize(int size) {
+    if (pageSize.value == size) return;
+    pageSize.value = size;
+    pageIndex.value = 0;
+  }
 
   // Reactive Stats matching Web Panel
   final loadsReadyCount = 0.obs;
@@ -231,13 +238,13 @@ class DispatchVerificationController extends GetxController {
     selectedSort.value = s;
   }
 
-  int get totalPages => (filteredItems.length / pageSize).ceil().clamp(1, 999);
+  int get totalPages => (filteredItems.length / pageSize.value).ceil().clamp(1, 999);
 
   List<DispatchItem> get pageItems {
     final list = filteredItems;
-    final start = pageIndex.value * pageSize;
+    final start = pageIndex.value * pageSize.value;
     if (start >= list.length) return [];
-    final end = (start + pageSize).clamp(0, list.length);
+    final end = (start + pageSize.value).clamp(0, list.length);
     return list.sublist(start, end);
   }
 

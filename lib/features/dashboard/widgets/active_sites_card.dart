@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/constants/get_builder_ids.dart';
+import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 import '../models/dashboard_models.dart';
@@ -36,12 +37,19 @@ class ActiveSitesCard extends StatelessWidget {
                   ),
                 ),
               ),
-              Text(
-                'View All',
-                style: TextStyle(
-                  fontSize: headerSize,
-                  color: AppColors.primaryBlue,
-                  fontWeight: FontWeight.w600,
+              InkWell(
+                onTap: () => Get.toNamed(AppRoutes.projectCalendar),
+                borderRadius: BorderRadius.circular(4),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                  child: Text(
+                    'View All',
+                    style: TextStyle(
+                      fontSize: headerSize,
+                      color: AppColors.primaryBlue,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               ),
             ],

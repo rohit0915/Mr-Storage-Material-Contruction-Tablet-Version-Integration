@@ -54,6 +54,9 @@ class _MaterialRequestFiltersRowState extends State<MaterialRequestFiltersRow> {
       final dateRange = controller.dateRangeLabel;
       final hasDate = controller.hasDateFilter;
       final hasActive = controller.hasActiveFilters;
+      final projectList = controller.projects.toList();
+      final statusList = controller.statusList.toList();
+      final priorityList = controller.priorityList.toList();
 
       // Sync search field if reset externally
       if (controller.searchQuery.value.isEmpty &&
@@ -100,7 +103,7 @@ class _MaterialRequestFiltersRowState extends State<MaterialRequestFiltersRow> {
                   child: _DropdownBox(
                     label: 'PROJECT',
                     value: project,
-                    items: controller.projects,
+                    items: projectList,
                     onChanged: (v) => controller.setFilters(project: v),
                   ),
                 ),
@@ -111,7 +114,7 @@ class _MaterialRequestFiltersRowState extends State<MaterialRequestFiltersRow> {
                   child: _DropdownBox(
                     label: 'STATUS',
                     value: status,
-                    items: controller.statusList,
+                    items: statusList,
                     onChanged: (v) => controller.setFilters(status: v),
                   ),
                 ),
@@ -122,7 +125,7 @@ class _MaterialRequestFiltersRowState extends State<MaterialRequestFiltersRow> {
                   child: _DropdownBox(
                     label: 'PRIORITY',
                     value: priority,
-                    items: controller.priorityList,
+                    items: priorityList,
                     onChanged: (v) => controller.setFilters(priority: v),
                   ),
                 ),
@@ -329,41 +332,38 @@ class _DropdownBox extends StatelessWidget {
             border: Border.all(color: const Color(0xFFE2E8F0)),
           ),
           alignment: Alignment.center,
-          child: DropdownButtonFormField<String>(
-            key: ValueKey('$label-$selectedVal-${list.length}'),
-            initialValue: selectedVal,
-            isExpanded: true,
-            icon: const Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 18,
-              color: Color(0xFF94A3B8),
-            ),
-            decoration: const InputDecoration(
-              isDense: true,
-              border: InputBorder.none,
-              contentPadding: EdgeInsets.zero,
-            ),
-            dropdownColor: Colors.white,
-            items: list
-                .map(
-                  (e) => DropdownMenuItem(
-                    value: e,
-                    child: Text(
-                      e,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: AppColors.textPrimary,
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              key: ValueKey('$label-$selectedVal-${list.length}'),
+              value: selectedVal,
+              isExpanded: true,
+              icon: const Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: Color(0xFF94A3B8),
+              ),
+              dropdownColor: Colors.white,
+              items: list
+                  .map(
+                    (e) => DropdownMenuItem(
+                      value: e,
+                      child: Text(
+                        e,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                     ),
-                  ),
-                )
-                .toList(),
-            onChanged: (v) {
-              if (v == null) return;
-              onChanged(v);
-            },
+                  )
+                  .toList(),
+              onChanged: (v) {
+                if (v == null) return;
+                onChanged(v);
+              },
+            ),
           ),
         ),
       ],

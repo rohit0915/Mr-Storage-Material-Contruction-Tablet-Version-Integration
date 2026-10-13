@@ -65,8 +65,16 @@ class MaterialRequestsController extends GetxController {
 
   // Pagination
   final pageIndex = 0.obs;
-  final pageSize = 10;
+  final pageSize = 10.obs;
   final serverTotal = 0.obs;
+  final pageSizeOptions = const [10, 15, 20, 25, 50];
+
+  void setPageSize(int size) {
+    if (pageSize.value == size) return;
+    pageSize.value = size;
+    resetPagination();
+    fetchRequests();
+  }
 
   final filteredRequests = <MaterialRequestBoardItem>[].obs;
 
@@ -77,37 +85,49 @@ class MaterialRequestsController extends GetxController {
   }
 
   Future<void> _initialLoad() async {
-    final filterData = await _service.getFilters();
+    // 1. Fetch filters and projects in parallel
+    final results = await Future.wait([
+      _service.getFilters(),
+      _service.getProjects(),
+    ]);
+    final filterData = results[0] as Map<String, dynamic>?;
+    final projectRows = results[1] as List<Map<String, dynamic>>? ?? const [];
+
     final names = <String>['All Projects'];
+
     if (filterData != null && filterData['projects'] is List) {
       final pList = filterData['projects'] as List;
       for (final p in pList) {
         if (p is Map) {
-          final pName = (p['projectName'] ?? p['jobId'] ?? '').toString();
-          final jId = (p['jobId'] ?? '').toString();
-          final id = (p['leadId'] ?? p['_id'] ?? '').toString();
+          final pName = (p['projectName'] ?? p['name'] ?? p['title'] ?? p['jobId'] ?? '').toString();
+          final jId = (p['jobId'] ?? p['code'] ?? '').toString();
+          final id = (p['leadId'] ?? p['_id'] ?? p['id'] ?? '').toString();
           final label = pName.isNotEmpty && jId.isNotEmpty && pName != jId
               ? '$pName ($jId)'
               : (pName.isNotEmpty ? pName : jId);
-          if (label.isNotEmpty && id.isNotEmpty) {
-            _projectIdsByName[label] = id;
+          if (label.isNotEmpty) {
+            if (id.isNotEmpty) _projectIdsByName[label] = id;
             names.add(label);
           }
+        } else if (p is String && p.trim().isNotEmpty) {
+          names.add(p.trim());
         }
       }
     }
 
-    if (names.length <= 1) {
-      final projectRows = await _service.getProjects();
-      for (final row in projectRows) {
-        final name = (row['projectName'] ?? row['jobId'] ?? '').toString();
-        final id = (row['_id'] ?? row['leadId'] ?? '').toString();
-        if (name.isNotEmpty && id.isNotEmpty) {
-          _projectIdsByName[name] = id;
-          names.add(name);
-        }
+    for (final row in projectRows) {
+      final name = (row['projectName'] ?? row['name'] ?? row['title'] ?? row['jobId'] ?? '').toString();
+      final jId = (row['jobId'] ?? row['code'] ?? '').toString();
+      final id = (row['_id'] ?? row['id'] ?? row['leadId'] ?? '').toString();
+      final label = name.isNotEmpty && jId.isNotEmpty && name != jId
+          ? '$name ($jId)'
+          : (name.isNotEmpty ? name : jId);
+      if (label.isNotEmpty) {
+        if (id.isNotEmpty) _projectIdsByName[label] = id;
+        names.add(label);
       }
     }
+
     projects.assignAll(names.toSet());
 
     if (filterData != null) {
@@ -152,7 +172,7 @@ class MaterialRequestsController extends GetxController {
     try {
       final res = await _service.getMaterialRequests(
         page: pageIndex.value + 1,
-        limit: pageSize,
+        limit: pageSize.value,
         project:
             _projectIdsByName[selectedProject.value] ?? selectedProject.value,
         department: selectedDepartment.value,
@@ -202,6 +222,10 @@ class MaterialRequestsController extends GetxController {
               );
               parsed.add(boardItem);
 
+              if (boardItem.project.isNotEmpty &&
+                  !projects.contains(boardItem.project)) {
+                projects.add(boardItem.project);
+              }
               if (boardItem.department.isNotEmpty) {
                 dOpts.add(boardItem.department);
               }
@@ -299,7 +323,7 @@ class MaterialRequestsController extends GetxController {
 
   int get totalPages {
     if (serverTotal.value == 0) return 1;
-    return (serverTotal.value / pageSize).ceil();
+    return (serverTotal.value / pageSize.value).ceil().clamp(1, 9999);
   }
 
   String get dateRangeLabel {
