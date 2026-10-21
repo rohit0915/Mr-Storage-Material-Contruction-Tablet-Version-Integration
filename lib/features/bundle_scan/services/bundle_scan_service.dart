@@ -16,6 +16,7 @@ class BundleScanService {
     String? search,
     String? sortBy,
     String? status,
+    String? projectId,
   }) async {
     try {
       final url = ApiConstants.bundleScanUrl(
@@ -24,6 +25,7 @@ class BundleScanService {
         search: search,
         sortBy: sortBy,
         status: status,
+        projectId: projectId,
       );
       final res = await _apiClient.get(url);
       AppLogger.i(
@@ -270,12 +272,13 @@ class BundleScanService {
     }
   }
 
-  Future<bool> reportMismatch(
+  Future<Map<String, dynamic>?> reportMismatch(
     String id,
     String notes, {
     String? reason,
     List<Map<String, dynamic>>? items,
     String? projectId,
+    List<Map<String, dynamic>>? photos,
   }) async {
     String effectiveId = id;
     if (!BundleScanItem.isMongoHexId(effectiveId)) {
@@ -296,7 +299,7 @@ class BundleScanService {
         'reportMismatch called without valid MongoDB ObjectId: $id',
         tag: 'BUNDLE_SCAN',
       );
-      return true;
+      return {'success': true};
     }
 
     final validProjectId = (projectId != null &&
@@ -306,18 +309,41 @@ class BundleScanService {
         : null;
 
     final body = <String, dynamic>{
+      'bundleId': effectiveId,
       'notes': notes,
-      'reason': reason ?? notes,
-      'photos': [],
-      if (items != null && items.isNotEmpty) 'items': items,
-      'project': ?validProjectId,
+      'reason': (reason != null && reason.isNotEmpty) ? reason : notes,
+      'photos': photos ?? <Map<String, dynamic>>[],
+      if (items != null && items.isNotEmpty)
+        'items': items.map((item) {
+          final iMap = Map<String, dynamic>.from(item);
+          final rawItemId = iMap['itemId'] ?? iMap['_id'] ?? iMap['id'];
+          final expQty = iMap['expectedQty'] ?? iMap['quantity'] ?? iMap['qty'] ?? 1;
+          final recQty = iMap['receivedQty'] ?? iMap['receivedQuantity'] ?? expQty;
+          return <String, dynamic>{
+            if (rawItemId != null && BundleScanItem.isMongoHexId(rawItemId.toString()))
+              'itemId': rawItemId.toString(),
+            'expectedQty': expQty is num ? expQty.toInt() : (int.tryParse(expQty.toString()) ?? 1),
+            'receivedQty': recQty is num ? recQty.toInt() : (int.tryParse(recQty.toString()) ?? 1),
+            if (iMap['partCode'] != null || iMap['itemCode'] != null)
+              'partCode': (iMap['partCode'] ?? iMap['itemCode']).toString(),
+            if (iMap['description'] != null || iMap['name'] != null)
+              'description': (iMap['description'] ?? iMap['name']).toString(),
+            if (iMap['status'] != null)
+              'status': iMap['status'].toString(),
+          };
+        }).toList(),
+      ...?validProjectId != null ? {'leadId': validProjectId} : null,
     };
     try {
       final res = await _apiClient.post(
         ApiConstants.bundleMismatch(effectiveId),
         body: body,
       );
-      return res != null;
+      if (res is Map) {
+        final data = res['data'] ?? res;
+        if (data is Map) return Map<String, dynamic>.from(data);
+      }
+      return {'success': true};
     } catch (e, st) {
       AppLogger.e(
         'Error reporting mismatch',
@@ -325,7 +351,92 @@ class BundleScanService {
         stackTrace: st,
         tag: 'BUNDLE_SCAN',
       );
-      return true;
+      return null;
+    }
+  }
+
+  /// 3-Step Navigation: loads for a project
+  Future<List<Map<String, dynamic>>> getProjectLoads(String leadId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.bundleScanProjectLoads(leadId),
+      );
+      if (res is Map && res['data'] is List) {
+        return (res['data'] as List).whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+      if (res is List) {
+        return res.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+    } catch (e, st) {
+      AppLogger.e('Error fetching project loads', error: e, stackTrace: st, tag: 'BUNDLE_SCAN');
+    }
+    return [];
+  }
+
+  /// 3-Step Navigation: bundles for a packing list / load
+  Future<List<BundleScanItem>> getLoadBundles(String packingListId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.bundleScanLoadBundles(packingListId),
+      );
+      List rawList = [];
+      if (res is Map && res['data'] is List) {
+        rawList = res['data'] as List;
+      } else if (res is List) {
+        rawList = res;
+      }
+      return rawList.whereType<Map>().map((m) => BundleScanItem.fromJson(Map<String, dynamic>.from(m))).toList();
+    } catch (e, st) {
+      AppLogger.e('Error fetching load bundles', error: e, stackTrace: st, tag: 'BUNDLE_SCAN');
+    }
+    return [];
+  }
+
+  /// Plant Project Mismatch Orders List
+  Future<Map<String, dynamic>?> getProjectMismatchOrders(
+    String leadId, {
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.plantProjectMismatchOrders(
+          leadId,
+          page: page,
+          limit: limit,
+          status: status,
+        ),
+      );
+      if (res is Map) {
+        final data = res['data'] ?? res;
+        if (data is Map) return Map<String, dynamic>.from(data);
+      }
+    } catch (e, st) {
+      AppLogger.e('Error fetching plant mismatch orders', error: e, stackTrace: st, tag: 'PLANT_MISMATCH');
+    }
+    return null;
+  }
+
+  /// Plant Update Mismatch Order Status
+  Future<bool> updateMismatchOrderStatus(
+    String mismatchId, {
+    required String status,
+    String? actionNotes,
+  }) async {
+    try {
+      final res = await _apiClient.put(
+        ApiConstants.plantMismatchOrderStatus(mismatchId),
+        body: {
+          'status': status,
+          if (actionNotes != null && actionNotes.isNotEmpty)
+            'actionNotes': actionNotes,
+        },
+      );
+      return res != null;
+    } catch (e, st) {
+      AppLogger.e('Error updating mismatch order status', error: e, stackTrace: st, tag: 'PLANT_MISMATCH');
+      return false;
     }
   }
 

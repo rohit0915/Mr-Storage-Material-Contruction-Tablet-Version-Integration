@@ -13,40 +13,41 @@ class AppShellController extends GetxController {
 
     switch (title) {
       case 'Dashboard':
-        Get.offNamed(AppRoutes.dashboard);
+        Get.offAllNamed(AppRoutes.dashboard);
         break;
       case 'Project & Calendar':
-        Get.offNamed(AppRoutes.projectCalendar);
+        Get.offAllNamed(AppRoutes.projectCalendar);
         break;
       case 'Drawings & Attachments':
-        Get.offNamed(AppRoutes.drawings);
+        Get.offAllNamed(AppRoutes.drawings);
         break;
       case 'Tasks':
-        Get.offNamed(AppRoutes.tasks);
+        Get.offAllNamed(AppRoutes.tasks);
         break;
       case 'Daily Work Logs':
-        Get.offNamed(AppRoutes.dailyWorkLogs);
+        Get.offAllNamed(AppRoutes.dailyWorkLogs);
         break;
       case 'Material Request':
-        Get.offNamed(AppRoutes.materialRequests);
+        Get.offAllNamed(AppRoutes.materialRequests);
         break;
       case 'Label Printing':
-        Get.offNamed(AppRoutes.labelPrinting);
+        Get.offAllNamed(AppRoutes.labelPrinting);
         break;
       case 'Delivery Tracking':
-        Get.offNamed(AppRoutes.deliveryTracking);
+        Get.offAllNamed(AppRoutes.deliveryTracking);
         break;
       case 'Bundle Scan':
-        Get.offNamed(AppRoutes.bundleScan);
+        Get.offAllNamed(AppRoutes.bundleScan);
         break;
       case 'Packing List':
-        Get.offNamed(AppRoutes.packingList);
+        Get.offAllNamed(AppRoutes.packingList);
         break;
       case 'Dispatch Verification':
-        Get.offNamed(AppRoutes.dispatchVerification);
+        Get.offAllNamed(AppRoutes.dispatchVerification);
         break;
+      case 'Communication':
       case 'Chat / Messaging':
-        Get.offNamed(AppRoutes.chat);
+        Get.offAllNamed(AppRoutes.chat);
         break;
 
       default:

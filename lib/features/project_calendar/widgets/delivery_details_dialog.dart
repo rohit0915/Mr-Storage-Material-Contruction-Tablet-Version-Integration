@@ -775,37 +775,45 @@ class _DeliveryDetailsDialogState extends State<DeliveryDetailsDialog> {
                   ),
                   child: Row(
                     children: [
-                      _FlowNode(
-                        icon: Icons.local_shipping_rounded,
-                        iconBg: AppColors.primaryBlue,
-                        label: 'ORIGIN',
-                        value: origin,
+                      Expanded(
+                        child: _FlowNode(
+                          icon: Icons.local_shipping_rounded,
+                          iconBg: AppColors.primaryBlue,
+                          label: 'ORIGIN',
+                          value: origin,
+                        ),
                       ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: AppColors.textSecondary,
-                        size: 18,
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          color: AppColors.textSecondary,
+                          size: 18,
+                        ),
                       ),
-                      const Spacer(),
-                      _FlowNode(
-                        icon: Icons.storefront_rounded,
-                        iconBg: const Color(0xFF22C55E),
-                        label: 'PLANT',
-                        value: staging,
+                      Expanded(
+                        child: _FlowNode(
+                          icon: Icons.storefront_rounded,
+                          iconBg: const Color(0xFF22C55E),
+                          label: 'PLANT',
+                          value: staging,
+                        ),
                       ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.arrow_forward_rounded,
-                        color: AppColors.textSecondary,
-                        size: 18,
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8),
+                        child: Icon(
+                          Icons.arrow_forward_rounded,
+                          color: AppColors.textSecondary,
+                          size: 18,
+                        ),
                       ),
-                      const Spacer(),
-                      _FlowNode(
-                        icon: Icons.location_on_rounded,
-                        iconBg: const Color(0xFFF97316),
-                        label: 'DESTINATION',
-                        value: dest,
+                      Expanded(
+                        child: _FlowNode(
+                          icon: Icons.location_on_rounded,
+                          iconBg: const Color(0xFFF97316),
+                          label: 'DESTINATION',
+                          value: dest,
+                        ),
                       ),
                     ],
                   ),
@@ -1231,6 +1239,7 @@ class _FlowNode extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
         Container(
           width: 34,
@@ -1239,26 +1248,34 @@ class _FlowNode extends StatelessWidget {
           child: Icon(icon, color: Colors.white, size: 18),
         ),
         const SizedBox(width: 8),
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color: AppColors.textSecondary,
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.textSecondary,
+                ),
               ),
-            ),
-            Text(
-              value,
-              style: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w800,
-                color: AppColors.textPrimary,
+              Tooltip(
+                message: value,
+                child: Text(
+                  value.isNotEmpty ? value : '—',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );

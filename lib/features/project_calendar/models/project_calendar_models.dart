@@ -379,3 +379,449 @@ class ProjectCardItem {
     );
   }
 }
+
+class ProjectWorkflowStep {
+  const ProjectWorkflowStep({
+    required this.stepNumber,
+    required this.title,
+    required this.startDate,
+    required this.endDate,
+    required this.status,
+    this.estEndDate = '',
+    this.completedDate = '',
+    this.timelineBadge = '',
+    this.description = '',
+    this.photos = const [],
+    this.stepKey = '',
+    this.completionPct = 0,
+    this.attachments = const [],
+  });
+
+  final int stepNumber;
+  final String title;
+  final String startDate;
+  final String endDate;
+  final String status;
+  final String estEndDate;
+  final String completedDate;
+  final String timelineBadge;
+  final String description;
+  final List<String> photos;
+  final String stepKey;
+  final int completionPct;
+  final List<Map<String, dynamic>> attachments;
+
+  String get effectiveEstEndDate =>
+      estEndDate.isNotEmpty ? estEndDate : endDate;
+
+  String get effectiveCompletedDate {
+    if (completedDate.isNotEmpty) return completedDate;
+    if (status.toLowerCase().contains('complete')) return endDate;
+    return '-';
+  }
+
+  String get displayTimelineBadge {
+    if (timelineBadge.isNotEmpty) return timelineBadge;
+    final s = status.toLowerCase();
+    if (s.contains('delay')) return 'Delayed';
+    if (s.contains('progress') || s.contains('inprogress')) return 'In Progress';
+    if (s.contains('complete')) return 'Under timeline';
+    return 'Pending';
+  }
+
+  Color get badgeTextColor {
+    final b = displayTimelineBadge.toLowerCase();
+    if (b.contains('late')) return const Color(0xFF0F766E); // Teal/green
+    if (b.contains('timeline') || b.contains('complete')) return const Color(0xFF15803D); // Green
+    if (b.contains('progress')) return const Color(0xFF1D4ED8); // Blue
+    if (b.contains('delay')) return const Color(0xFFB91C1C); // Red
+    return const Color(0xFFD97706);
+  }
+
+  Color get badgeBgColor {
+    final b = displayTimelineBadge.toLowerCase();
+    if (b.contains('late')) return const Color(0xFFCCFBF1);
+    if (b.contains('timeline') || b.contains('complete')) return const Color(0xFFDCFCE7);
+    if (b.contains('progress')) return const Color(0xFFDBEAFE);
+    if (b.contains('delay')) return const Color(0xFFFEE2E2);
+    return const Color(0xFFFEF3C7);
+  }
+
+  Color get badgeDotColor {
+    final b = displayTimelineBadge.toLowerCase();
+    if (b.contains('late')) return const Color(0xFF0D9488);
+    if (b.contains('timeline') || b.contains('complete')) return const Color(0xFF16A34A);
+    if (b.contains('progress')) return const Color(0xFF2563EB);
+    if (b.contains('delay')) return const Color(0xFFDC2626);
+    return const Color(0xFFD97706);
+  }
+
+  factory ProjectWorkflowStep.fromJson(Map<String, dynamic> json, int index) {
+    final key = (json['stepKey'] ?? json['key'] ?? '').toString();
+    final rawLabel = (json['label'] ?? json['name'] ?? json['title'] ?? key).toString();
+    final rawStatus = (json['status'] ?? 'pending').toString().toLowerCase();
+
+    String formattedStatus = 'Pending';
+    if (rawStatus.contains('complete')) {
+      formattedStatus = 'Completed';
+    } else if (rawStatus.contains('progress') || rawStatus.contains('inprogress')) {
+      formattedStatus = 'In Progress';
+    } else if (rawStatus.contains('delay')) {
+      formattedStatus = 'Delayed';
+    }
+
+    final start = _formatDateStr(json['startedAt'] ?? json['startDate']);
+    final end = _formatDateStr(json['completedAt'] ?? json['endDate']);
+    final est = _formatDateStr(json['expectedCompletion'] ?? json['estEndDate'] ?? json['estDate']);
+
+    final attList = <Map<String, dynamic>>[];
+    final photoUrls = <String>[];
+    if (json['attachments'] is List) {
+      for (final a in json['attachments'] as List) {
+        if (a is Map) {
+          final mMap = Map<String, dynamic>.from(a);
+          attList.add(mMap);
+          final url = (mMap['url'] ?? mMap['fileUrl'])?.toString() ?? '';
+          if (url.isNotEmpty) photoUrls.add(url);
+        }
+      }
+    }
+
+    final pct = json['completionPct'] ?? json['percentComplete'] ?? (formattedStatus == 'Completed' ? 100 : 0);
+    final parsedPct = pct is num ? pct.toInt() : (int.tryParse(pct.toString()) ?? 0);
+
+    final readableTitle = rawLabel.isEmpty
+        ? 'Step $index'
+        : rawLabel
+            .replaceAll('_', ' ')
+            .split(' ')
+            .map((w) => w.isNotEmpty ? '${w[0].toUpperCase()}${w.substring(1)}' : '')
+            .join(' ')
+            .trim();
+
+    return ProjectWorkflowStep(
+      stepNumber: index,
+      stepKey: key,
+      title: readableTitle,
+      startDate: start.isNotEmpty ? start : '-',
+      endDate: end.isNotEmpty ? end : (est.isNotEmpty ? est : '-'),
+      estEndDate: est.isNotEmpty ? est : (end.isNotEmpty ? end : '-'),
+      completedDate: formattedStatus == 'Completed' ? (end.isNotEmpty ? end : '-') : '-',
+      status: formattedStatus,
+      description: (json['notes'] ?? json['description'] ?? '').toString(),
+      photos: photoUrls,
+      attachments: attList,
+      completionPct: parsedPct,
+    );
+  }
+
+  static String _formatDateStr(dynamic raw) {
+    if (raw == null) return '';
+    final str = raw.toString().trim();
+    if (str.isEmpty || str == 'null') return '';
+    final dt = DateTime.tryParse(str);
+    if (dt != null) {
+      const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+      return '${dt.day.toString().padLeft(2, '0')} ${months[dt.month - 1]} ${dt.year}';
+    }
+    return str;
+  }
+
+  Color get statusTextColor {
+    final s = status.toLowerCase();
+    if (s.contains('complete')) return const Color(0xFF16A34A);
+    if (s.contains('progress')) return const Color(0xFF2563EB);
+    if (s.contains('delay')) return const Color(0xFFDC2626);
+    return const Color(0xFFD97706); // Pending
+  }
+
+  Color get statusBgColor {
+    final s = status.toLowerCase();
+    if (s.contains('complete')) return const Color(0xFFDCFCE7);
+    if (s.contains('progress')) return const Color(0xFFDBEAFE);
+    if (s.contains('delay')) return const Color(0xFFFEE2E2);
+    return const Color(0xFFFEF3C7); // Pending
+  }
+
+  ProjectWorkflowStep copyWith({
+    int? stepNumber,
+    String? title,
+    String? startDate,
+    String? endDate,
+    String? estEndDate,
+    String? completedDate,
+    String? timelineBadge,
+    String? status,
+    String? description,
+    List<String>? photos,
+    String? stepKey,
+    int? completionPct,
+    List<Map<String, dynamic>>? attachments,
+  }) {
+    return ProjectWorkflowStep(
+      stepNumber: stepNumber ?? this.stepNumber,
+      title: title ?? this.title,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      estEndDate: estEndDate ?? this.estEndDate,
+      completedDate: completedDate ?? this.completedDate,
+      timelineBadge: timelineBadge ?? this.timelineBadge,
+      status: status ?? this.status,
+      description: description ?? this.description,
+      photos: photos ?? this.photos,
+      stepKey: stepKey ?? this.stepKey,
+      completionPct: completionPct ?? this.completionPct,
+      attachments: attachments ?? this.attachments,
+    );
+  }
+}
+
+class ProjectTimelineTask {
+  const ProjectTimelineTask({
+    required this.id,
+    required this.title,
+    required this.status,
+    this.startDate = '-',
+    this.estimatedEndDate = '-',
+    this.completedDate = '-',
+    this.rawStartDate,
+    this.rawEstimatedEndDate,
+    this.rawCompletedDate,
+    this.badgeLabel = 'Pending',
+    this.badgeTone = 'info',
+    this.timelineStatusLine = '',
+    this.canMarkComplete = true,
+    this.description = '',
+    this.workDescription = '',
+    this.attachments = const [],
+    this.onTimeStatus = '',
+    this.onTime,
+    this.daysLateOrEarly,
+    this.daysPastDue,
+    this.assignedTo = '',
+    this.priority = '',
+  });
+
+  final String id;
+  final String title;
+  final String status;
+  final String startDate;
+  final String estimatedEndDate;
+  final String completedDate;
+  final DateTime? rawStartDate;
+  final DateTime? rawEstimatedEndDate;
+  final DateTime? rawCompletedDate;
+  final String badgeLabel;
+  final String badgeTone;
+  final String timelineStatusLine;
+  final bool canMarkComplete;
+  final String description;
+  final String workDescription;
+  final List<String> attachments;
+  final String onTimeStatus;
+  final bool? onTime;
+  final int? daysLateOrEarly;
+  final int? daysPastDue;
+  final String assignedTo;
+  final String priority;
+
+  bool get isCompleted =>
+      status.toLowerCase() == 'done' ||
+      status.toLowerCase().contains('complete') ||
+      !canMarkComplete;
+
+  Color get badgeTextColor {
+    final t = badgeTone.toLowerCase();
+    final l = badgeLabel.toLowerCase();
+    if (t == 'success' || l.contains('timeline') || l.contains('late')) {
+      return const Color(0xFF15803D); // Green
+    }
+    if (t == 'danger' || l.contains('delayed') || l.contains('overdue')) {
+      return const Color(0xFFB91C1C); // Red
+    }
+    if (t == 'info' || l.contains('progress')) {
+      return const Color(0xFF1D4ED8); // Blue
+    }
+    return const Color(0xFFD97706); // Amber / Pending
+  }
+
+  Color get badgeBgColor {
+    final t = badgeTone.toLowerCase();
+    final l = badgeLabel.toLowerCase();
+    if (t == 'success' || l.contains('timeline') || l.contains('late')) {
+      return const Color(0xFFDCFCE7); // Light green
+    }
+    if (t == 'danger' || l.contains('delayed') || l.contains('overdue')) {
+      return const Color(0xFFFEE2E2); // Light red
+    }
+    if (t == 'info' || l.contains('progress')) {
+      return const Color(0xFFDBEAFE); // Light blue
+    }
+    return const Color(0xFFFEF3C7); // Light amber
+  }
+
+  Color get badgeDotColor {
+    final t = badgeTone.toLowerCase();
+    final l = badgeLabel.toLowerCase();
+    if (t == 'success' || l.contains('timeline') || l.contains('late')) {
+      return const Color(0xFF16A34A);
+    }
+    if (t == 'danger' || l.contains('delayed') || l.contains('overdue')) {
+      return const Color(0xFFDC2626);
+    }
+    if (t == 'info' || l.contains('progress')) {
+      return const Color(0xFF2563EB);
+    }
+    return const Color(0xFFD97706);
+  }
+
+  factory ProjectTimelineTask.fromJson(Map<String, dynamic> json) {
+    final idStr = (json['_id'] ?? json['id'] ?? json['taskId'] ?? '').toString();
+    final titleStr = (json['title'] ?? json['name'] ?? 'Task').toString();
+    final statusStr = (json['status'] ?? 'todo').toString().toLowerCase();
+
+    final rawStartStr =
+        (json['startDate'] ?? json['start_date'])?.toString();
+    final rawEstEndStr = (json['estimatedEndDate'] ??
+            json['dueDate'] ??
+            json['expectedEndDate'] ??
+            json['due_date'])
+        ?.toString();
+    final rawCompletedStr =
+        (json['completedDate'] ?? json['completedAt'] ?? json['completed_at'])
+            ?.toString();
+
+    DateTime? parseDate(String? str) {
+      if (str == null || str.trim().isEmpty || str == 'null') return null;
+      return DateTime.tryParse(str.trim());
+    }
+
+    final rawStart = parseDate(rawStartStr);
+    final rawEstEnd = parseDate(rawEstEndStr);
+    final rawCompleted = parseDate(rawCompletedStr);
+
+    String formatDate(DateTime? dt, String? fallbackStr) {
+      if (dt != null) {
+        const months = [
+          'Jan',
+          'Feb',
+          'Mar',
+          'Apr',
+          'May',
+          'Jun',
+          'Jul',
+          'Aug',
+          'Sep',
+          'Oct',
+          'Nov',
+          'Dec'
+        ];
+        return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+      }
+      if (fallbackStr != null &&
+          fallbackStr.trim().isNotEmpty &&
+          fallbackStr != 'null') {
+        return fallbackStr.trim();
+      }
+      return '-';
+    }
+
+    final formattedStart = formatDate(rawStart, rawStartStr);
+    final formattedEstEnd = formatDate(rawEstEnd, rawEstEndStr);
+    final formattedCompleted = formatDate(rawCompleted, rawCompletedStr);
+
+    String label = 'Pending';
+    String tone = 'info';
+    if (json['timelineBadge'] is Map) {
+      final bMap = json['timelineBadge'] as Map;
+      if (bMap['label'] != null && bMap['label'].toString().isNotEmpty) {
+        label = bMap['label'].toString();
+      }
+      if (bMap['tone'] != null && bMap['tone'].toString().isNotEmpty) {
+        tone = bMap['tone'].toString();
+      }
+    } else {
+      if (statusStr == 'done' || statusStr.contains('complete')) {
+        label = 'Under timeline';
+        tone = 'success';
+      } else if (statusStr == 'in_progress') {
+        label = 'In Progress';
+        tone = 'info';
+      } else {
+        label = 'Pending';
+        tone = 'info';
+      }
+    }
+
+    final attUrls = <String>[];
+    final rawAtts = json['attachments'] ?? json['photos'] ?? json['images'] ?? json['media'] ?? json['files'];
+    if (rawAtts is List) {
+      for (final a in rawAtts) {
+        if (a is String && a.isNotEmpty) {
+          attUrls.add(a);
+        } else if (a is Map) {
+          final url = (a['url'] ?? a['fileUrl'] ?? a['mediaUrl'] ?? a['path'])?.toString();
+          if (url != null && url.isNotEmpty) attUrls.add(url);
+        }
+      }
+    }
+
+    final canComplete = json['canMarkComplete'] is bool
+        ? json['canMarkComplete'] as bool
+        : (statusStr != 'done' && !statusStr.contains('complete'));
+
+    final desc = (json['description'] ?? '').toString();
+    final workDesc = (json['workDescription'] ?? '').toString();
+    final statusLine = (json['timelineStatusLine'] ?? '').toString();
+
+    return ProjectTimelineTask(
+      id: idStr,
+      title: titleStr,
+      status: statusStr,
+      startDate: formattedStart,
+      estimatedEndDate: formattedEstEnd,
+      completedDate: formattedCompleted,
+      rawStartDate: rawStart,
+      rawEstimatedEndDate: rawEstEnd,
+      rawCompletedDate: rawCompleted,
+      badgeLabel: label,
+      badgeTone: tone,
+      timelineStatusLine: statusLine,
+      canMarkComplete: canComplete,
+      description: desc.isNotEmpty ? desc : workDesc,
+      workDescription: workDesc.isNotEmpty ? workDesc : desc,
+      attachments: attUrls,
+      onTimeStatus: (json['onTimeStatus'] ?? '').toString(),
+      onTime: json['onTime'] as bool?,
+      daysLateOrEarly: json['daysLateOrEarly'] is num
+          ? (json['daysLateOrEarly'] as num).toInt()
+          : null,
+      daysPastDue: json['daysPastDue'] is num
+          ? (json['daysPastDue'] as num).toInt()
+          : null,
+      assignedTo: (json['assignedTo'] is Map
+              ? (json['assignedTo']['name'] ?? json['assignedTo']['_id'])
+              : json['assignedTo'])
+          ?.toString() ??
+          '',
+      priority: (json['priority'] ?? '').toString(),
+    );
+  }
+
+  ProjectWorkflowStep toWorkflowStep([int stepNumber = 1]) {
+    return ProjectWorkflowStep(
+      stepNumber: stepNumber,
+      title: title,
+      startDate: startDate,
+      endDate: estimatedEndDate,
+      estEndDate: estimatedEndDate,
+      completedDate: completedDate,
+      status: isCompleted ? 'Completed' : 'In Progress',
+      timelineBadge: badgeLabel,
+      description: description,
+      photos: attachments,
+      stepKey: id,
+    );
+  }
+}
+

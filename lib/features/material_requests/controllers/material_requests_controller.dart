@@ -7,6 +7,7 @@ import 'package:get/get.dart';
 import '../../../app/services/api_client.dart';
 import '../../../app/utils/app_logger.dart';
 import '../../../app/utils/app_toast.dart';
+import '../../tasks/widgets/task_success_dialog.dart';
 import '../models/material_request_models.dart';
 import '../services/material_requests_service.dart';
 
@@ -548,14 +549,20 @@ class MaterialRequestsController extends GetxController {
               r.requiredBy?.toIso8601String() ?? '',
             ]),
       ];
-      final saved = await file_picker.FilePicker.saveFile(
+      await file_picker.FilePicker.saveFile(
         dialogTitle: 'Save Material Requests',
         fileName: 'material_requests.csv',
         type: file_picker.FileType.custom,
         allowedExtensions: ['csv'],
         bytes: _encodeCsv(rows),
       );
-      if (saved != null) {
+      // On web, saveFile triggers download directly and might return a dummy string or null depending on browser
+      if (Get.context != null) {
+        showDialog<void>(
+          context: Get.context!,
+          builder: (_) => const TaskSuccessDialog(title: 'File exported Successfully'),
+        );
+      } else {
         AppToast.showSuccess(
           title: 'Exported',
           description: 'Material requests exported successfully.',

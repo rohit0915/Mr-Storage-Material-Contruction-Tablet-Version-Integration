@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
+import 'package:url_launcher/url_launcher_string.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../app/utils/app_toast.dart';
 import '../controllers/material_requests_controller.dart';
 import '../models/material_request_models.dart';
+import 'cancel_material_request_dialog.dart';
 
 class MaterialRequestDetailsDialog extends StatelessWidget {
   const MaterialRequestDetailsDialog({super.key, required this.item});
@@ -45,7 +48,8 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () =>
+                        Navigator.of(context, rootNavigator: true).pop(),
                     icon: const Icon(
                       Icons.close,
                       color: Colors.black,
@@ -303,48 +307,111 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
                     ),
                     const SizedBox(height: 6),
                     Text(
-                      item.requestNotes,
-                      style: const TextStyle(
+                      item.requestNotes.trim().isNotEmpty
+                          ? item.requestNotes
+                          : '-',
+                      style: TextStyle(
                         fontSize: 13,
-                        color: AppColors.textSecondary,
+                        color: item.requestNotes.trim().isNotEmpty
+                            ? AppColors.textSecondary
+                            : AppColors.textSecondary.withValues(alpha: 0.6),
                         height: 1.4,
                       ),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 20),
+
+                    // Attachment section (Only show if attachments exist in API)
+                    if (item.attachments.isNotEmpty) ...[
+                      Text(
+                        'Attachment (${item.attachments.length})',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      LayoutBuilder(
+                        builder: (context, constraints) {
+                          final isNarrow = constraints.maxWidth < 480;
+                          final tiles = item.attachments.map((att) {
+                            final isPdf = att.name.toLowerCase().endsWith('.pdf');
+                            final isSheet = att.name.toLowerCase().endsWith('.xlsx') ||
+                                att.name.toLowerCase().endsWith('.xls') ||
+                                att.name.toLowerCase().endsWith('.csv');
+                            return _attachmentTile(
+                              icon: isPdf
+                                  ? Icons.picture_as_pdf_rounded
+                                  : isSheet
+                                      ? Icons.table_chart_rounded
+                                      : Icons.insert_drive_file_rounded,
+                              iconColor: isPdf
+                                  ? const Color(0xFFDC2626)
+                                  : isSheet
+                                      ? const Color(0xFF16A34A)
+                                      : AppColors.primaryBlue,
+                              bgColor: isPdf
+                                  ? const Color(0xFFFEE2E2)
+                                  : isSheet
+                                      ? const Color(0xFFDCFCE7)
+                                      : const Color(0xFFEFF6FF),
+                              name: att.name,
+                              size: att.size.isNotEmpty ? att.size : 'File',
+                              onTap: () async {
+                                if (att.url.isNotEmpty) {
+                                  await launchUrlString(
+                                    att.url,
+                                    mode: LaunchMode.externalApplication,
+                                  );
+                                } else {
+                                  AppToast.showInfo(
+                                    title: 'Attachment',
+                                    description: 'No download URL available for ${att.name}',
+                                  );
+                                }
+                              },
+                            );
+                          }).toList();
+
+                          if (isNarrow) {
+                            return Column(
+                              children: tiles
+                                  .map((t) => Padding(
+                                        padding: const EdgeInsets.only(bottom: 10),
+                                        child: t,
+                                      ))
+                                  .toList(),
+                            );
+                          }
+
+                          return Wrap(
+                            spacing: 14,
+                            runSpacing: 10,
+                            children: tiles
+                                .map((t) => SizedBox(
+                                      width: (constraints.maxWidth - 14) / 2,
+                                      child: t,
+                                    ))
+                                .toList(),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                    ],
 
                     // Bottom Cancel Request Button
                     if (item.status == MaterialRequestStatus.pending)
                       Center(
                         child: OutlinedButton(
                           onPressed: () async {
-                            final confirm = await showDialog<bool>(
+                            final confirmed =
+                                await CancelMaterialRequestDialog.show(
                               context: context,
-                              builder: (ctx) => AlertDialog(
-                                title: const Text('Cancel Material Request'),
-                                content: Text(
-                                  'Are you sure you want to cancel request ${item.id}?',
-                                ),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(false),
-                                    child: const Text('No'),
-                                  ),
-                                  ElevatedButton(
-                                    style: ElevatedButton.styleFrom(
-                                      backgroundColor: const Color(0xFFEF4444),
-                                      foregroundColor: Colors.white,
-                                    ),
-                                    onPressed: () =>
-                                        Navigator.of(ctx).pop(true),
-                                    child: const Text('Yes, Cancel'),
-                                  ),
-                                ],
-                              ),
+                              requestId: item.id,
                             );
 
-                            if (confirm == true && context.mounted) {
-                              Navigator.of(context).pop();
+                            if (confirmed == true && context.mounted) {
+                              Navigator.of(context, rootNavigator: true).pop();
                               if (Get.isRegistered<
                                 MaterialRequestsController
                               >()) {
@@ -376,6 +443,74 @@ class MaterialRequestDetailsDialog extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _attachmentTile({
+    required IconData icon,
+    required Color iconColor,
+    required Color bgColor,
+    required String name,
+    required String size,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8FAFC),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.cardBorder),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: bgColor,
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Icon(icon, color: iconColor, size: 20),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  size,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textSecondary,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onTap,
+            icon: const Icon(
+              Icons.file_download_outlined,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+            tooltip: 'Download file',
+          ),
+        ],
       ),
     );
   }

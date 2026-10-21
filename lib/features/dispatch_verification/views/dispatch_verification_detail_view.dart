@@ -392,7 +392,9 @@ class _DispatchVerificationDetailViewState
                                     ),
                                     _tdCell(
                                       Text(
-                                        b.bundleId,
+                                        (b.bundleId.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(b.bundleId))
+                                            ? 'BND-${b.index.toString().padLeft(3, '0')}'
+                                            : b.bundleId,
                                         style: const TextStyle(
                                           fontSize: 13,
                                           fontWeight: FontWeight.w600,

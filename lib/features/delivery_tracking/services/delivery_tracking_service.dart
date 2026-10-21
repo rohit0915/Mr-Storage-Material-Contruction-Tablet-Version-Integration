@@ -241,11 +241,21 @@ class DeliveryTrackingService extends GetxService {
     }
   }
 
-  Future<bool> markPartial(String deliveryId, String notes) async {
+  Future<bool> markPartial(
+    String deliveryId,
+    String notes, {
+    List<Map<String, dynamic>>? items,
+    String? reason,
+  }) async {
     try {
       final res = await _apiClient.post(
         ApiConstants.markDeliveryPartial(deliveryId),
-        body: {'notes': notes},
+        body: {
+          'notes': notes,
+          if (reason != null && reason.isNotEmpty) 'reason': reason,
+          if (items != null && items.isNotEmpty) 'items': items,
+          if (items != null && items.isNotEmpty) 'mismatchItems': items,
+        },
       );
       return res is Map && (res['success'] == true || res.containsKey('data'));
     } catch (e) {

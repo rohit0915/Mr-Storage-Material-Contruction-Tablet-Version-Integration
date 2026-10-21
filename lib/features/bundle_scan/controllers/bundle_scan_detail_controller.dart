@@ -382,6 +382,7 @@ class BundleScanDetailController extends GetxController {
     String notes, {
     String? reason,
     List<Map<String, dynamic>>? items,
+    List<Map<String, dynamic>>? photos,
   }) async {
     isActionLoading.value = true;
     actionMessage.value = 'Reporting mismatch...';
@@ -391,17 +392,25 @@ class BundleScanDetailController extends GetxController {
       final effectiveProjectId = (curItem?.projectId != null && BundleScanItem.isMongoHexId(curItem!.projectId))
           ? curItem.projectId
           : null;
-      await _service.reportMismatch(
+      final res = await _service.reportMismatch(
         targetId,
         notes,
         reason: reason,
         items: items,
         projectId: effectiveProjectId,
+        photos: photos,
       );
+
+      final mismatchOrder = res?['mismatchOrder'] is Map ? res!['mismatchOrder'] as Map : null;
+      final orderId = mismatchOrder?['mismatchOrderId']?.toString();
+
+      final desc = (orderId != null && orderId.isNotEmpty)
+          ? 'Plant Mismatch Order $orderId created successfully.'
+          : 'Discrepancy logged for bundle ${item.value?.bundleId ?? ""}';
+
       AppToast.showSuccess(
         title: 'Mismatch Reported',
-        description:
-            'Discrepancy logged for bundle ${item.value?.bundleId ?? ""}',
+        description: desc,
       );
       return true;
     } catch (e) {

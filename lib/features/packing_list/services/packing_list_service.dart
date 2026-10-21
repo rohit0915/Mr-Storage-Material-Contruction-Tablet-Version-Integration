@@ -13,9 +13,14 @@ class PackingListService {
   Future<Map<String, dynamic>> fetchPackingListsData({
     int page = 1,
     int limit = 10,
+    String? projectId,
   }) async {
     try {
-      final url = ApiConstants.packingListsUrl(page: page, limit: limit);
+      final url = ApiConstants.packingListsUrl(
+        page: page,
+        limit: limit,
+        projectId: projectId,
+      );
       final res = await _apiClient.get(url);
       AppLogger.i(
         'Fetch packing lists response ($url): $res',
@@ -212,5 +217,41 @@ class PackingListService {
       );
       return false;
     }
+  }
+
+  /// 3-Step Navigation: loads for a project
+  Future<List<Map<String, dynamic>>> getProjectLoads(String leadId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.packingListsProjectLoads(leadId),
+      );
+      if (res is Map && res['data'] is List) {
+        return (res['data'] as List).whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+      if (res is List) {
+        return res.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+    } catch (e, st) {
+      AppLogger.e('Error fetching project loads', error: e, stackTrace: st, tag: 'PACKING_LIST');
+    }
+    return [];
+  }
+
+  /// 3-Step Navigation: bundles for a packing list / load
+  Future<List<Map<String, dynamic>>> getLoadBundles(String packingListId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.packingListsLoadBundles(packingListId),
+      );
+      if (res is Map && res['data'] is List) {
+        return (res['data'] as List).whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+      if (res is List) {
+        return res.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+    } catch (e, st) {
+      AppLogger.e('Error fetching load bundles', error: e, stackTrace: st, tag: 'PACKING_LIST');
+    }
+    return [];
   }
 }

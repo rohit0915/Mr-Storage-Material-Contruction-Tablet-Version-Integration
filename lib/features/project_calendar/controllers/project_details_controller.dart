@@ -1,4 +1,5 @@
 import 'package:get/get.dart';
+import 'package:steelbuildingtablet/app/constants/api_constants.dart';
 
 import '../../../app/utils/app_logger.dart';
 import '../models/project_calendar_models.dart';
@@ -35,6 +36,353 @@ class ProjectDetailsController extends GetxController {
   final media = <Map<String, String>>[].obs;
   final bomFiles = <Map<String, String>>[].obs;
 
+  // Construction timeline tasks (GET /api/construction/projects/:leadId/timeline-tasks)
+  final timelineTasks = <ProjectTimelineTask>[].obs;
+  final isTimelineLoading = false.obs;
+
+  final workflowCompletionDate = '30 May 2026'.obs;
+  final workflowStatus = '2 Days Delayed'.obs;
+  final workflowSteps = <ProjectWorkflowStep>[
+    const ProjectWorkflowStep(
+      stepNumber: 1,
+      title: 'Site Preparation & Foundation',
+      startDate: '12 April 2026',
+      endDate: '14 April 2026',
+      estEndDate: '13 April 2026',
+      completedDate: '14 April 2026',
+      timelineBadge: 'Under timeline',
+      status: 'Completed',
+      description: 'Excavation, grading, and concrete footings poured and inspected.',
+      photos: [
+        'assets/images/projects/project_1.png',
+        'assets/images/projects/project_2.png',
+        'assets/images/projects/project_3.png',
+        'assets/images/projects/project_4.png',
+      ],
+    ),
+    const ProjectWorkflowStep(
+      stepNumber: 2,
+      title: 'Steel Structure Erection',
+      startDate: '15 April 2026',
+      endDate: '18 April 2026',
+      estEndDate: '16 April 2026',
+      completedDate: '18 April 2026',
+      timelineBadge: '2 Days Late',
+      status: 'Completed',
+      description: 'Primary rigid frame columns and rafters assembled and bolted.',
+      photos: [
+        'assets/images/projects/project_2.png',
+        'assets/images/projects/project_3.png',
+      ],
+    ),
+    const ProjectWorkflowStep(
+      stepNumber: 3,
+      title: 'Secondary Framing Installation',
+      startDate: '18 April 2026',
+      endDate: '20 April 2026',
+      estEndDate: '20 April 2026',
+      completedDate: '-',
+      timelineBadge: 'In Progress',
+      status: 'In Progress',
+      description: 'Purlins, girts, and eave struts installed across all bays.',
+      photos: [
+        'assets/images/projects/project_3.png',
+        'assets/images/projects/project_4.png',
+      ],
+    ),
+    const ProjectWorkflowStep(
+      stepNumber: 4,
+      title: 'Roofing Installation',
+      startDate: '15 April 2026',
+      endDate: '18 April 2026',
+      estEndDate: '18 April 2026',
+      completedDate: '-',
+      timelineBadge: 'Delayed',
+      status: 'Delayed',
+      description: 'Insulated roof panels being fixed and sealed against weather.',
+      photos: [
+        'assets/images/projects/project_4.png',
+      ],
+    ),
+  ].obs;
+
+  /// Fetch construction timeline tasks: GET /api/construction/projects/:leadId/timeline-tasks
+  Future<void> fetchTimelineTasks(String id) async {
+    if (id.isEmpty) return;
+    isTimelineLoading.value = true;
+    try {
+      final rawList = await _calendarService.getTimelineTasks(id);
+      final parsed = <ProjectTimelineTask>[];
+      for (final item in rawList) {
+        parsed.add(ProjectTimelineTask.fromJson(item));
+      }
+      // Sort client-side by startDate asc
+      parsed.sort((a, b) {
+        if (a.rawStartDate == null && b.rawStartDate == null) return 0;
+        if (a.rawStartDate == null) return 1;
+        if (b.rawStartDate == null) return -1;
+        return a.rawStartDate!.compareTo(b.rawStartDate!);
+      });
+      timelineTasks.assignAll(parsed);
+    } catch (e, st) {
+      AppLogger.e('fetchTimelineTasks Error for $id', error: e, stackTrace: st, tag: 'PROJ_DETAILS_CTRL');
+    } finally {
+      isTimelineLoading.value = false;
+    }
+  }
+
+  /// Create timeline task: POST /api/construction/tasks
+  Future<bool> createTimelineTask({
+    required String title,
+    DateTime? startDate,
+    DateTime? estimatedEndDate,
+    String? description,
+    List<String>? attachments,
+    String status = 'in_progress',
+  }) async {
+    final effectiveLeadId = leadId.value;
+    if (effectiveLeadId.isEmpty) return false;
+
+    final body = <String, dynamic>{
+      'title': title,
+      'leadId': effectiveLeadId,
+      'startDate': (startDate ?? DateTime.now()).toUtc().toIso8601String(),
+      if (estimatedEndDate != null)
+        'estimatedEndDate': estimatedEndDate.toUtc().toIso8601String(),
+      if (estimatedEndDate != null)
+        'dueDate': estimatedEndDate.toUtc().toIso8601String(),
+      if (description != null && description.isNotEmpty)
+        'description': description,
+      if (description != null && description.isNotEmpty)
+        'workDescription': description,
+      if (attachments != null && attachments.isNotEmpty) ...{
+        'attachments': attachments,
+        'photos': attachments,
+      },
+      'status': status,
+    };
+
+    try {
+      final res = await _calendarService.createTimelineTask(body);
+      await fetchTimelineTasks(effectiveLeadId);
+      return res != null;
+    } catch (e, st) {
+      AppLogger.e('createTimelineTask Error', error: e, stackTrace: st, tag: 'PROJ_DETAILS_CTRL');
+      return false;
+    }
+  }
+
+  /// Mark task complete: PUT /api/construction/tasks/:taskId/complete
+  Future<bool> markTimelineTaskComplete(
+    String taskId, {
+    DateTime? completedAt,
+    String? workDescription,
+    List<String>? attachments,
+  }) async {
+    if (taskId.isEmpty) return false;
+    final success = await _calendarService.completeTask(
+      taskId,
+      completedAt: completedAt,
+      workDescription: workDescription,
+      attachments: attachments,
+    );
+    if (leadId.value.isNotEmpty) {
+      await fetchTimelineTasks(leadId.value);
+    }
+    return success;
+  }
+
+  /// Remove task: DELETE /api/construction/tasks/:taskId
+  Future<bool> deleteTimelineTask(String taskId) async {
+    if (taskId.isEmpty) return false;
+    final success = await _calendarService.deleteTimelineTask(taskId);
+    if (leadId.value.isNotEmpty) {
+      await fetchTimelineTasks(leadId.value);
+    }
+    return success;
+  }
+
+  /// Get single task detail: GET /api/construction/tasks/:taskId
+  Future<ProjectTimelineTask?> getTimelineTaskDetail(String taskId) async {
+    if (taskId.isEmpty) return null;
+    final raw = await _calendarService.getTaskDetail(taskId);
+    if (raw != null) {
+      return ProjectTimelineTask.fromJson(raw);
+    }
+    return null;
+  }
+
+  Future<bool> markStepComplete(ProjectWorkflowStep step) async {
+    final matchedTask = timelineTasks.firstWhereOrNull(
+      (t) =>
+          (step.stepKey.isNotEmpty && t.id == step.stepKey) ||
+          t.title.toLowerCase().trim() == step.title.toLowerCase().trim(),
+    );
+    if (matchedTask != null && matchedTask.id.isNotEmpty) {
+      await markTimelineTaskComplete(matchedTask.id);
+    }
+
+    final now = DateTime.now();
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    final dateStr = '${now.day} ${months[now.month - 1]} ${now.year}';
+    return updateWorkflowStep(
+      stepTitle: step.title,
+      status: 'Completed',
+      startDate: step.startDate,
+      endDate: dateStr,
+      description: step.description,
+      photos: step.photos,
+      stepKey: step.stepKey,
+      percentComplete: 100,
+    );
+  }
+
+  Future<bool> removeTask(ProjectWorkflowStep step) async {
+    final matchedTask = timelineTasks.firstWhereOrNull(
+      (t) =>
+          (step.stepKey.isNotEmpty && t.id == step.stepKey) ||
+          t.title.toLowerCase().trim() == step.title.toLowerCase().trim(),
+    );
+    if (matchedTask != null && matchedTask.id.isNotEmpty) {
+      await deleteTimelineTask(matchedTask.id);
+    }
+
+    workflowSteps.removeWhere(
+      (s) =>
+          (step.stepKey.isNotEmpty && s.stepKey == step.stepKey) ||
+          s.title.toLowerCase().trim() == step.title.toLowerCase().trim(),
+    );
+    workflowSteps.refresh();
+    return true;
+  }
+
+  Future<bool> addTask({
+    required String title,
+    required String startDate,
+    required String estEndDate,
+    String? description,
+    List<String>? photos,
+  }) async {
+    final newStep = ProjectWorkflowStep(
+      stepNumber: workflowSteps.length + 1,
+      title: title,
+      startDate: startDate,
+      endDate: estEndDate,
+      estEndDate: estEndDate,
+      completedDate: '-',
+      status: 'In Progress',
+      timelineBadge: 'In Progress',
+      description: description ?? '',
+      photos: photos ?? const [
+        'assets/images/projects/project_1.png',
+        'assets/images/projects/project_2.png',
+      ],
+      completionPct: 15,
+    );
+    workflowSteps.add(newStep);
+    workflowSteps.refresh();
+
+    if (leadId.value.isNotEmpty) {
+      await createTimelineTask(
+        title: title,
+        description: description,
+        attachments: photos,
+      );
+    }
+    return true;
+  }
+
+  Future<bool> updateWorkflowStep({
+    required String stepTitle,
+    required String status,
+    required String startDate,
+    required String endDate,
+    String? description,
+    List<String>? photos,
+    String? stepKey,
+    int? percentComplete,
+  }) async {
+    final index = workflowSteps.indexWhere(
+      (s) =>
+          (stepKey != null && s.stepKey.isNotEmpty && s.stepKey == stepKey) ||
+          s.title.toLowerCase().trim() == stepTitle.toLowerCase().trim(),
+    );
+
+    String effectiveStepKey = stepKey ?? '';
+    final calculatedPct = percentComplete ??
+        (status.toLowerCase().contains('complete')
+            ? 100
+            : (status.toLowerCase().contains('progress') ? 50 : 0));
+
+    if (index != -1) {
+      final current = workflowSteps[index];
+      if (effectiveStepKey.isEmpty) {
+        effectiveStepKey = current.stepKey;
+      }
+      workflowSteps[index] = current.copyWith(
+        status: status,
+        startDate: startDate.isNotEmpty ? startDate : current.startDate,
+        endDate: endDate.isNotEmpty ? endDate : current.endDate,
+        description: description ?? current.description,
+        photos: photos ?? current.photos,
+        completionPct: calculatedPct,
+      );
+      workflowSteps.refresh();
+    }
+
+    if (effectiveStepKey.isEmpty) {
+      effectiveStepKey = stepTitle
+          .toLowerCase()
+          .trim()
+          .replaceAll(RegExp(r'[^a-z0-9]+'), '_');
+    }
+
+    if (leadId.value.isNotEmpty) {
+      final payload = <String, dynamic>{
+        'status': status,
+        'percentComplete': calculatedPct,
+        if (startDate.isNotEmpty && startDate != '-') 'startDate': startDate,
+        if (endDate.isNotEmpty && endDate != '-') 'endDate': endDate,
+        if (description != null && description.isNotEmpty) 'notes': description,
+        if (photos != null && photos.isNotEmpty)
+          'attachments':
+              photos.map((p) => {'name': 'Site photo', 'url': p}).toList(),
+      };
+      try {
+        await _progressService.updateProjectStep(
+          leadId: leadId.value,
+          stepKey: effectiveStepKey,
+          payload: payload,
+        );
+        _refreshPhases(leadId.value);
+      } catch (e, st) {
+        AppLogger.e('Error updating step via API', error: e, stackTrace: st, tag: 'PROJ_DETAILS_CTRL');
+      }
+    }
+    return true;
+  }
+
+  Future<void> _refreshPhases(String id) async {
+    try {
+      final phasesData = await _progressService.getProjectPhases(id);
+      if (phasesData != null && phasesData['steps'] is List) {
+        final rawSteps = phasesData['steps'] as List;
+        final parsedSteps = <ProjectWorkflowStep>[];
+        for (int i = 0; i < rawSteps.length; i++) {
+          final s = rawSteps[i];
+          if (s is Map) {
+            parsedSteps.add(
+              ProjectWorkflowStep.fromJson(Map<String, dynamic>.from(s), i + 1),
+            );
+          }
+        }
+        if (parsedSteps.isNotEmpty) {
+          workflowSteps.assignAll(parsedSteps);
+        }
+      }
+    } catch (_) {}
+  }
+
   @override
   void onInit() {
     super.onInit();
@@ -68,12 +416,70 @@ class ProjectDetailsController extends GetxController {
         _progressService.getProjectProgress(id),
         _drawingsService.getDrawings(leadId: id),
         _calendarService.getProjectBOM(id),
+        _progressService.getProjectPhases(id),
+        _drawingsService.getMedia(id),
       ]);
+      await fetchTimelineTasks(id);
       final res = results[0];
       final progressData = results[1];
       final drawingsData = results[2];
       final bomData = results[3];
+      final phasesData = results[4];
+      final mediaData = results[5];
       if (progressData != null) progress.assignAll(progressData);
+      if (mediaData != null) _collectFiles(mediaData, isDirectMedia: true);
+      if (res != null) _collectFiles(res);
+      if (drawingsData != null) _collectFiles(drawingsData);
+      if (phasesData != null) _collectFiles(phasesData);
+
+      // Collect attachments from timeline tasks into media
+      for (final t in timelineTasks) {
+        for (final att in t.attachments) {
+          if (att.isNotEmpty && !media.any((existing) => existing['url'] == att)) {
+            media.add({'name': t.title, 'url': att, 'type': 'photo'});
+          }
+        }
+      }
+
+      // If media is still empty, query global media API as fallback
+      if (media.isEmpty) {
+        try {
+          final globalMedia = await _drawingsService.getGlobalMedia();
+          if (globalMedia != null) {
+            _collectFilesForProject(globalMedia, id);
+          }
+        } catch (_) {}
+      }
+
+      List rawSteps = [];
+      if (phasesData != null && phasesData['steps'] is List) {
+        rawSteps = phasesData['steps'] as List;
+      } else if (progressData != null && progressData['steps'] is List) {
+        rawSteps = progressData['steps'] as List;
+      }
+      if (rawSteps.isNotEmpty) {
+        final parsedSteps = <ProjectWorkflowStep>[];
+        for (int i = 0; i < rawSteps.length; i++) {
+          final s = rawSteps[i];
+          if (s is Map) {
+            parsedSteps.add(
+              ProjectWorkflowStep.fromJson(Map<String, dynamic>.from(s), i + 1),
+            );
+          }
+        }
+        if (parsedSteps.isNotEmpty) {
+          workflowSteps.assignAll(parsedSteps);
+        }
+      }
+
+      if (phasesData != null) {
+        if (phasesData['currentStepLabel'] != null &&
+            phasesData['currentStepLabel'].toString().isNotEmpty) {
+          workflowStatus.value = phasesData['currentStepLabel'].toString();
+        } else if (phasesData['overallProgressPct'] != null) {
+          workflowStatus.value = '${phasesData['overallProgressPct']}% Complete';
+        }
+      }
       if (res != null) {
         final pMap = (res['project'] is Map)
             ? (res['project'] as Map)
@@ -245,44 +651,80 @@ class ProjectDetailsController extends GetxController {
     }
   }
 
-  void _collectFiles(dynamic value) {
+  void _collectFiles(dynamic value, {bool isDirectMedia = false}) {
     final foundMedia = <Map<String, String>>[];
     final foundBom = <Map<String, String>>[];
 
+    void processUrl(String rawUrl, {String name = '', String type = ''}) {
+      if (rawUrl.isEmpty || rawUrl == 'null') return;
+      String url = rawUrl.trim();
+      if (!url.startsWith('http://') && !url.startsWith('https://')) {
+        if (url.startsWith('/')) {
+          url = '${ApiConstants.serverOrigin}$url';
+        } else if (url.startsWith('uploads/') ||
+            url.startsWith('media/') ||
+            url.startsWith('files/')) {
+          url = '${ApiConstants.serverOrigin}/$url';
+        } else {
+          return;
+        }
+      }
+      final lower = '$name $type $url'.toLowerCase();
+      final entry = {
+        'url': url,
+        'name': name.isEmpty ? 'Site Media' : name,
+        'type': type.isEmpty ? 'photo' : type,
+      };
+      if (lower.contains('bom')) {
+        foundBom.add(entry);
+      }
+      if (isDirectMedia ||
+          lower.contains('photo') ||
+          lower.contains('image') ||
+          lower.contains('video') ||
+          lower.contains('media') ||
+          lower.contains('upload') ||
+          RegExp(r'\.(png|jpe?g|webp|gif|mp4|mov)(\?|$)').hasMatch(lower)) {
+        foundMedia.add(entry);
+      }
+    }
+
     void visit(dynamic node) {
+      if (node == null) return;
       if (node is List) {
         for (final item in node) {
-          visit(item);
+          if (item is String && (item.startsWith('http') || item.startsWith('/'))) {
+            processUrl(item);
+          } else {
+            visit(item);
+          }
         }
         return;
       }
       if (node is! Map) return;
 
       final map = Map<String, dynamic>.from(node);
-      final url =
-          (map['url'] ??
-                  map['fileUrl'] ??
-                  map['attachmentUrl'] ??
-                  map['mediaUrl'])
-              ?.toString()
-              .trim();
+      final rawUrl = (map['url'] ??
+              map['fileUrl'] ??
+              map['signedUrl'] ??
+              map['mediaUrl'] ??
+              map['photoUrl'] ??
+              map['imageUrl'] ??
+              map['image'] ??
+              map['photo'] ??
+              map['attachmentUrl'] ??
+              map['downloadUrl'] ??
+              map['secure_url'] ??
+              map['path'])
+          ?.toString()
+          .trim();
       final name = (map['name'] ?? map['fileName'] ?? map['title'] ?? '')
           .toString();
       final type = (map['type'] ?? map['fileType'] ?? map['mimeType'] ?? '')
           .toString();
-      if (url != null &&
-          (url.startsWith('http://') || url.startsWith('https://'))) {
-        final lower = '$name $type $url'.toLowerCase();
-        final entry = {'url': url, 'name': name, 'type': type};
-        if (lower.contains('bom')) {
-          foundBom.add(entry);
-        }
-        if (lower.contains('photo') ||
-            lower.contains('image') ||
-            lower.contains('video') ||
-            RegExp(r'\.(png|jpe?g|webp|gif|mp4|mov)(\?|$)').hasMatch(lower)) {
-          foundMedia.add(entry);
-        }
+
+      if (rawUrl != null && rawUrl.isNotEmpty && rawUrl != 'null') {
+        processUrl(rawUrl, name: name, type: type);
       }
       for (final child in map.values) {
         visit(child);
@@ -298,6 +740,34 @@ class ProjectDetailsController extends GetxController {
     for (final item in foundBom) {
       if (!bomFiles.any((existing) => existing['url'] == item['url'])) {
         bomFiles.add(item);
+      }
+    }
+  }
+
+  void _collectFilesForProject(dynamic globalMediaData, String targetId) {
+    dynamic mediaData = globalMediaData;
+    if (mediaData is Map && mediaData.containsKey('data')) {
+      mediaData = mediaData['data'];
+    }
+    List mediaProjects = [];
+    if (mediaData is Map && mediaData['projects'] is List) {
+      mediaProjects = mediaData['projects'] as List;
+    } else if (mediaData is List) {
+      mediaProjects = mediaData;
+    }
+
+    for (final mp in mediaProjects) {
+      if (mp is Map) {
+        final mLeadId =
+            (mp['leadId'] ?? mp['projectId'] ?? mp['_id'] ?? '').toString();
+        final pCode =
+            (mp['projectId'] ?? mp['jobId'] ?? mp['code'] ?? '').toString();
+        if (mLeadId == targetId || pCode == targetId || targetId.isEmpty) {
+          final rawDocs = mp['documents'] ?? mp['media'] ?? mp['files'];
+          if (rawDocs != null) {
+            _collectFiles(rawDocs, isDirectMedia: true);
+          }
+        }
       }
     }
   }

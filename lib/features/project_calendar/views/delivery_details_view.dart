@@ -7,6 +7,8 @@ import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../../delivery_tracking/controllers/delivery_details_controller.dart';
+import '../../delivery_tracking/models/delivery_tracking_models.dart';
+import '../../delivery_tracking/widgets/delivery_dialogs.dart';
 
 class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
   const DeliveryDetailsView({super.key});
@@ -470,133 +472,176 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
             ),
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              // Origin Icon & Text
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF2563EB),
-                      borderRadius: BorderRadius.circular(8),
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 620;
+
+              if (isNarrow) {
+                return Column(
+                  children: [
+                    _flowLocationItem(
+                      icon: Icons.local_shipping,
+                      iconBg: const Color(0xFF2563EB),
+                      label: 'ORIGIN',
+                      address: origin,
                     ),
-                    child: const Icon(
-                      Icons.local_shipping,
-                      color: Colors.white,
-                      size: 20,
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      child: Row(
+                        children: [
+                          const SizedBox(width: 18),
+                          Container(
+                            width: 2,
+                            height: 22,
+                            color: const Color(0xFFBFDBFE),
+                          ),
+                          const SizedBox(width: 12),
+                          const Icon(
+                            Icons.arrow_downward,
+                            size: 14,
+                            color: Color(0xFF2563EB),
+                          ),
+                        ],
+                      ),
+                    ),
+                    _flowLocationItem(
+                      icon: Icons.location_on,
+                      iconBg: const Color(0xFFEA580C),
+                      label: 'DESTINATION',
+                      address: destination,
+                    ),
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  // Origin
+                  Expanded(
+                    flex: 5,
+                    child: _flowLocationItem(
+                      icon: Icons.local_shipping,
+                      iconBg: const Color(0xFF2563EB),
+                      label: 'ORIGIN',
+                      address: origin,
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'ORIGIN',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF94A3B8),
-                          letterSpacing: 0.5,
-                        ),
+
+                  // Dotted Line with Centered Arrow
+                  Expanded(
+                    flex: 2,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 10),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: CustomPaint(
+                              size: const Size(double.infinity, 2),
+                              painter: _DottedLinePainter(),
+                            ),
+                          ),
+                          Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              shape: BoxShape.circle,
+                              border: Border.all(color: const Color(0xFFBFDBFE)),
+                            ),
+                            child: const Icon(
+                              Icons.arrow_forward,
+                              size: 14,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                          Expanded(
+                            child: CustomPaint(
+                              size: const Size(double.infinity, 2),
+                              painter: _DottedLinePainter(),
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        origin.isNotEmpty ? origin : '—',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                    ],
+                    ),
+                  ),
+
+                  // Destination
+                  Expanded(
+                    flex: 5,
+                    child: _flowLocationItem(
+                      icon: Icons.location_on,
+                      iconBg: const Color(0xFFEA580C),
+                      label: 'DESTINATION',
+                      address: destination,
+                    ),
                   ),
                 ],
-              ),
-
-              // Dotted Line with Centered Arrow
-              Expanded(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: CustomPaint(
-                          size: const Size(double.infinity, 2),
-                          painter: _DottedLinePainter(),
-                        ),
-                      ),
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEFF6FF),
-                          shape: BoxShape.circle,
-                          border: Border.all(color: const Color(0xFFBFDBFE)),
-                        ),
-                        child: const Icon(
-                          Icons.arrow_forward,
-                          size: 14,
-                          color: Color(0xFF2563EB),
-                        ),
-                      ),
-                      Expanded(
-                        child: CustomPaint(
-                          size: const Size(double.infinity, 2),
-                          painter: _DottedLinePainter(),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-
-              // Destination Icon & Text
-              Row(
-                children: [
-                  Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFEA580C),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.location_on,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'DESTINATION',
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF94A3B8),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        destination.isNotEmpty ? destination : '—',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w700,
-                          color: Color(0xFF1E293B),
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ],
+              );
+            },
           ),
         ],
       ),
+    );
+  }
+
+  Widget _flowLocationItem({
+    required IconData icon,
+    required Color iconBg,
+    required String label,
+    required String address,
+  }) {
+    final cleanAddress = address.trim().isNotEmpty ? address : '—';
+
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: iconBg,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Icon(
+            icon,
+            color: Colors.white,
+            size: 20,
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                label,
+                style: const TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Color(0xFF94A3B8),
+                  letterSpacing: 0.5,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Tooltip(
+                message: cleanAddress,
+                child: Text(
+                  cleanAddress,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF1E293B),
+                    height: 1.25,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
@@ -1562,24 +1607,14 @@ Future<void> _confirmReceived(BuildContext context, DeliveryDetailsController c)
 }
 
 Future<void> _partialReceived(BuildContext context, DeliveryDetailsController c) async {
-  final ctrl = TextEditingController();
-  final notes = await showDialog<String>(
-    context: context,
-    builder: (_) => AlertDialog(
-      title: const Text('Mark as Partial Received'),
-      content: TextField(
-        controller: ctrl,
-        maxLines: 3,
-        decoration: const InputDecoration(labelText: 'Notes'),
-      ),
-      actions: [
-        TextButton(onPressed: Get.back, child: const Text('Cancel')),
-        ElevatedButton(onPressed: () => Get.back(result: ctrl.text.trim()), child: const Text('Save')),
-      ],
-    ),
+  final item = DeliveryItem.fromJson(c.delivery);
+  await MarkPartialDialog.show(
+    context,
+    item,
+    (notes, items) async {
+      await c.markPartial(notes, items: items);
+    },
   );
-  ctrl.dispose();
-  if (notes?.isNotEmpty == true) await c.markPartial(notes!);
 }
 
 Future<void> _updateContact(BuildContext context, DeliveryDetailsController c) async {

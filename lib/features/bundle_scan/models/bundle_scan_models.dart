@@ -12,6 +12,9 @@ class BundleSubItem {
     this.color = '-',
     this.quantity = 1,
     this.receivedQuantity = 1,
+    this.itemId = '',
+    this.partCode = '',
+    this.description = '',
   });
 
   final String index;
@@ -24,6 +27,9 @@ class BundleSubItem {
   final String color;
   final int quantity;
   final int receivedQuantity;
+  final String itemId;
+  final String partCode;
+  final String description;
 
   factory BundleSubItem.fromJson(Map<String, dynamic> json, int idx) {
     final qty = (json['quantity'] ?? json['qty'] ?? json['count'] ?? 1);
@@ -35,6 +41,10 @@ class BundleSubItem {
         ? recQty.toInt()
         : (int.tryParse(recQty.toString()) ?? parsedQty);
 
+    final rawItemId = (json['_id'] ?? json['itemId'] ?? json['id'] ?? '').toString();
+    final rawPartCode = (json['partCode'] ?? json['partNumber'] ?? json['itemCode'] ?? json['code'] ?? 'ITEM-${idx + 1}').toString();
+    final rawDesc = (json['description'] ?? json['parts'] ?? json['part'] ?? json['name'] ?? '-').toString();
+
     return BundleSubItem(
       index: (idx + 1).toString(),
       bundleId: (json['bundleId'] ??
@@ -43,13 +53,7 @@ class BundleSubItem {
               json['tag'] ??
               'B-${(idx + 1).toString().padLeft(3, '0')}')
           .toString(),
-      parts: (json['parts'] ??
-              json['part'] ??
-              json['partNumber'] ??
-              json['description'] ??
-              json['name'] ??
-              '-')
-          .toString(),
+      parts: rawDesc,
       time: (json['time'] ??
               json['scannedAt'] ??
               json['createdAt'] ??
@@ -58,10 +62,13 @@ class BundleSubItem {
       weight: (json['weight'] ?? json['totalWeight'] ?? '0.0 LBS')
           .toString(),
       status: (json['status'] ?? 'Staged').toString(),
-      itemCode: (json['itemCode'] ?? json['code'] ?? 'ITEM-${idx + 1}').toString(),
+      itemCode: rawPartCode,
       color: (json['color'] ?? '-').toString(),
       quantity: parsedQty,
       receivedQuantity: parsedRecQty,
+      itemId: rawItemId,
+      partCode: rawPartCode,
+      description: rawDesc,
     );
   }
 }

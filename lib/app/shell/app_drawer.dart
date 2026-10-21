@@ -13,14 +13,10 @@ class AppDrawer extends GetView<AppShellController> {
     _DrawerItem('Project & Calendar', Icons.calendar_month_outlined),
     _DrawerItem('Drawings & Attachments', Icons.architecture_outlined),
     _DrawerItem('Tasks', Icons.checklist_rounded),
-    _DrawerItem('Daily Work Logs', Icons.menu_book_outlined),
     _DrawerItem('Material Request', Icons.grid_view_rounded),
     _DrawerItem('Delivery Tracking', Icons.local_shipping_outlined),
-    _DrawerItem('Label Printing', Icons.local_offer_outlined),
-    _DrawerItem('Bundle Scan', Icons.qr_code_scanner_rounded),
-    _DrawerItem('Packing List', Icons.inventory_2_outlined),
     _DrawerItem('Dispatch Verification', Icons.fact_check_outlined),
-    _DrawerItem('Chat / Messaging', Icons.chat_bubble_outline_rounded),
+    _DrawerItem('Communication', Icons.chat_bubble_outline_rounded),
   ];
 
   @override
@@ -82,7 +78,10 @@ class AppDrawer extends GetView<AppShellController> {
                           selected: selectedMenu == item.title,
                           titleSize: titleSize,
                           onTap: () {
-                            Navigator.of(context).pop();
+                            if (selectedMenu == item.title) {
+                              Navigator.of(context).pop();
+                              return;
+                            }
                             controller.selectMenu(item.title);
                           },
                         );

@@ -7,6 +7,8 @@ import '../../../app/theme/app_colors.dart';
 import '../../bundle_scan/widgets/bundle_scan_dialogs.dart';
 import '../../bundle_scan/models/bundle_scan_models.dart';
 import '../controllers/project_details_controller.dart';
+import '../widgets/project_construction_task_section.dart';
+import '../widgets/project_details_bottom_sections.dart';
 
 class ProjectDetailsView extends StatelessWidget {
   const ProjectDetailsView({super.key});
@@ -308,222 +310,16 @@ class ProjectDetailsView extends StatelessWidget {
                     ],
                   ),
                 )),
-            SizedBox(height: gap),
+            SizedBox(height: gap * 1.2),
 
-            // Upcoming Material Delivery Data Table
-            const Text(
-              'Upcoming Material Delivery',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-            ),
-            const SizedBox(height: 8),
-            LayoutBuilder(
-              builder: (context, constraints) {
-                final minWidth = constraints.maxWidth < 900 ? 900.0 : constraints.maxWidth;
-                return Container(
-                  clipBehavior: Clip.antiAlias,
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: SingleChildScrollView(
-                    scrollDirection: Axis.horizontal,
-                    child: SizedBox(
-                      width: minWidth,
-                      child: Obx(
-                        () => Column(
-                          children: [
-                            Container(
-                              decoration: const BoxDecoration(
-                                color: Color(0xFF2E5E9E), // dark blue header
-                                border: Border(bottom: BorderSide(color: Color(0xFF1E3A8A), width: 1.0)),
-                              ),
-                              child: Row(
-                                children: [
-                                  _tblHeader('ID', flex: 2, sort: true),
-                                  _tblHeader('Status', flex: 2, sort: true),
-                                  _tblHeader('Date & Time', flex: 2, sort: true),
-                                  _tblHeader('Item', flex: 3, sort: true),
-                                  _tblHeader('Vendor', flex: 1),
-                                  _tblHeader('Carrier', flex: 1),
-                                  _tblHeader('POC', flex: 1, isLast: true),
-                                ],
-                              ),
-                            ),
-                            if (controller.isLoading.value)
-                              const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
-                            else if (controller.deliveries.isEmpty)
-                              const Padding(
-                                padding: EdgeInsets.symmetric(vertical: 32),
-                                child: Text('No material deliveries found for this project.', style: TextStyle(color: AppColors.textSecondary, fontWeight: FontWeight.w500)),
-                              )
-                            else
-                              ...controller.deliveries.map((item) => InkWell(
-                                onTap: () {
-                                  Get.toNamed(AppRoutes.deliveryDetails, arguments: {
-                                    'leadId': controller.leadId.value,
-                                    'id': item.id,
-                                    'deliveryId': item.id,
-                                    'deliveryNumber': item.code,
-                                    'project': controller.title.value,
-                                    'projectName': controller.title.value,
-                                    'jobId': controller.projectId.value,
-                                    'location': controller.location.value,
-                                    'item': {
-                                      'deliveryNumber': item.code,
-                                      'deliveryId': item.id,
-                                      'description': item.description,
-                                      'status': item.status,
-                                      'deliveryDate': item.date,
-                                      'project': {
-                                        'projectName': controller.title.value,
-                                        'jobId': controller.projectId.value,
-                                        'location': controller.location.value,
-                                      },
-                                    },
-                                    'fromProject': true,
-                                  });
-                                },
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    border: Border(bottom: BorderSide(color: AppColors.cardBorder, width: 1.0)),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      _tblCell(flex: 2, child: Text(item.code, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: AppColors.primaryBlue))),
-                                      _tblCell(flex: 2, child: Text(item.status, style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13, color: item.statusColor))),
-                                      _tblCell(flex: 2, child: Text(item.date, style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
-                                      _tblCell(flex: 3, child: Text(item.description.isNotEmpty ? item.description : 'Material', style: const TextStyle(fontSize: 13, color: AppColors.textPrimary))),
-                                      _tblCell(flex: 1, child: const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                                      _tblCell(flex: 1, child: const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                                      _tblCell(flex: 1, isLast: true, child: const Text('-', style: TextStyle(fontSize: 13, color: AppColors.textSecondary))),
-                                    ],
-                                  ),
-                                ),
-                              )),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-            SizedBox(height: gap),
+            // Project Construction Task Section matching Screenshot
+            const ProjectConstructionTaskSection(),
+            SizedBox(height: gap * 1.5),
 
-            // Project Tasks
-            Obx(() => Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Project Tasks (${controller.tasks.length})',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 12),
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: AppColors.cardBorder),
-                  ),
-                  child: controller.isLoading.value
-                      ? const Padding(padding: EdgeInsets.all(24), child: Center(child: CircularProgressIndicator()))
-                      : controller.tasks.isEmpty
-                          ? const Padding(
-                              padding: EdgeInsets.all(32),
-                              child: Center(
-                                child: Text('No tasks found.', style: TextStyle(color: AppColors.textSecondary)),
-                              ),
-                            )
-                          : Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: controller.tasks.map((task) {
-                                final isLast = controller.tasks.last == task;
-                                final name = task['name']?.toString() ?? task['title']?.toString() ?? 'Task';
-                                final dueDate = task['dueDate']?.toString() ?? task['endDate']?.toString() ?? '-';
-                                final prio = task['priority']?.toString().toLowerCase() ?? 'low';
-                                final stat = task['status']?.toString().toLowerCase() ?? 'todo';
-                                return Container(
-                                  padding: const EdgeInsets.all(16),
-                                  decoration: BoxDecoration(
-                                    border: isLast ? null : const Border(bottom: BorderSide(color: AppColors.cardBorder)),
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                                          const SizedBox(height: 6),
-                                          Row(
-                                            children: [
-                                              const Icon(Icons.calendar_today_outlined, size: 14, color: AppColors.textSecondary),
-                                              const SizedBox(width: 6),
-                                              Text('Due: $dueDate', style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                                            ],
-                                          ),
-                                        ],
-                                      ),
-                                      Row(
-                                        children: [
-                                          _TaskBadge(type: prio, isPriority: true),
-                                          const SizedBox(width: 8),
-                                          _TaskBadge(type: stat, isPriority: false),
-                                        ],
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList(),
-                            ),
-                ),
-              ],
-            )),
+            // Upcoming Material Delivery & Project Photos
+            const ProjectDetailsBottomSections(),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _tblHeader(String label, {required int flex, bool sort = false, bool isLast = false}) {
-    return Expanded(
-      flex: flex,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          border: isLast ? null : const Border(right: BorderSide(color: Colors.white24, width: 1.0)),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(
-                label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
-              ),
-            ),
-            if (sort) ...[
-              const SizedBox(width: 4),
-              const Icon(Icons.unfold_more, color: Colors.white70, size: 14),
-            ],
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _tblCell({required int flex, required Widget child, bool isLast = false}) {
-    return Expanded(
-      flex: flex,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          border: isLast ? null : const Border(right: BorderSide(color: AppColors.cardBorder, width: 1.0)),
-        ),
-        child: child,
       ),
     );
   }
@@ -631,55 +427,3 @@ class _BadgePill extends StatelessWidget {
   }
 }
 
-class _TaskBadge extends StatelessWidget {
-  const _TaskBadge({required this.type, required this.isPriority});
-
-  final String type;
-  final bool isPriority;
-
-  @override
-  Widget build(BuildContext context) {
-    Color bg = const Color(0xFFF3F4F6);
-    Color fg = const Color(0xFF4B5563);
-    String label = type.toUpperCase();
-    IconData? icon;
-
-    if (isPriority) {
-      if (type.contains('high')) {
-        bg = const Color(0xFFFEF2F2);
-        fg = const Color(0xFFDC2626);
-        icon = Icons.error_outline;
-      } else if (type.contains('low')) {
-        bg = AppColors.softBlueBg;
-        fg = AppColors.primaryBlue;
-      }
-    } else {
-      if (type.contains('progress')) {
-        bg = const Color(0xFFFEF3C7);
-        fg = const Color(0xFFD97706);
-        icon = Icons.access_time;
-      } else if (type.contains('todo')) {
-        bg = const Color(0xFFF3F4F6);
-        fg = const Color(0xFF4B5563);
-        icon = Icons.access_time;
-      }
-    }
-
-    if (label.contains('PROGRESS')) label = 'In Progress';
-    if (label.contains('TODO')) label = 'Todo';
-    if (label.contains('HIGH')) label = 'High';
-    if (label.contains('LOW')) label = 'Low';
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(16)),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          if (icon != null) ...[Icon(icon, size: 12, color: fg), const SizedBox(width: 4)],
-          Text(label, style: TextStyle(color: fg, fontSize: 11, fontWeight: FontWeight.w700)),
-        ],
-      ),
-    );
-  }
-}

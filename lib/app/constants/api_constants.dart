@@ -58,6 +58,10 @@ class ApiConstants {
   static const String taskStats = '/construction/tasks/stats';
   static const String tasks = '/construction/tasks';
   static String taskDetail(String taskId) => '/construction/tasks/$taskId';
+  static String projectTimelineTasks(String leadId) =>
+      '/construction/projects/$leadId/timeline-tasks';
+  static String completeTask(String taskId) =>
+      '/construction/tasks/$taskId/complete';
   static const String workLogs = '/construction/work-logs';
 
   // Material Requests
@@ -95,7 +99,9 @@ class ApiConstants {
   static String deliveryDownloadBillOfLading(String deliveryId) =>
       '/construction/deliveries/$deliveryId/download/bill-of-lading';
 
-  // Progress Tracker & Milestones
+  // Progress Tracker, Phases & Milestones
+  static String projectPhases(String leadId) =>
+      '/construction/projects/$leadId/phases';
   static String projectProgress(String leadId) =>
       '/construction/projects/$leadId/progress';
   static String projectMilestones(String leadId) =>
@@ -109,8 +115,28 @@ class ApiConstants {
 
   // Label Printing
   static const String labels = '/construction/labels';
-  static String labelsUrl({int page = 1, int limit = 10}) =>
-      '/construction/labels?page=$page&limit=$limit';
+  static String labelsUrl({
+    int page = 1,
+    int limit = 10,
+    String? projectId,
+    String? status,
+    String? search,
+    String? sortBy,
+  }) {
+    final params = <String>[
+      'page=$page',
+      'limit=$limit',
+      if (projectId != null && projectId.isNotEmpty)
+        'projectId=${Uri.encodeComponent(projectId)}',
+      if (status != null && status.isNotEmpty)
+        'status=${Uri.encodeComponent(status)}',
+      if (search != null && search.isNotEmpty)
+        'search=${Uri.encodeComponent(search)}',
+      if (sortBy != null && sortBy.isNotEmpty)
+        'sortBy=${Uri.encodeComponent(sortBy)}',
+    ];
+    return '/construction/labels?${params.join('&')}';
+  }
   static const String labelPrint = '/construction/labels/print';
 
   // Bundle Scan
@@ -121,6 +147,7 @@ class ApiConstants {
     String? search,
     String? sortBy,
     String? status,
+    String? projectId,
   }) {
     final params = <String>[
       'page=$page',
@@ -131,6 +158,8 @@ class ApiConstants {
         'sortBy=${Uri.encodeComponent(sortBy)}',
       if (status != null && status.isNotEmpty)
         'status=${Uri.encodeComponent(status)}',
+      if (projectId != null && projectId.isNotEmpty)
+        'projectId=${Uri.encodeComponent(projectId)}',
     ];
     return '/construction/bundle-scan?${params.join('&')}';
   }
@@ -149,8 +178,22 @@ class ApiConstants {
 
   // Packing List
   static const String packingLists = '/construction/packing-lists';
-  static String packingListsUrl({int page = 1, int limit = 10}) =>
-      '/construction/packing-lists?page=$page&limit=$limit';
+  static String packingListsUrl({
+    int page = 1,
+    int limit = 10,
+    String? projectId,
+    String? search,
+  }) {
+    final params = <String>[
+      'page=$page',
+      'limit=$limit',
+      if (projectId != null && projectId.isNotEmpty)
+        'projectId=${Uri.encodeComponent(projectId)}',
+      if (search != null && search.isNotEmpty)
+        'search=${Uri.encodeComponent(search)}',
+    ];
+    return '/construction/packing-lists?${params.join('&')}';
+  }
   static String packingListDetail(String id) =>
       '/construction/packing-lists/$id';
   static const String packingListExport = '/construction/packing-lists/export';
@@ -163,11 +206,71 @@ class ApiConstants {
   static String packingListMarkDispatch(String id) =>
       '/construction/packing-lists/$id/mark-dispatch';
 
+  // 3-step logistics navigation
+  static const String packingListsProjects =
+      '/construction/packing-lists/projects';
+  static String packingListsProjectLoads(String leadId) =>
+      '/construction/packing-lists/projects/$leadId/loads';
+  static String packingListsLoadBundles(String packingListId) =>
+      '/construction/packing-lists/loads/$packingListId/bundles';
+
+  static const String labelsProjects = '/construction/labels/projects';
+  static String labelsProjectLoads(String leadId) =>
+      '/construction/labels/projects/$leadId/loads';
+  static String labelsLoadBundles(String packingListId) =>
+      '/construction/labels/loads/$packingListId/bundles';
+
+  static const String bundleScanProjects =
+      '/construction/bundle-scan/projects';
+  static String bundleScanProjectLoads(String leadId) =>
+      '/construction/bundle-scan/projects/$leadId/loads';
+  static String bundleScanLoadBundles(String packingListId) =>
+      '/construction/bundle-scan/loads/$packingListId/bundles';
+
+  // Plant Project Tabs & Mismatch Orders
+  static String plantProjectAdditionalMaterialRequests(
+    String leadId, {
+    int page = 1,
+    int limit = 20,
+  }) =>
+      '/plant/projects/$leadId/additional-material-requests?page=$page&limit=$limit';
+
+  static String plantProjectMismatchOrders(
+    String leadId, {
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) {
+    final params = <String>[
+      'page=$page',
+      'limit=$limit',
+      if (status != null && status.isNotEmpty)
+        'status=${Uri.encodeComponent(status)}',
+    ];
+    return '/plant/projects/$leadId/mismatch-orders?${params.join('&')}';
+  }
+
+  static String plantMismatchOrderStatus(String mismatchId) =>
+      '/plant/mismatch-orders/$mismatchId/status';
+
   // Dispatch Verification
   static const String dispatchVerification =
       '/construction/dispatch-verification';
-  static String dispatchVerificationUrl({int page = 1, int limit = 10}) =>
-      '/construction/dispatch-verification?page=$page&limit=$limit';
+  static const String dispatchVerificationProjects =
+      '/construction/dispatch-verification/projects';
+  static String dispatchVerificationUrl({
+    int page = 1,
+    int limit = 10,
+    String? projectId,
+  }) {
+    final params = <String>[
+      'page=$page',
+      'limit=$limit',
+      if (projectId != null && projectId.isNotEmpty)
+        'projectId=${Uri.encodeComponent(projectId)}',
+    ];
+    return '/construction/dispatch-verification?${params.join('&')}';
+  }
   static String dispatchVerificationDetail(String id) =>
       '/construction/dispatch-verification/$id';
   static String dispatchVerificationVerify(String id) =>

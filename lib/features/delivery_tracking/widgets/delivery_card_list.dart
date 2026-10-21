@@ -483,7 +483,11 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                       onTap: () => MarkPartialDialog.show(
                         context,
                         item,
-                        (notes) => controller.markPartialReceived(item.id, notes),
+                        (notes, items) => controller.markPartialReceived(
+                          item.id,
+                          notes,
+                          items: items,
+                        ),
                       ),
                     ),
                   ),

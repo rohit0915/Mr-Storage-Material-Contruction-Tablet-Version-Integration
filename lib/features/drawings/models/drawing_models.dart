@@ -1,3 +1,5 @@
+import '../../../app/constants/api_constants.dart';
+
 enum DrawingPreviewType { singleImage, imageGrid }
 
 enum DrawingFileType { pdf, dwg, docx, image, video }
@@ -53,10 +55,69 @@ class DrawingFileItem {
     final fSize = (json['sizeLabel'] ?? json['fileSize'] ?? json['size'] ?? '').toString();
     final fStatus = (json['status'] ?? json['approvalStatus'] ?? json['latestDrawingStatus'] ?? 'Approved').toString();
     final pCode = (json['projectCode'] ?? json['jobId'] ?? '').toString();
-    final loc = (json['location'] ?? '').toString();
-    final uBy = (json['uploadedBy'] ?? json['uploadedByName'] ?? 'Site Construction').toString();
+    String extractCandidateUrl() {
+      final candidates = [
+        json['fileUrl'],
+        json['url'],
+        json['signedUrl'],
+        json['downloadUrl'],
+        json['mediaUrl'],
+        json['imageUrl'],
+        json['photoUrl'],
+        json['attachmentUrl'],
+        json['documentUrl'],
+        json['filePath'],
+        json['secure_url'],
+        json['path'],
+        if (json['file'] is Map) ...[
+          json['file']['url'],
+          json['file']['fileUrl'],
+          json['file']['path'],
+          json['file']['location'],
+        ],
+        if (json['document'] is Map) ...[
+          json['document']['url'],
+          json['document']['fileUrl'],
+          json['document']['path'],
+          json['document']['location'],
+        ],
+        if (json['location'] != null &&
+            (json['location'].toString().startsWith('http') ||
+                json['location'].toString().startsWith('/')))
+          json['location'],
+      ];
+      for (final c in candidates) {
+        if (c != null &&
+            c.toString().trim().isNotEmpty &&
+            c.toString().trim() != 'null') {
+          return c.toString().trim();
+        }
+      }
+      return '';
+    }
+
+    String rawUrl = extractCandidateUrl();
+    if (rawUrl.isNotEmpty) {
+      if (!rawUrl.startsWith('http://') && !rawUrl.startsWith('https://')) {
+        if (rawUrl.startsWith('/')) {
+          rawUrl = '${ApiConstants.serverOrigin}$rawUrl';
+        } else if (rawUrl.startsWith('uploads/') ||
+            rawUrl.startsWith('media/') ||
+            rawUrl.startsWith('drawings/') ||
+            rawUrl.startsWith('files/')) {
+          rawUrl = '${ApiConstants.serverOrigin}/$rawUrl';
+        }
+      }
+    }
+    final url = rawUrl;
+    final loc = (json['location'] != null &&
+            !json['location'].toString().startsWith('http'))
+        ? json['location'].toString()
+        : '';
+    final uBy = formatUploadedBy(
+      json['uploadedBy'] ?? json['uploadedByName'] ?? json['user'],
+    );
     final rOn = (json['receivedOn'] ?? json['createdAt'] ?? json['uploadedAt'] ?? '').toString();
-    final url = (json['fileUrl'] ?? json['url'] ?? json['signedUrl'] ?? '').toString();
     final mType = (json['type'] ?? json['mimeType'] ?? '').toString().toLowerCase();
     final cat = (json['category'] ?? json['documentType'] ?? '').toString().toLowerCase();
     final vNum = json['versionNumber'] ?? json['version'] ?? 1;
@@ -143,6 +204,40 @@ class DrawingFileItem {
     if (s.contains('pending')) return 'Pending Review';
     if (s.contains('revision')) return 'Revision Required';
     return status[0].toUpperCase() + status.substring(1);
+  }
+
+  static String formatUploadedBy(
+    dynamic raw, {
+    String fallback = 'Site Construction',
+  }) {
+    if (raw == null) return fallback;
+    if (raw is Map) {
+      final name = raw['name'] ??
+          raw['fullName'] ??
+          '${raw['firstName'] ?? ''} ${raw['lastName'] ?? ''}'.trim();
+      if (name != null && name.toString().trim().isNotEmpty) {
+        return name.toString().trim();
+      }
+      final email = raw['email']?.toString().trim();
+      if (email != null && email.isNotEmpty) {
+        return email;
+      }
+      final role = raw['role']?.toString().trim();
+      if (role != null && role.isNotEmpty) {
+        return role;
+      }
+      return fallback;
+    }
+    final str = raw.toString().trim();
+    if (str.isEmpty || str == 'null') return fallback;
+    // Strip Map toString like "{_id: 6a7f35...}" or raw 24-character hexadecimal MongoDB ObjectId
+    if (str.startsWith('{') && str.contains('_id:')) {
+      return fallback;
+    }
+    if (RegExp(r'^[a-fA-F0-9]{24}$').hasMatch(str)) {
+      return fallback;
+    }
+    return str;
   }
 }
 
@@ -680,7 +775,10 @@ class DrawingProjectItem {
     final pName = (json['projectName'] ?? json['name'] ?? '').toString();
     final pCode = (json['jobId'] ?? json['code'] ?? '').toString();
     final pLocation = (json['location'] ?? '').toString();
-    final uBy = (json['uploadedBy'] ?? '').toString();
+    final uBy = DrawingFileItem.formatUploadedBy(
+      json['uploadedBy'] ?? json['uploadedByName'],
+      fallback: 'Engineering Team',
+    );
     final dateStr = (json['updatedAt'] ?? json['createdAt'] ?? '').toString();
 
     final allFiles = <DrawingFileItem>[];

@@ -484,4 +484,126 @@ class ProjectCalendarService extends GetxService {
     }
     return null;
   }
+
+  /// Get timeline tasks for a project: GET /construction/projects/:leadId/timeline-tasks
+  Future<List<Map<String, dynamic>>> getTimelineTasks(String leadId) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.projectTimelineTasks(leadId),
+      );
+      AppLogger.i('Timeline Tasks API Response ($leadId): $response', tag: 'TASKS');
+      if (response is Map) {
+        if (response['data'] is Map && response['data']['timelineTasks'] is List) {
+          final list = response['data']['timelineTasks'] as List;
+          return list.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+        } else if (response['timelineTasks'] is List) {
+          final list = response['timelineTasks'] as List;
+          return list.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+        } else if (response['data'] is List) {
+          final list = response['data'] as List;
+          return list.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+        }
+      } else if (response is List) {
+        return response.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+      return [];
+    } catch (e, stackTrace) {
+      AppLogger.e('getTimelineTasks Exception for $leadId', error: e, stackTrace: stackTrace, tag: 'TASKS');
+      return [];
+    }
+  }
+
+  /// Get task detail by taskId: GET /construction/tasks/:taskId
+  Future<Map<String, dynamic>?> getTaskDetail(String taskId) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.taskDetail(taskId),
+      );
+      AppLogger.i('Task Detail API Response ($taskId): $response', tag: 'TASKS');
+      if (response is Map) {
+        if (response['data'] is Map) {
+          final d = response['data'] as Map;
+          if (d['task'] is Map) {
+            return Map<String, dynamic>.from(d['task'] as Map);
+          }
+          return Map<String, dynamic>.from(d);
+        }
+        if (response['task'] is Map) {
+          return Map<String, dynamic>.from(response['task'] as Map);
+        }
+        return Map<String, dynamic>.from(response);
+      }
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.e('getTaskDetail Exception for $taskId', error: e, stackTrace: stackTrace, tag: 'TASKS');
+      return null;
+    }
+  }
+
+  /// Create timeline task: POST /construction/tasks
+  Future<Map<String, dynamic>?> createTimelineTask(Map<String, dynamic> body) async {
+    try {
+      final response = await _apiClient.post(
+        ApiConstants.tasks,
+        body: body,
+      );
+      AppLogger.i('Create Task API Response: $response', tag: 'TASKS');
+      if (response is Map) {
+        if (response['data'] is Map) {
+          final d = response['data'] as Map;
+          if (d['task'] is Map) {
+            return Map<String, dynamic>.from(d['task'] as Map);
+          }
+          return Map<String, dynamic>.from(d);
+        }
+        if (response['task'] is Map) {
+          return Map<String, dynamic>.from(response['task'] as Map);
+        }
+        return Map<String, dynamic>.from(response);
+      }
+      return null;
+    } catch (e, stackTrace) {
+      AppLogger.e('createTimelineTask Exception', error: e, stackTrace: stackTrace, tag: 'TASKS');
+      rethrow;
+    }
+  }
+
+  /// Mark task complete: PUT /construction/tasks/:taskId/complete
+  Future<bool> completeTask(
+    String taskId, {
+    DateTime? completedAt,
+    String? workDescription,
+    List<String>? attachments,
+  }) async {
+    try {
+      final body = <String, dynamic>{
+        'completedAt': (completedAt ?? DateTime.now()).toUtc().toIso8601String(),
+        if (workDescription != null && workDescription.isNotEmpty) 'workDescription': workDescription,
+        if (attachments != null && attachments.isNotEmpty) 'attachments': attachments,
+      };
+      final response = await _apiClient.put(
+        ApiConstants.completeTask(taskId),
+        body: body,
+      );
+      AppLogger.i('Complete Task API Response ($taskId): $response', tag: 'TASKS');
+      return response is Map && (response['success'] == true || response.containsKey('data'));
+    } catch (e, stackTrace) {
+      AppLogger.e('completeTask Exception for $taskId', error: e, stackTrace: stackTrace, tag: 'TASKS');
+      return false;
+    }
+  }
+
+  /// Delete task: DELETE /construction/tasks/:taskId
+  Future<bool> deleteTimelineTask(String taskId) async {
+    try {
+      final response = await _apiClient.delete(
+        ApiConstants.taskDetail(taskId),
+      );
+      AppLogger.i('Delete Task API Response ($taskId): $response', tag: 'TASKS');
+      return response is Map && (response['success'] == true || response.containsKey('data'));
+    } catch (e, stackTrace) {
+      AppLogger.e('deleteTimelineTask Exception for $taskId', error: e, stackTrace: stackTrace, tag: 'TASKS');
+      return false;
+    }
+  }
 }

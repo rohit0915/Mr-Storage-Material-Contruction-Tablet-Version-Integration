@@ -40,6 +40,7 @@ class _MismatchRowData {
     required this.expectedQuantity,
     required this.color,
     required int initialReceived,
+    this.itemId = '',
   })  : status = 'Received',
         receivedCtrl =
             TextEditingController(text: initialReceived.toString());
@@ -49,6 +50,7 @@ class _MismatchRowData {
   final int expectedQuantity;
   final String color;
   final TextEditingController receivedCtrl;
+  final String itemId;
   String status;
 
   void dispose() {
@@ -85,6 +87,7 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
             expectedQuantity: qty,
             color: sub.color.isNotEmpty ? sub.color : '-',
             initialReceived: rec,
+            itemId: sub.itemId,
           ),
         );
       }
@@ -120,10 +123,15 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
     final itemsPayload = _rows.map((r) {
       final recQty = int.tryParse(r.receivedCtrl.text.trim()) ?? r.expectedQuantity;
       return <String, dynamic>{
+        if (r.itemId.isNotEmpty) 'itemId': r.itemId,
         'itemCode': r.itemCode,
+        'partCode': r.itemCode,
         'name': r.name,
+        'description': r.name,
         'quantity': r.expectedQuantity,
+        'expectedQty': r.expectedQuantity,
         'receivedQuantity': recQty,
+        'receivedQty': recQty,
         'status': r.status,
       };
     }).toList();

@@ -99,7 +99,17 @@ class PackingListController extends GetxController {
       apiDispatchTodayTrendType.value = (stats['dispatchTodayTrendType'] ?? 'down').toString();
 
       if (list.isNotEmpty) {
-        _allPackingLists.assignAll(list);
+        final seenIds = <String>{};
+        final uniqueList = <PackingListItem>[];
+        for (final item in list) {
+          final key = item.packingListId.trim().isNotEmpty
+              ? item.packingListId.trim()
+              : (item.realMongoId.isNotEmpty ? item.realMongoId : item.id);
+          if (seenIds.add(key)) {
+            uniqueList.add(item);
+          }
+        }
+        _allPackingLists.assignAll(uniqueList);
       }
     } finally {
       isLoading.value = false;

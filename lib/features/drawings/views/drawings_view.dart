@@ -996,13 +996,18 @@ class _GlobalFileCard extends GetView<DrawingsController> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => controller.openFilePreview(context, file),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
-      padding: const EdgeInsets.all(14),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
+          padding: const EdgeInsets.all(14),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         mainAxisSize: MainAxisSize.min,
@@ -1093,7 +1098,9 @@ class _GlobalFileCard extends GetView<DrawingsController> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildThumbnail() {
@@ -1373,12 +1380,17 @@ class _MediaItemCard extends GetView<DrawingsController> {
   Widget build(BuildContext context) {
     final isVideo = file.isVideo;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => controller.openFilePreview(context, file),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1485,7 +1497,9 @@ class _MediaItemCard extends GetView<DrawingsController> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildThumbnail() {
@@ -1669,12 +1683,17 @@ class _DrawingItemCard extends GetView<DrawingsController> {
     final isRejected = file.status.toLowerCase().contains('reject');
     final hasRejectionReason = isRejected && file.rejectionReason.isNotEmpty;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () => controller.openFilePreview(context, file),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: const Color(0xFFE2E8F0)),
-      ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE2E8F0)),
+          ),
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -1804,7 +1823,9 @@ class _DrawingItemCard extends GetView<DrawingsController> {
           ),
         ],
       ),
-    );
+    ),
+  ),
+);
   }
 
   Widget _buildDrawingThumbnail() {

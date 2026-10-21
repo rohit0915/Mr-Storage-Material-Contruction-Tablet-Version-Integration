@@ -276,9 +276,18 @@ class DeliveryDetailsController extends GetxController {
     successMessage: 'Delivery marked as received',
   );
 
-  Future<bool> markPartial(String notes) => _runAction(
-    () => _service.markPartial(requestId, notes),
-    successMessage: 'Partial receipt saved',
+  Future<bool> markPartial(
+    String notes, {
+    List<Map<String, dynamic>>? items,
+    String? reason,
+  }) => _runAction(
+    () => _service.markPartial(
+      requestId,
+      notes,
+      items: items,
+      reason: reason,
+    ),
+    successMessage: 'Partial receipt & mismatch report saved',
   );
 
   Future<bool> updateSiteContact(Map<String, dynamic> contact) => _runAction(

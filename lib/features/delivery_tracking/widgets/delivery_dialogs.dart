@@ -148,7 +148,27 @@ class MarkReceivedDialog extends StatelessWidget {
   }
 }
 
-// ─── Mark as Partial Received ─────────────────────────────────────────────────
+// ─── Mark as Partial Received & Report Mismatch ───────────────────────────────
+
+class _MismatchRowData {
+  _MismatchRowData({
+    required this.itemCode,
+    required this.description,
+    required this.expectedQty,
+    required int initialReceived,
+    this.status = 'Received',
+  }) : receivedCtrl = TextEditingController(text: initialReceived.toString());
+
+  final String itemCode;
+  final String description;
+  final int expectedQty;
+  final TextEditingController receivedCtrl;
+  String status;
+
+  void dispose() {
+    receivedCtrl.dispose();
+  }
+}
 
 class MarkPartialDialog extends StatefulWidget {
   const MarkPartialDialog({
@@ -158,12 +178,12 @@ class MarkPartialDialog extends StatefulWidget {
   });
 
   final DeliveryItem item;
-  final Function(String) onConfirm;
+  final Future<void> Function(String notes, List<Map<String, dynamic>> items) onConfirm;
 
   static Future<void> show(
     BuildContext context,
     DeliveryItem item,
-    Function(String) onConfirm,
+    Future<void> Function(String notes, List<Map<String, dynamic>> items) onConfirm,
   ) => showDialog<void>(
     context: context,
     barrierDismissible: false,
@@ -176,144 +196,543 @@ class MarkPartialDialog extends StatefulWidget {
 
 class _MarkPartialDialogState extends State<MarkPartialDialog> {
   final _notesController = TextEditingController();
+  final List<_MismatchRowData> _rows = [];
+  String _selectedReason = 'Short Shipment';
+  bool _isSubmitting = false;
+
+  final _quickReasons = const [
+    'Short Shipment',
+    'Damaged in Transit',
+    'Wrong Parts Delivered',
+    'Missing Bundle',
+    'Weather Damage',
+    'Other Discrepancy',
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    final count = widget.item.bundleCount > 0 ? widget.item.bundleCount : 1;
+    _rows.add(
+      _MismatchRowData(
+        itemCode: widget.item.id,
+        description: widget.item.title.isNotEmpty ? widget.item.title : 'Bundle Shipment',
+        expectedQty: count,
+        initialReceived: count > 1 ? count - 1 : count,
+        status: count > 1 ? 'Missing' : 'Received',
+      ),
+    );
+    _notesController.text = 'Partial receipt noted for ${widget.item.id}: ';
+  }
 
   @override
   void dispose() {
     _notesController.dispose();
+    for (final r in _rows) {
+      r.dispose();
+    }
     super.dispose();
+  }
+
+  void _addRow() {
+    setState(() {
+      final nextIdx = _rows.length + 1;
+      _rows.add(
+        _MismatchRowData(
+          itemCode: '${widget.item.id}-P$nextIdx',
+          description: 'Line item $nextIdx',
+          expectedQty: 1,
+          initialReceived: 0,
+          status: 'Missing',
+        ),
+      );
+    });
+  }
+
+  Color _statusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'received':
+        return const Color(0xFF059669);
+      case 'missing':
+        return const Color(0xFFD97706);
+      case 'damaged':
+        return const Color(0xFFDC2626);
+      default:
+        return AppColors.primaryBlue;
+    }
+  }
+
+  Future<void> _submit() async {
+    if (_isSubmitting) return;
+    setState(() => _isSubmitting = true);
+
+    final notes = _notesController.text.trim();
+    final itemsPayload = _rows.map((r) {
+      final rec = int.tryParse(r.receivedCtrl.text.trim()) ?? r.expectedQty;
+      return <String, dynamic>{
+        'itemCode': r.itemCode,
+        'partCode': r.itemCode,
+        'description': r.description,
+        'expectedQty': r.expectedQty,
+        'quantity': r.expectedQty,
+        'receivedQty': rec,
+        'receivedQuantity': rec,
+        'status': r.status,
+      };
+    }).toList();
+
+    try {
+      final effectiveNotes = notes.isNotEmpty
+          ? notes
+          : '$_selectedReason reported for delivery ${widget.item.id}';
+      await widget.onConfirm(effectiveNotes, itemsPayload);
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _isSubmitting = false);
+      }
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final width = (size.width * 0.75).clamp(580.0, 780.0);
+    final item = widget.item;
+
     return _DialogBase(
-      maxWidth: 500,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(28, 24, 28, 0),
-            child: Row(
+      maxWidth: width,
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Top Header: Title + Close Button
+            Row(
               children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFEF2F2),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Color(0xFFDC2626),
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Text(
-                    'Mark Delivery Partial',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: (MediaQuery.sizeOf(context).width * 0.015).clamp(18.0, 22.0),
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Report Mismatch & Mark Partial Received',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      const Text(
+                        'Record missing or damaged items before confirming partial delivery',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
                 _closeButton(context),
               ],
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+            const SizedBox(height: 18),
+
+            // Delivery Details Context Banner
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: const Color(0xFFF8FAFC),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _contextItem('DELIVERY ID', item.id),
+                        const SizedBox(height: 8),
+                        _contextItem('PROJECT', item.project),
+                        const SizedBox(height: 8),
+                        _contextItem('JOB ID', item.jobId.isNotEmpty ? item.jobId : '-'),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _contextItem('CARRIER / TRUCK', '${item.carrier} • ${item.truck}'),
+                        const SizedBox(height: 8),
+                        _contextItem('DRIVER', item.driver),
+                        const SizedBox(height: 8),
+                        _contextItem(
+                          'TOTAL BUNDLES / WT',
+                          '${item.bundleCount > 0 ? item.bundleCount : 1} Bundles • ${item.quantity}',
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Discrepancy Reason Chips
+            const Text(
+              'DISCREPANCY REASON',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: _quickReasons.map((r) {
+                final isSelected = _selectedReason == r;
+                return InkWell(
+                  onTap: () {
+                    setState(() {
+                      _selectedReason = r;
+                      if (!_notesController.text.contains(r)) {
+                        _notesController.text = '$r: ${_notesController.text.replaceAll(RegExp(r'^[A-Za-z\s]+:\s*'), '')}';
+                      }
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isSelected ? const Color(0xFF1D51A4) : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFF1D51A4) : const Color(0xFFE2E8F0),
+                      ),
+                    ),
+                    child: Text(
+                      r,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isSelected ? Colors.white : AppColors.textPrimary,
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: 20),
+
+            // Items & Quantity Discrepancy Table
+            Row(
               children: [
-                Text(
-                  'ID: ${widget.item.id}',
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-                const SizedBox(height: 20),
                 const Text(
-                  'Notes / Reason',
+                  'ITEMS & QUANTITIES',
                   style: TextStyle(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w700,
-                    color: AppColors.textPrimary,
+                    color: Color(0xFF64748B),
+                    letterSpacing: 0.5,
                   ),
                 ),
-                const SizedBox(height: 8),
-                TextField(
-                  controller: _notesController,
-                  maxLines: 4,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textPrimary,
-                  ),
-                  decoration: InputDecoration(
-                    hintText: 'Enter reason for partial delivery...',
-                    hintStyle: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
-                    ),
-                    enabledBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: const BorderSide(color: AppColors.cardBorder),
+                const Spacer(),
+                InkWell(
+                  onTap: _addRow,
+                  borderRadius: BorderRadius.circular(6),
+                  child: const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(Icons.add_circle_outline, size: 14, color: AppColors.primaryBlue),
+                        SizedBox(width: 4),
+                        Text(
+                          'Add Line Item',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.primaryBlue,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
-                ),
-                const SizedBox(height: 24),
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          side: const BorderSide(color: AppColors.cardBorder),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          backgroundColor: const Color(0xFFD1D5DB), // Light gray cancel
-                          foregroundColor: Colors.white,
-                        ),
-                        child: const Text(
-                          'CANCEL',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          await widget.onConfirm(_notesController.text);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          backgroundColor: const Color(0xFF4F46E5), // Indigo blue
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                        ),
-                        child: const Text(
-                          'CONFIRM',
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ),
               ],
             ),
-          ),
-        ],
+            const SizedBox(height: 8),
+
+            Container(
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Column(
+                children: [
+                  // Table Header
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    decoration: const BoxDecoration(
+                      color: Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.only(
+                        topLeft: Radius.circular(7),
+                        topRight: Radius.circular(7),
+                      ),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(flex: 3, child: Text('ITEM / BUNDLE', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
+                        Expanded(flex: 4, child: Text('DESCRIPTION', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
+                        SizedBox(width: 70, child: Text('EXPECTED', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
+                        SizedBox(width: 80, child: Text('RECEIVED', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
+                        SizedBox(width: 100, child: Text('STATUS', textAlign: TextAlign.center, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF64748B)))),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1, color: Color(0xFFE2E8F0)),
+
+                  // Rows
+                  ..._rows.asMap().entries.map((entry) {
+                    final idx = entry.key;
+                    final row = entry.value;
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: idx.isEven ? Colors.white : const Color(0xFFFAFAFA),
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Text(
+                              row.itemCode,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          Expanded(
+                            flex: 4,
+                            child: Text(
+                              row.description,
+                              style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          SizedBox(
+                            width: 70,
+                            child: Text(
+                              '${row.expectedQty}',
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 80,
+                            height: 32,
+                            child: TextField(
+                              controller: row.receivedCtrl,
+                              keyboardType: TextInputType.number,
+                              textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
+                              decoration: InputDecoration(
+                                contentPadding: EdgeInsets.zero,
+                                filled: true,
+                                fillColor: Colors.white,
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                                ),
+                                enabledBorder: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(6),
+                                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                                ),
+                              ),
+                              onChanged: (val) {
+                                final v = int.tryParse(val.trim()) ?? row.expectedQty;
+                                setState(() {
+                                  if (v < row.expectedQty) {
+                                    row.status = 'Missing';
+                                  } else {
+                                    row.status = 'Received';
+                                  }
+                                });
+                              },
+                            ),
+                          ),
+                          SizedBox(
+                            width: 100,
+                            child: Center(
+                              child: PopupMenuButton<String>(
+                                initialValue: row.status,
+                                onSelected: (st) => setState(() => row.status = st),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                  decoration: BoxDecoration(
+                                    color: _statusColor(row.status).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(color: _statusColor(row.status).withValues(alpha: 0.3)),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        row.status,
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w700,
+                                          color: _statusColor(row.status),
+                                        ),
+                                      ),
+                                      const Icon(Icons.arrow_drop_down, size: 14),
+                                    ],
+                                  ),
+                                ),
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(value: 'Received', child: Text('Received (✓)')),
+                                  PopupMenuItem(value: 'Missing', child: Text('Missing (Short)')),
+                                  PopupMenuItem(value: 'Damaged', child: Text('Damaged (!)')),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
+            const SizedBox(height: 20),
+
+            // Notes / Reason TextField
+            const Text(
+              'NOTES / DISCREPANCY DETAILS',
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: Color(0xFF64748B),
+                letterSpacing: 0.5,
+              ),
+            ),
+            const SizedBox(height: 8),
+            TextField(
+              controller: _notesController,
+              maxLines: 3,
+              style: const TextStyle(fontSize: 13, color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Enter details of missing parts, damages, or mismatch notes for Plant...',
+                hintStyle: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                filled: true,
+                fillColor: const Color(0xFFF8FAFC),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+
+            // Actions Row
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: _isSubmitting ? null : () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      side: const BorderSide(color: Color(0xFFCBD5E1)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      foregroundColor: AppColors.textSecondary,
+                    ),
+                    child: const Text('CANCEL', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: _isSubmitting ? null : _submit,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      backgroundColor: const Color(0xFF1D51A4),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    ),
+                    child: _isSubmitting
+                        ? const SizedBox(
+                            width: 18,
+                            height: 18,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Text(
+                            'SUBMIT MISMATCH & CONFIRM PARTIAL',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w800, letterSpacing: 0.5),
+                          ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _contextItem(String label, String value) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 9,
+            fontWeight: FontWeight.w700,
+            color: Color(0xFF94A3B8),
+            letterSpacing: 0.5,
+          ),
+        ),
+        const SizedBox(height: 2),
+        Text(
+          value.isNotEmpty ? value : '-',
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: AppColors.textPrimary,
+          ),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
+      ],
     );
   }
 }

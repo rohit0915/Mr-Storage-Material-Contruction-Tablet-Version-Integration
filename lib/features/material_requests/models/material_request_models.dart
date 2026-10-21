@@ -16,6 +16,40 @@ class MaterialRequestItemRow {
   final String remarks;
 }
 
+class MaterialRequestAttachment {
+  const MaterialRequestAttachment({
+    required this.name,
+    this.size = '',
+    this.url = '',
+  });
+
+  final String name;
+  final String size;
+  final String url;
+
+  factory MaterialRequestAttachment.fromJson(dynamic json) {
+    if (json is String) {
+      final fileName = json.split('/').last.split('?').first;
+      return MaterialRequestAttachment(
+        name: fileName.isNotEmpty ? fileName : 'Attachment',
+        url: json,
+      );
+    }
+    if (json is Map) {
+      return MaterialRequestAttachment(
+        name: (json['name'] ??
+                json['fileName'] ??
+                json['originalName'] ??
+                'Attachment')
+            .toString(),
+        size: json['size']?.toString() ?? '',
+        url: (json['url'] ?? json['path'] ?? '').toString(),
+      );
+    }
+    return const MaterialRequestAttachment(name: 'Attachment');
+  }
+}
+
 class MaterialRequestBoardItem {
   const MaterialRequestBoardItem({
     required this.id,
@@ -35,8 +69,8 @@ class MaterialRequestBoardItem {
     this.itemsPreview = '',
     this.requestedById = '',
     this.requestedByRole = 'Site Engineer',
-    this.requestNotes =
-        'Additional materials required for columns and slab casting on ground floor.',
+    this.requestNotes = '',
+    this.attachments = const [],
   });
 
   final String id;
@@ -57,6 +91,7 @@ class MaterialRequestBoardItem {
   final String requestedById;
   final String requestedByRole;
   final String requestNotes;
+  final List<MaterialRequestAttachment> attachments;
 
   factory MaterialRequestBoardItem.fromJson(Map<String, dynamic> rawJson) {
     final json = rawJson['materialRequest'] is Map ? (rawJson['materialRequest'] as Map<String, dynamic>) : rawJson;
@@ -182,7 +217,16 @@ class MaterialRequestBoardItem {
       requestedByRole: json['requestedBy'] is Map
           ? (json['requestedBy']['role']?.toString() ?? '')
           : '',
-      requestNotes: json['notes']?.toString() ?? '',
+      requestNotes: (json['notes'] ??
+              json['specialInstructions'] ??
+              json['remarks'] ??
+              '')
+          .toString(),
+      attachments: (json['attachments'] is List)
+          ? (json['attachments'] as List)
+              .map((a) => MaterialRequestAttachment.fromJson(a))
+              .toList()
+          : const [],
     );
   }
 }

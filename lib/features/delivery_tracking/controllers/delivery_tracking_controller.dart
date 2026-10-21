@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 
 import '../../../app/utils/app_logger.dart';
+import '../../../app/utils/app_toast.dart';
 import '../models/delivery_tracking_models.dart';
 import '../services/delivery_tracking_service.dart';
 
@@ -819,7 +820,12 @@ class DeliveryTrackingController extends GetxController {
     }
   }
 
-  Future<void> markPartialReceived(String id, String notes) async {
+  Future<void> markPartialReceived(
+    String id,
+    String notes, {
+    List<Map<String, dynamic>>? items,
+    String? reason,
+  }) async {
     final idx = deliveries.indexWhere((d) => d.id == id || d.realMongoId == id);
     if (idx >= 0) {
       final target = deliveries[idx];
@@ -827,10 +833,19 @@ class DeliveryTrackingController extends GetxController {
       final reqId = target.realMongoId.isNotEmpty
           ? target.realMongoId
           : target.id;
-      final success = await _service.markPartial(reqId, notes);
+      final success = await _service.markPartial(
+        reqId,
+        notes,
+        items: items,
+        reason: reason,
+      );
       if (!success) {
         deliveries[idx] = target;
       } else {
+        AppToast.showSuccess(
+          title: 'Partial Received & Mismatch Logged',
+          description: 'Delivery marked partial and mismatch logged for Plant.',
+        );
         await fetchDeliveries();
       }
     }

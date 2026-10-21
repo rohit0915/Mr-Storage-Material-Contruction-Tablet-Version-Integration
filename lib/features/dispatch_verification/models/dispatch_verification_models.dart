@@ -1,3 +1,5 @@
+import 'package:intl/intl.dart';
+
 enum DispatchStatus { pending, verified }
 
 class DispatchBundleItem {
@@ -8,46 +10,103 @@ class DispatchBundleItem {
     required this.weight,
     required this.status,
     required this.isVerified,
+    this.realMongoId = '',
+    this.parts = '',
+    this.time = '',
+    this.quantity = '',
+    this.length = '',
+    this.statusText = '',
+    this.shipper = '',
+    this.totalProducts = '',
   });
 
   final int index;
   final String bundleNo;
   final String bundleId;
+  final String realMongoId;
   final String weight;
   final String status;
   final bool isVerified;
+  final String parts;
+  final String time;
+  final String quantity;
+  final String length;
+  final String statusText;
+  final String shipper;
+  final String totalProducts;
 
   factory DispatchBundleItem.fromJson(Map<String, dynamic> json, int idx) {
-    final rawId = (json['bundleId'] ??
+    final candidateId = (json['bundleId'] ??
             json['bundleNumber'] ??
             json['bundleNo'] ??
             json['code'] ??
             json['id'] ??
-            json['_id'] ??
-            'B-${(idx + 1).toString().padLeft(3, '0')}')
+            '')
         .toString();
-    final bNo = (json['bundleNo'] ??
-            json['bundleNumber'] ??
-            json['bundleId'] ??
-            json['code'] ??
-            '${idx + 1}')
-        .toString();
+
+    final rawMongoCandidate = (json['_id'] ?? json['id'] ?? json['bundleId'] ?? '').toString();
+    final isHex = rawMongoCandidate.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(rawMongoCandidate);
+    final realMongo = isHex ? rawMongoCandidate : (candidateId.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(candidateId) ? candidateId : '');
+
+    // Human-readable bundle code: BND-001 or clean code, NOT 24-char hex mongo id
+    final bool candIsHex = candidateId.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(candidateId);
+    final humanId = (!candIsHex && candidateId.isNotEmpty)
+        ? candidateId
+        : 'BND-${(idx + 1).toString().padLeft(3, '0')}';
+    final bNo = (json['bundleNo'] ?? json['bundleNumber'] ?? humanId).toString();
+    final cleanBNo = (bNo.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(bNo))
+        ? humanId
+        : bNo;
     final wVal =
-        json['weight'] ?? json['totalWeight'] ?? json['weightLbs'] ?? '-';
+        json['weight'] ?? json['totalWeight'] ?? json['totalWeightLbs'] ?? json['weightLbs'] ?? '-';
     final w = wVal.toString().contains('LBS') ? wVal.toString() : '$wVal LBS';
-    final st = (json['status'] ?? 'READY').toString().toUpperCase();
+    final st = (json['status'] ?? json['bundleStatus'] ?? 'READY').toString().toUpperCase();
     final ver = json['isVerified'] == true ||
         json['verified'] == true ||
         st == 'VERIFIED' ||
         st == 'READY';
 
+    final partsStr = (json['parts'] ?? json['part'] ?? json['partCode'] ?? json['partNumber'] ?? json['description'] ?? json['name'] ?? '').toString();
+
+    String timeStr = (json['time'] ?? json['scannedAt'] ?? json['createdAt'] ?? json['updatedAt'] ?? '').toString();
+    if (timeStr.isNotEmpty) {
+      try {
+        final parsed = DateTime.tryParse(timeStr);
+        if (parsed != null) {
+          timeStr = DateFormat('hh:mm a').format(parsed.toLocal());
+        }
+      } catch (_) {}
+    }
+
+    final qtyStr = (json['quantity'] ?? json['qty'] ?? json['count'] ?? '').toString();
+    final lenStr = (json['length'] ?? '').toString();
+    final shipperStr = (json['shipper'] ?? json['shipperNo'] ?? '').toString();
+    final totalProdStr = (json['totalProducts'] ?? json['productCount'] ?? '').toString();
+
+    String humanStatus = 'Staging';
+    if (ver || st == 'READY' || st == 'VERIFIED') {
+      humanStatus = 'Ready';
+    } else if (st.contains('MISMATCH')) {
+      humanStatus = 'Mismatch';
+    } else if (st.contains('PENDING')) {
+      humanStatus = 'Pending';
+    }
+
     return DispatchBundleItem(
       index: idx + 1,
-      bundleNo: bNo,
-      bundleId: rawId,
+      bundleNo: cleanBNo,
+      bundleId: humanId,
+      realMongoId: realMongo,
       weight: w,
       status: st,
       isVerified: ver,
+      parts: partsStr,
+      time: timeStr,
+      quantity: qtyStr,
+      length: lenStr,
+      statusText: humanStatus,
+      shipper: shipperStr,
+      totalProducts: totalProdStr,
     );
   }
 }
@@ -72,6 +131,7 @@ class DispatchItem {
     this.loadingVerified = false,
     this.bundleList = const [],
     this.isSelected = false,
+    this.createdAt,
   });
 
   final String loadId;
@@ -92,6 +152,7 @@ class DispatchItem {
   final bool loadingVerified;
   final List<DispatchBundleItem> bundleList;
   final bool isSelected;
+  final DateTime? createdAt;
 
   factory DispatchItem.fromJson(Map<String, dynamic> json) {
     final statusStr =
@@ -179,8 +240,9 @@ class DispatchItem {
           parsedBundles.add(
             DispatchBundleItem(
               index: i + 1,
-              bundleNo: '${i + 1}',
-              bundleId: b.toString(),
+              bundleNo: 'BND-${(i + 1).toString().padLeft(3, '0')}',
+              bundleId: 'BND-${(i + 1).toString().padLeft(3, '0')}',
+              realMongoId: b.toString(),
               weight: '-',
               status: 'READY',
               isVerified: true,
@@ -188,8 +250,25 @@ class DispatchItem {
           );
         }
       }
+    } else if (json['totalBundles'] != null) {
+      bCount = int.tryParse(json['totalBundles'].toString()) ?? 0;
+    } else if (json['bundlesCount'] != null) {
+      bCount = int.tryParse(json['bundlesCount'].toString()) ?? 0;
     } else if (json['bundleCount'] != null) {
       bCount = int.tryParse(json['bundleCount'].toString()) ?? 0;
+    } else if (json['bundles'] is num) {
+      bCount = (json['bundles'] as num).toInt();
+    }
+
+    DateTime? itemCreatedAt;
+    for (final k in ['createdAt', 'dispatchDate', 'date', 'updatedAt', 'created_at']) {
+      if (json[k] != null && json[k].toString().isNotEmpty) {
+        final parsed = DateTime.tryParse(json[k].toString());
+        if (parsed != null) {
+          itemCreatedAt = parsed;
+          break;
+        }
+      }
     }
 
     return DispatchItem(
@@ -220,6 +299,7 @@ class DispatchItem {
       weightVerified: json['weightVerified'] == true,
       loadingVerified: json['loadingVerified'] == true,
       bundleList: parsedBundles,
+      createdAt: itemCreatedAt,
     );
   }
 
@@ -242,6 +322,7 @@ class DispatchItem {
     bool? loadingVerified,
     List<DispatchBundleItem>? bundleList,
     bool? isSelected,
+    DateTime? createdAt,
   }) {
     return DispatchItem(
       loadId: loadId ?? this.loadId,
@@ -262,6 +343,57 @@ class DispatchItem {
       loadingVerified: loadingVerified ?? this.loadingVerified,
       bundleList: bundleList ?? this.bundleList,
       isSelected: isSelected ?? this.isSelected,
+      createdAt: createdAt ?? this.createdAt,
     );
   }
 }
+
+class DispatchProjectItem {
+  const DispatchProjectItem({
+    required this.leadId,
+    required this.projectId,
+    required this.projectName,
+    required this.siteLocation,
+    this.thumbnailUrl,
+    required this.totalPackingLists,
+    required this.totalBundles,
+    this.loads = const [],
+    this.createdAt,
+  });
+
+  final String leadId;
+  final String projectId;
+  final String projectName;
+  final String siteLocation;
+  final String? thumbnailUrl;
+  final int totalPackingLists;
+  int get totalPackingList => totalPackingLists;
+  final int totalBundles;
+  final List<DispatchItem> loads;
+  final DateTime? createdAt;
+
+  DispatchProjectItem copyWith({
+    String? leadId,
+    String? projectId,
+    String? projectName,
+    String? siteLocation,
+    String? thumbnailUrl,
+    int? totalPackingLists,
+    int? totalBundles,
+    List<DispatchItem>? loads,
+    DateTime? createdAt,
+  }) {
+    return DispatchProjectItem(
+      leadId: leadId ?? this.leadId,
+      projectId: projectId ?? this.projectId,
+      projectName: projectName ?? this.projectName,
+      siteLocation: siteLocation ?? this.siteLocation,
+      thumbnailUrl: thumbnailUrl ?? this.thumbnailUrl,
+      totalPackingLists: totalPackingLists ?? this.totalPackingLists,
+      totalBundles: totalBundles ?? this.totalBundles,
+      loads: loads ?? this.loads,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+}
+

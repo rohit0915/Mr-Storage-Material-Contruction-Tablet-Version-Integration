@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/constants/api_constants.dart';
 import '../../../app/services/construction_socket_service.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/utils/app_logger.dart';
@@ -332,7 +333,10 @@ class DrawingsController extends GetxController {
             final pCode = (dp['projectId'] ?? dp['jobId'] ?? dp['code'] ?? leadId).toString();
             final pLoc = _formatLocation(dp['location']);
             final pDate = (dp['lastUpdate'] ?? dp['updatedAt'] ?? dp['createdAt'] ?? '').toString();
-            final uBy = (dp['uploadedBy'] ?? 'Engineering Team').toString();
+            final uBy = DrawingFileItem.formatUploadedBy(
+              dp['uploadedBy'],
+              fallback: 'Engineering Team',
+            );
 
             final parsedProj = DrawingProjectItem.fromJson(Map<String, dynamic>.from(dp));
             final bldgs = parsedProj.effectiveBuildings;
@@ -369,11 +373,7 @@ class DrawingsController extends GetxController {
           }
         }
 
-        if (projectsMap.isNotEmpty) {
-          projectList.assignAll(projectsMap.values.toList());
-        } else {
-          projectList.assignAll(DrawingProjectItem.defaultProjects());
-        }
+        projectList.assignAll(projectsMap.values.toList());
       }
     } catch (e, stackTrace) {
       AppLogger.e(
@@ -382,9 +382,6 @@ class DrawingsController extends GetxController {
         stackTrace: stackTrace,
         tag: 'DRAWINGS_CTRL',
       );
-      if (projectList.isEmpty) {
-        projectList.assignAll(DrawingProjectItem.defaultProjects());
-      }
     } finally {
       isLoading.value = false;
     }
@@ -514,11 +511,11 @@ class DrawingsController extends GetxController {
   }
 
   Future<void> downloadFile(BuildContext context, DrawingFileItem file) async {
-    final url = file.fileUrl.isNotEmpty
+    final rawUrl = file.fileUrl.isNotEmpty
         ? file.fileUrl
         : (file.previewAssets.isNotEmpty ? file.previewAssets.first : '');
-    if (url.isEmpty ||
-        (!url.startsWith('http://') && !url.startsWith('https://'))) {
+    final trimmed = rawUrl.trim();
+    if (trimmed.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('File URL not available for ${file.name}'),
@@ -526,6 +523,15 @@ class DrawingsController extends GetxController {
         ),
       );
       return;
+    }
+
+    String url = trimmed;
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      if (url.startsWith('/')) {
+        url = '${ApiConstants.serverOrigin}$url';
+      } else {
+        url = '${ApiConstants.serverOrigin}/$url';
+      }
     }
 
     ScaffoldMessenger.of(context).showSnackBar(
@@ -536,7 +542,7 @@ class DrawingsController extends GetxController {
     );
 
     try {
-      final uri = Uri.parse(url);
+      final uri = Uri.parse(Uri.encodeFull(url));
       final launched = await launchUrl(
         uri,
         mode: LaunchMode.externalApplication,

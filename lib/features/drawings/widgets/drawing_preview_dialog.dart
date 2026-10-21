@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../app/constants/api_constants.dart';
 import '../../../app/theme/app_colors.dart';
 import '../models/drawing_models.dart';
 
@@ -9,10 +10,20 @@ class DrawingPreviewDialog extends StatelessWidget {
 
   final DrawingFileItem file;
 
-  String get _fileUrl =>
-      file.fileUrl.isNotEmpty
-          ? file.fileUrl
-          : (file.previewAssets.isNotEmpty ? file.previewAssets.first : '');
+  String get _fileUrl {
+    final raw = file.fileUrl.isNotEmpty
+        ? file.fileUrl
+        : (file.previewAssets.isNotEmpty ? file.previewAssets.first : '');
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) return '';
+    if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
+      if (trimmed.startsWith('/')) {
+        return '${ApiConstants.serverOrigin}$trimmed';
+      }
+      return '${ApiConstants.serverOrigin}/$trimmed';
+    }
+    return trimmed;
+  }
 
   bool get _isPdf =>
       file.fileType == DrawingFileType.pdf ||
@@ -100,9 +111,10 @@ class DrawingPreviewDialog extends StatelessWidget {
                           Expanded(
                             child: _MetaCol(
                               label: 'Uploaded By:',
-                              value: file.uploadedBy.isNotEmpty
-                                  ? file.uploadedBy
-                                  : 'Site Construction',
+                              value: DrawingFileItem.formatUploadedBy(
+                                file.uploadedBy,
+                                fallback: 'Site Construction',
+                              ),
                             ),
                           ),
                           Expanded(
@@ -473,15 +485,15 @@ class DrawingPreviewDialog extends StatelessWidget {
     final url = _fileUrl;
     if (url.isEmpty || (!url.startsWith('http://') && !url.startsWith('https://'))) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('File link is not available.'),
+        SnackBar(
+          content: Text('File link is not available for ${file.name}.'),
           backgroundColor: AppColors.danger,
         ),
       );
       return;
     }
     try {
-      final uri = Uri.parse(url);
+      final uri = Uri.parse(Uri.encodeFull(url));
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched) {
         await launchUrl(uri, mode: LaunchMode.platformDefault);
@@ -518,7 +530,7 @@ class DrawingPreviewDialog extends StatelessWidget {
     );
 
     try {
-      final uri = Uri.parse(url);
+      final uri = Uri.parse(Uri.encodeFull(url));
       final launched = await launchUrl(uri, mode: LaunchMode.externalApplication);
       if (!launched) {
         await launchUrl(uri, mode: LaunchMode.platformDefault);

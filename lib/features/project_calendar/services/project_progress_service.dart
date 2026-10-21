@@ -27,6 +27,22 @@ class ProjectProgressService extends GetxService {
     }
   }
 
+  Future<Map<String, dynamic>?> getProjectPhases(String leadId) async {
+    try {
+      return _mapData(
+        await _apiClient.get(ApiConstants.projectPhases(leadId)),
+      );
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'getProjectPhases Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'PROGRESS_SVC',
+      );
+      return null;
+    }
+  }
+
   Future<Map<String, dynamic>?> createMilestone(
     String leadId,
     Map<String, dynamic> payload,

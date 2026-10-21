@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/constants/app_assets.dart';
+import '../../../app/shell/app_shell_controller.dart';
 import '../../../app/theme/app_colors.dart';
 import '../controllers/dashboard_controller.dart';
 
@@ -15,10 +16,8 @@ class DashboardDrawer extends GetView<DashboardController> {
     _DrawerItem('Tasks', Icons.checklist_rounded),
     _DrawerItem('Material Request', Icons.grid_view_rounded),
     _DrawerItem('Delivery Tracking', Icons.local_shipping_outlined),
-    _DrawerItem('Label Printing', Icons.local_offer_outlined),
-    _DrawerItem('Bundle Scan', Icons.qr_code_scanner_rounded),
-    _DrawerItem('Packing List', Icons.inventory_2_outlined),
     _DrawerItem('Dispatch Verification', Icons.fact_check_outlined),
+    _DrawerItem('Communication', Icons.chat_bubble_outline_rounded),
   ];
 
   @override
@@ -89,8 +88,14 @@ class DashboardDrawer extends GetView<DashboardController> {
                           titleSize: titleSize,
                           radius: cardRadius,
                           onTap: () {
+                            if (selectedMenu == item.title) {
+                              Navigator.of(context).pop();
+                              return;
+                            }
                             controller.selectMenu(item.title);
-                            Navigator.of(context).pop();
+                            if (Get.isRegistered<AppShellController>()) {
+                              Get.find<AppShellController>().selectMenu(item.title);
+                            }
                           },
                         );
                       },

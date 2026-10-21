@@ -281,4 +281,91 @@ class MaterialRequestsService extends GetxService {
     }
     return false;
   }
+
+  /// Plant: Customer Add New Order requests for a single project
+  Future<Map<String, dynamic>?> getProjectAdditionalMaterialRequests(
+    String leadId, {
+    int page = 1,
+    int limit = 20,
+  }) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.plantProjectAdditionalMaterialRequests(
+          leadId,
+          page: page,
+          limit: limit,
+        ),
+      );
+      if (res is Map) {
+        final data = res['data'] ?? res;
+        if (data is Map) return Map<String, dynamic>.from(data);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'getProjectAdditionalMaterialRequests Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'MAT_REQ_SVC',
+      );
+    }
+    return null;
+  }
+
+  /// Plant: Mismatch tickets created from construction report-mismatch for a project
+  Future<Map<String, dynamic>?> getProjectMismatchOrders(
+    String leadId, {
+    int page = 1,
+    int limit = 20,
+    String? status,
+  }) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.plantProjectMismatchOrders(
+          leadId,
+          page: page,
+          limit: limit,
+          status: status,
+        ),
+      );
+      if (res is Map) {
+        final data = res['data'] ?? res;
+        if (data is Map) return Map<String, dynamic>.from(data);
+      }
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'getProjectMismatchOrders Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'MAT_REQ_SVC',
+      );
+    }
+    return null;
+  }
+
+  /// Plant: Update mismatch order status
+  Future<bool> updateMismatchOrderStatus(
+    String mismatchId, {
+    required String status,
+    String? actionNotes,
+  }) async {
+    try {
+      final res = await _apiClient.put(
+        ApiConstants.plantMismatchOrderStatus(mismatchId),
+        body: {
+          'status': status,
+          if (actionNotes != null && actionNotes.isNotEmpty)
+            'actionNotes': actionNotes,
+        },
+      );
+      return res != null;
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'updateMismatchOrderStatus Error',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'MAT_REQ_SVC',
+      );
+    }
+    return false;
+  }
 }

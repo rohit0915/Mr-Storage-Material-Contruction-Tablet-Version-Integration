@@ -13,9 +13,20 @@ class LabelPrintingService {
   Future<Map<String, dynamic>> fetchLabelsData({
     int page = 1,
     int limit = 10,
+    String? projectId,
+    String? status,
+    String? search,
+    String? sortBy,
   }) async {
     try {
-      final url = ApiConstants.labelsUrl(page: page, limit: limit);
+      final url = ApiConstants.labelsUrl(
+        page: page,
+        limit: limit,
+        projectId: projectId,
+        status: status,
+        search: search,
+        sortBy: sortBy,
+      );
       final res = await _apiClient.get(url);
       AppLogger.i('Fetch labels response ($url): $res', tag: 'LABEL_PRINTING');
 
@@ -100,5 +111,42 @@ class LabelPrintingService {
       );
       return false;
     }
+  }
+
+  /// 3-Step Navigation: loads for a project
+  Future<List<Map<String, dynamic>>> getProjectLoads(String leadId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.labelsProjectLoads(leadId),
+      );
+      if (res is Map && res['data'] is List) {
+        return (res['data'] as List).whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+      if (res is List) {
+        return res.whereType<Map>().map((m) => Map<String, dynamic>.from(m)).toList();
+      }
+    } catch (e, st) {
+      AppLogger.e('Error fetching project loads', error: e, stackTrace: st, tag: 'LABEL_PRINTING');
+    }
+    return [];
+  }
+
+  /// 3-Step Navigation: bundles for a load / packing list
+  Future<List<LabelBundleItem>> getLoadBundles(String packingListId) async {
+    try {
+      final res = await _apiClient.get(
+        ApiConstants.labelsLoadBundles(packingListId),
+      );
+      List rawList = [];
+      if (res is Map && res['data'] is List) {
+        rawList = res['data'] as List;
+      } else if (res is List) {
+        rawList = res;
+      }
+      return rawList.whereType<Map>().map((m) => LabelBundleItem.fromJson(Map<String, dynamic>.from(m))).toList();
+    } catch (e, st) {
+      AppLogger.e('Error fetching load bundles', error: e, stackTrace: st, tag: 'LABEL_PRINTING');
+    }
+    return [];
   }
 }

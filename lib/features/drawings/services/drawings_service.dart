@@ -77,6 +77,56 @@ class DrawingsService extends GetxService {
     }
   }
 
+  /// Uploads media and returns the public URL string, registering via POST /media/:leadId
+  Future<String?> uploadMediaAndGetUrl({
+    required String leadId,
+    required String fileName,
+    required String mimeType,
+    required Uint8List bytes,
+  }) async {
+    final target = await _getUploadTarget(fileName, mimeType);
+    if (target == null) return null;
+    final uploadUrl = (target['uploadUrl'] ?? target['signedUrl'] ?? '').toString();
+    final publicUrl =
+        (target['fileUrl'] ?? target['publicUrl'] ?? target['url'] ?? '').toString();
+    if (uploadUrl.isEmpty || publicUrl.isEmpty) return null;
+
+    try {
+      final uploadResponse = await http.put(
+        Uri.parse(uploadUrl),
+        headers: {'Content-Type': mimeType},
+        body: bytes,
+      );
+      if (uploadResponse.statusCode < 200 || uploadResponse.statusCode >= 300) {
+        return null;
+      }
+
+      // Register under project media
+      try {
+        await _apiClient.post(
+          ApiConstants.projectMedia(leadId),
+          body: {
+            'type': mimeType.startsWith('video/') ? 'video' : 'photo',
+            'name': fileName,
+            'url': publicUrl,
+            'fileType': mimeType,
+            'fileSize': bytes.length,
+          },
+        );
+      } catch (_) {}
+
+      return publicUrl;
+    } catch (e, stackTrace) {
+      AppLogger.e(
+        'uploadMediaAndGetUrl failed',
+        error: e,
+        stackTrace: stackTrace,
+        tag: 'DRAWINGS_SERVICE',
+      );
+      return null;
+    }
+  }
+
   Future<dynamic> getBuildingDrawings(String leadId) async {
     try {
       final response = await _apiClient.get(
