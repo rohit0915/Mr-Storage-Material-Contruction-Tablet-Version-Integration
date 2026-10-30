@@ -58,7 +58,7 @@ class SteelBuildingApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ToastificationWrapper(
       child: GetMaterialApp(
-        title: 'Steel Building Depot',
+        title: 'Steel Building Depot Construction',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
