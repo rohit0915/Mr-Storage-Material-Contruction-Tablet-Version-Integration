@@ -15,7 +15,15 @@ class PackingListController extends GetxController {
     : _service = service ?? PackingListService();
 
   final PackingListService _service;
-  final searchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
   final searchQuery = ''.obs;
   final selectedItems = <String>{}.obs;
   final isLoading = false.obs;
@@ -386,7 +394,6 @@ class PackingListController extends GetxController {
 
   @override
   void onClose() {
-    searchController.dispose();
     super.onClose();
   }
 }

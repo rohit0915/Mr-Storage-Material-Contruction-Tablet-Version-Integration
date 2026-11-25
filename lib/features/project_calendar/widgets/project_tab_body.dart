@@ -21,8 +21,19 @@ class ProjectTabBody extends StatelessWidget {
 
         var list = controller.projectCards;
         if (controller.selectedProjectId.value.isNotEmpty) {
-          final sel = controller.selectedProjectId.value;
-          list = list.where((p) => p.projectId == sel || p.realLeadId == sel).toList();
+          final sel = controller.selectedProjectId.value.toLowerCase();
+          final selOpt = controller.selectedProject;
+          list = list.where((p) {
+            return p.projectId.toLowerCase() == sel ||
+                p.realLeadId.toLowerCase() == sel ||
+                p.title.toLowerCase() == sel ||
+                (selOpt != null &&
+                    selOpt.id.isNotEmpty &&
+                    (p.realLeadId.toLowerCase() == selOpt.id.toLowerCase() ||
+                        p.projectId.toLowerCase() ==
+                            selOpt.code.toLowerCase() ||
+                        p.title.toLowerCase() == selOpt.name.toLowerCase()));
+          }).toList();
         }
 
         return Container(

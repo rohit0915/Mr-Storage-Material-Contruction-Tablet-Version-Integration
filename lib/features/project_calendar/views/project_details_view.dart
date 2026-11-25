@@ -4,14 +4,38 @@ import 'package:get/get.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../../bundle_scan/widgets/bundle_scan_dialogs.dart';
 import '../../bundle_scan/models/bundle_scan_models.dart';
 import '../controllers/project_details_controller.dart';
 import '../widgets/project_construction_task_section.dart';
 import '../widgets/project_details_bottom_sections.dart';
 
-class ProjectDetailsView extends StatelessWidget {
+class ProjectDetailsView extends StatefulWidget {
   const ProjectDetailsView({super.key});
+
+  @override
+  State<ProjectDetailsView> createState() => _ProjectDetailsViewState();
+}
+
+class _ProjectDetailsViewState extends State<ProjectDetailsView> {
+  late final ProjectDetailsController controller;
+
+  @override
+  void initState() {
+    super.initState();
+    if (Get.isRegistered<ProjectDetailsController>()) {
+      controller = Get.find<ProjectDetailsController>();
+      final args = (Get.arguments as Map?) ?? {};
+      final idArg = (args['id'] as String?) ?? '';
+      if (idArg.isNotEmpty && controller.leadId.value != idArg) {
+        Get.delete<ProjectDetailsController>();
+        controller = Get.put(ProjectDetailsController());
+      }
+    } else {
+      controller = Get.put(ProjectDetailsController());
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -20,15 +44,18 @@ class ProjectDetailsView extends StatelessWidget {
     final padV = size.height * 0.014;
     final gap = size.height * 0.014;
 
-    final controller = Get.put(ProjectDetailsController());
-
     return AppScaffold(
       menuTitle: 'Project & Calendar',
-      body: SingleChildScrollView(
-        padding: EdgeInsets.fromLTRB(padH, gap, padH, padV),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
+      body: Obx(() {
+        if (controller.isLoading.value) {
+          return const _ProjectDetailsShimmer();
+        }
+
+        return SingleChildScrollView(
+          padding: EdgeInsets.fromLTRB(padH, gap, padH, padV),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
             // Top Navigation Row
             Row(
               children: [
@@ -250,7 +277,13 @@ class ProjectDetailsView extends StatelessWidget {
                                       ),
                                     ),
                                     const _BadgePill(text: 'Material Check', color: Color(0xFFD97706), bgColor: Color(0xFFFEF3C7)),
-                                    const _BadgePill(text: 'Medium Priority', color: Color(0xFF4B5563), bgColor: Color(0xFFF3F4F6)),
+                                    _BadgePill(
+                                      text: controller.priority.value.isNotEmpty
+                                          ? controller.priority.value
+                                          : 'Medium Priority',
+                                      color: const Color(0xFF4B5563),
+                                      bgColor: const Color(0xFFF3F4F6),
+                                    ),
                                   ],
                                 ),
                                 const SizedBox(height: 4),
@@ -302,8 +335,8 @@ class ProjectDetailsView extends StatelessWidget {
                         spacing: 16,
                         children: [
                           _BottomMeta(icon: Icons.domain, label: 'Building Type', value: controller.buildingType.value.isEmpty ? '—' : controller.buildingType.value),
-                          _BottomMeta(icon: Icons.business, label: 'No. of Building', value: '2'),
-                          const _BottomMeta(icon: Icons.calendar_today_outlined, label: 'Created On', value: '-'),
+                          _BottomMeta(icon: Icons.business, label: 'No. of Building', value: controller.noOfBuildings.value.isEmpty ? '—' : controller.noOfBuildings.value),
+                          _BottomMeta(icon: Icons.calendar_today_outlined, label: 'Created On', value: controller.createdOn.value.isEmpty ? '—' : controller.createdOn.value),
                           _BottomMeta(icon: Icons.location_on_outlined, label: 'Location', value: controller.location.value.isEmpty ? '—' : controller.location.value),
                         ],
                       ),
@@ -320,9 +353,10 @@ class ProjectDetailsView extends StatelessWidget {
             const ProjectDetailsBottomSections(),
           ],
         ),
-      ),
-    );
-  }
+      );
+    }),
+  );
+}
 }
 
 class _ActionButton extends StatelessWidget {
@@ -421,6 +455,296 @@ class _BadgePill extends StatelessWidget {
           Container(width: 6, height: 6, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
           const SizedBox(width: 6),
           Text(text, style: TextStyle(color: color, fontWeight: FontWeight.w700, fontSize: 11)),
+        ],
+      ),
+    );
+  }
+}
+
+class _ProjectDetailsShimmer extends StatelessWidget {
+  const _ProjectDetailsShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final padH = size.width * 0.016;
+    final padV = size.height * 0.014;
+    final gap = size.height * 0.014;
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(padH, gap, padH, padV),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Top Navigation Row Shimmer
+          Row(
+            children: const [
+              AppShimmer(width: 80, height: 36, borderRadius: 8),
+              SizedBox(width: 14),
+              AppShimmer(width: 240, height: 24, borderRadius: 6),
+            ],
+          ),
+          SizedBox(height: gap * 1.5),
+
+          // Action Buttons Row Shimmer
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isCompact = constraints.maxWidth < 1050;
+              final shimmerButtons = List.generate(
+                5,
+                (_) => const AppShimmer(height: 44, borderRadius: 8),
+              );
+
+              if (!isCompact) {
+                return Row(
+                  children: [
+                    for (int i = 0; i < shimmerButtons.length; i++) ...[
+                      if (i > 0) const SizedBox(width: 10),
+                      Expanded(child: shimmerButtons[i]),
+                    ],
+                  ],
+                );
+              }
+
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  children: [
+                    for (int i = 0; i < 5; i++) ...[
+                      if (i > 0) const SizedBox(width: 10),
+                      const AppShimmer(width: 170, height: 44, borderRadius: 8),
+                    ],
+                  ],
+                ),
+              );
+            },
+          ),
+          SizedBox(height: gap),
+
+          // Project Overview Header Card Shimmer
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const AppShimmer(width: 50, height: 50, borderRadius: 12),
+                    SizedBox(width: size.width * 0.015),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Row(
+                            children: [
+                              AppShimmer(width: 180, height: 22, borderRadius: 6),
+                              SizedBox(width: 8),
+                              AppShimmer(width: 90, height: 20, borderRadius: 10),
+                              SizedBox(width: 8),
+                              AppShimmer(width: 90, height: 20, borderRadius: 10),
+                            ],
+                          ),
+                          SizedBox(height: 8),
+                          AppShimmer(width: 100, height: 14, borderRadius: 4),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      child: const Row(
+                        children: [
+                          AppShimmer(width: 32, height: 32, shape: BoxShape.circle),
+                          SizedBox(width: 10),
+                          Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              AppShimmer(width: 80, height: 13, borderRadius: 4),
+                              SizedBox(height: 5),
+                              AppShimmer(width: 130, height: 11, borderRadius: 4),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    AppShimmer(width: 120, height: 34, borderRadius: 6),
+                    AppShimmer(width: 120, height: 34, borderRadius: 6),
+                    AppShimmer(width: 120, height: 34, borderRadius: 6),
+                    AppShimmer(width: 180, height: 34, borderRadius: 6),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: gap * 1.2),
+
+          // Project Construction Task Section Shimmer
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: AppColors.cardBorder),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: const [
+                    AppShimmer(width: 200, height: 22, borderRadius: 6),
+                    AppShimmer(width: 70, height: 36, borderRadius: 8),
+                  ],
+                ),
+                const SizedBox(height: 18),
+                SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: Row(
+                    children: List.generate(
+                      3,
+                      (index) => Container(
+                        width: 280,
+                        height: 150,
+                        margin: EdgeInsets.only(right: index < 2 ? 14 : 0),
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: AppColors.cardBorder),
+                        ),
+                        child: const Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                AppShimmer(width: 130, height: 16, borderRadius: 4),
+                                AppShimmer(width: 60, height: 18, borderRadius: 8),
+                              ],
+                            ),
+                            SizedBox(height: 12),
+                            AppShimmer(width: 100, height: 12, borderRadius: 4),
+                            Spacer(),
+                            AppShimmer(width: double.infinity, height: 6, borderRadius: 3),
+                            SizedBox(height: 10),
+                            Row(
+                              children: [
+                                AppShimmer(width: 18, height: 18, shape: BoxShape.circle),
+                                SizedBox(width: 6),
+                                AppShimmer(width: 70, height: 12, borderRadius: 4),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          SizedBox(height: gap * 1.5),
+
+          // Bottom Sections Shimmer (Material Delivery + Media)
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isNarrow = constraints.maxWidth < 900;
+
+              final deliveryShimmer = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppShimmer(width: 200, height: 20, borderRadius: 6),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 140,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: const Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        AppShimmer(width: 140, height: 16, borderRadius: 4),
+                        SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(child: AppShimmer(height: 36, borderRadius: 6)),
+                            SizedBox(width: 12),
+                            Expanded(child: AppShimmer(height: 36, borderRadius: 6)),
+                          ],
+                        ),
+                        Spacer(),
+                        AppShimmer(width: double.infinity, height: 34, borderRadius: 8),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+
+              final mediaShimmer = Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const AppShimmer(width: 200, height: 20, borderRadius: 6),
+                  const SizedBox(height: 12),
+                  Container(
+                    height: 140,
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: AppColors.cardBorder),
+                    ),
+                    child: const Row(
+                      children: [
+                        Expanded(child: AppShimmer(height: double.infinity, borderRadius: 10)),
+                        SizedBox(width: 12),
+                        Expanded(child: AppShimmer(height: double.infinity, borderRadius: 10)),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+
+              if (isNarrow) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    deliveryShimmer,
+                    const SizedBox(height: 20),
+                    mediaShimmer,
+                  ],
+                );
+              }
+
+              return Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 3, child: deliveryShimmer),
+                  const SizedBox(width: 16),
+                  Expanded(flex: 2, child: mediaShimmer),
+                ],
+              );
+            },
+          ),
         ],
       ),
     );

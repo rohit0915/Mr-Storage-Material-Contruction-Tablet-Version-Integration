@@ -23,7 +23,16 @@ class DrawingsController extends GetxController {
 
   final isLoading = false.obs;
   final searchQuery = ''.obs;
-  final localSearchController = TextEditingController();
+  TextEditingController _localSearchController = TextEditingController();
+  TextEditingController get localSearchController {
+    try {
+      final _ = _localSearchController.text;
+    } catch (_) {
+      _localSearchController =
+          TextEditingController(text: searchQuery.value);
+    }
+    return _localSearchController;
+  }
   final projectList = <DrawingProjectItem>[].obs;
   String scopedLeadId = '';
   String scopedProjectName = '';
@@ -587,7 +596,6 @@ class DrawingsController extends GetxController {
       Get.find<ConstructionSocketService>().leaveLeadChat(scopedLeadId);
     }
     _socketSubscription?.cancel();
-    localSearchController.dispose();
     super.onClose();
   }
 }

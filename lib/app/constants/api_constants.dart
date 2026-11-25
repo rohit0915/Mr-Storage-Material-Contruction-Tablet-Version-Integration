@@ -2,8 +2,7 @@ class ApiConstants {
   ApiConstants._();
 
   /// Primary base URL from live web panel environment
-  static const String baseUrl =
-      'https://mr-storage-backend-025k.onrender.com/api';
+  static const String baseUrl = 'https://uat.flyweistechnology.com/api';
 
   /// Local fallback base URL if running local backend server
   static const String localBaseUrl = 'http://localhost:3000/api';
@@ -25,12 +24,18 @@ class ApiConstants {
   static const String login = '/auth/login';
   static const String logout = '/auth/logout';
   static const String refreshToken = '/auth/refresh';
-  static const String userProfile = '/auth/profile';
-  static const String userSettings = '/auth/settings';
+  static const String forgotPassword = '/auth/forgot-password';
+  static const String verifyOtp = '/auth/verify-otp';
+  static const String resetPassword = '/auth/reset-password';
+  static const String changePassword = '/auth/change-password';
+  static const String userProfile = '/construction/profile';
+  static const String userSettings = '/construction/settings';
 
   // Dashboard & Projects
   static const String dashboard = '/construction/dashboard';
   static const String dashboardFilters = '/construction/dashboard/filters';
+  static const String adminOverview = '/admin/construction/overview';
+  static const String adminOverviewFilters = '/admin/construction/overview/filters';
   static const String projects = '/construction/projects';
   static String projectDetails(String leadId) =>
       '/construction/projects/$leadId';

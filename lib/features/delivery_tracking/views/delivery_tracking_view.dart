@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../controllers/delivery_tracking_controller.dart';
 import '../widgets/delivery_card_list.dart';
 import '../widgets/delivery_summary_cards.dart';
@@ -510,7 +511,10 @@ class DeliveryTrackingView extends GetView<DeliveryTrackingController> {
             SizedBox(height: gap),
 
             // List of Delivery Cards
-            const DeliveryCardList(),
+            KeyedSubtree(
+              key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.deliveryTrackingList),
+              child: const DeliveryCardList(),
+            ),
           ],
         ),
       ),

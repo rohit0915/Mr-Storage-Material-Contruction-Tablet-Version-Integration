@@ -109,6 +109,39 @@ class DispatchBundleItem {
       totalProducts: totalProdStr,
     );
   }
+
+  DispatchBundleItem copyWith({
+    int? index,
+    String? bundleNo,
+    String? bundleId,
+    String? realMongoId,
+    String? weight,
+    String? status,
+    bool? isVerified,
+    String? parts,
+    String? time,
+    String? quantity,
+    String? length,
+    String? statusText,
+    String? shipper,
+    String? totalProducts,
+  }) =>
+      DispatchBundleItem(
+        index: index ?? this.index,
+        bundleNo: bundleNo ?? this.bundleNo,
+        bundleId: bundleId ?? this.bundleId,
+        realMongoId: realMongoId ?? this.realMongoId,
+        weight: weight ?? this.weight,
+        status: status ?? this.status,
+        isVerified: isVerified ?? this.isVerified,
+        parts: parts ?? this.parts,
+        time: time ?? this.time,
+        quantity: quantity ?? this.quantity,
+        length: length ?? this.length,
+        statusText: statusText ?? this.statusText,
+        shipper: shipper ?? this.shipper,
+        totalProducts: totalProducts ?? this.totalProducts,
+      );
 }
 
 class DispatchItem {
@@ -355,8 +388,8 @@ class DispatchProjectItem {
     required this.projectName,
     required this.siteLocation,
     this.thumbnailUrl,
-    required this.totalPackingLists,
-    required this.totalBundles,
+    this.totalPackingLists = 0,
+    this.totalBundles = 0,
     this.loads = const [],
     this.createdAt,
   });

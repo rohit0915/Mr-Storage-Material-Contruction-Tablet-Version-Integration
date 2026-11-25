@@ -24,7 +24,15 @@ class DashboardController extends GetxController {
   final DashboardService _dashboardService;
   final ApiClient _apiClient;
 
-  final searchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController();
+    }
+    return _searchController;
+  }
 
   final selectedMenu = 'Dashboard'.obs;
   final selectedProject = 'All Projects'.obs;
@@ -315,9 +323,16 @@ class DashboardController extends GetxController {
       final data = await _dashboardService.getDashboardData(
         projectId: _projectIds[selectedProject.value],
         buildingId: _buildingIds[selectedBuilding.value],
+        buildingLabel: selectedBuilding.value != 'All Buildings'
+            ? selectedBuilding.value
+            : null,
         status: _statusValues[selectedStatus.value],
         fromDate: _fromDate,
         toDate: _toDate,
+        startDate: _fromDate,
+        endDate: _toDate,
+        taskDeadlineDays: 30,
+        taskLimit: 10,
       );
       if (requestVersion != _requestVersion) return;
       if (data == null) throw const FormatException('Missing dashboard data');
@@ -363,23 +378,36 @@ class DashboardController extends GetxController {
     deliveryTotal = 0;
     materialTotal = 0;
     materialPending = 0;
-    // 1. projectStats -> metrics
-    if (data['projectStats'] is Map) {
-      final ps = Map<String, dynamic>.from(data['projectStats'] as Map);
-      final total = ps['total']?.toString() ?? '0';
-      final onTrack = ps['onTrack']?.toString() ?? '0';
-      final delayed = ps['delayed']?.toString() ?? '0';
-      final completed = ps['completed']?.toString() ?? '0';
-      final completionRate = ps['completionRate'] != null
-          ? '${ps['completionRate']}%'
+    // 1. stats / projectStats -> metrics
+    final statsMap = (data['stats'] is Map
+        ? Map<String, dynamic>.from(data['stats'] as Map)
+        : (data['projectStats'] is Map
+            ? Map<String, dynamic>.from(data['projectStats'] as Map)
+            : null));
+
+    if (statsMap != null) {
+      final total =
+          (statsMap['totalProjects'] ?? statsMap['total'])?.toString() ?? '0';
+      final onTrack = statsMap['onTrack']?.toString() ?? '0';
+      final delayed = statsMap['delayed']?.toString() ?? '0';
+      final completed = statsMap['completed']?.toString() ?? '0';
+      final compRateRaw = statsMap['completionRate'];
+      final completionRate = compRateRaw != null
+          ? (compRateRaw.toString().endsWith('%')
+              ? compRateRaw.toString()
+              : '$compRateRaw%')
           : '0%';
-      final upcomingDeadlines = ps['upcomingDeadlines']?.toString() ?? '0';
+      final upcomingDeadlines = (statsMap['upcomingDeadlinesCount'] ??
+              statsMap['upcomingDeadlines'])
+          ?.toString() ??
+          '0';
 
       metrics = [
         MetricItem(
           value: total,
           title: 'Total Projects',
-          subtitle: '${ps['totalChangePctVsYesterday'] ?? 0}% by Yesterday',
+          subtitle:
+              '${statsMap['totalChangePctVsYesterday'] ?? 0}% by Yesterday',
           icon: Icons.layers_outlined,
           iconBg: const Color(0xFFF97316),
           iconColor: Colors.white,
@@ -389,7 +417,7 @@ class DashboardController extends GetxController {
         MetricItem(
           value: onTrack,
           title: 'On Track',
-          subtitle: '${ps['onTrackPct'] ?? 0}% on track',
+          subtitle: '${statsMap['onTrackPct'] ?? 0}% on track',
           icon: Icons.access_time_filled_rounded,
           iconBg: const Color(0xFF1E293B),
           iconColor: Colors.white,
@@ -399,7 +427,7 @@ class DashboardController extends GetxController {
         MetricItem(
           value: delayed,
           title: 'Delayed',
-          subtitle: '${ps['delayedPct'] ?? 0}% delayed',
+          subtitle: '${statsMap['delayedPct'] ?? 0}% delayed',
           icon: Icons.calendar_month_rounded,
           iconBg: const Color(0xFF3B82F6),
           iconColor: Colors.white,
@@ -409,7 +437,7 @@ class DashboardController extends GetxController {
         MetricItem(
           value: completed,
           title: 'Completed',
-          subtitle: '${ps['completedPct'] ?? 0}% completed',
+          subtitle: '${statsMap['completedPct'] ?? 0}% completed',
           icon: Icons.assignment_turned_in_rounded,
           iconBg: const Color(0xFFEC4899),
           iconColor: Colors.white,
@@ -419,8 +447,8 @@ class DashboardController extends GetxController {
         MetricItem(
           value: completionRate,
           title: 'Completion Rate',
-          subtitle:
-              ps['completionRateLabel']?.toString() ?? 'Average Completion',
+          subtitle: statsMap['completionRateLabel']?.toString() ??
+              'Average Completion',
           icon: Icons.pie_chart_rounded,
           iconBg: const Color(0xFFF97316),
           iconColor: Colors.white,
@@ -430,7 +458,7 @@ class DashboardController extends GetxController {
         MetricItem(
           value: upcomingDeadlines,
           title: 'Upcoming Deadlines',
-          subtitle: 'Next 30 days',
+          subtitle: 'Next ${statsMap['taskDeadlineDays'] ?? 30} days',
           icon: Icons.timer_rounded,
           iconBg: const Color(0xFFEF4444),
           iconColor: Colors.white,
@@ -579,11 +607,22 @@ class DashboardController extends GetxController {
       update([AppGetIds.materialOverview]);
     }
 
-    // 4. upcomingDeadlines List
-    final rawDeadlines = data['upcomingDeadlines'] ??
-        data['deadlines'] ??
-        data['projectDeadlines'] ??
-        data['upcomingProjectDeadlines'];
+    // 4. upcomingConstructionTasks / upcomingSchedule (Construction timeline tasks)
+    dynamic rawDeadlines = data['upcomingConstructionTasks'] ??
+        data['upcomingSchedule'] ??
+        data['tasks'];
+
+    // Fall back to legacy deadline lists only if task lists are absent or empty
+    if (rawDeadlines == null ||
+        (rawDeadlines is List && rawDeadlines.isEmpty)) {
+      final legacy = data['upcomingDeadlines'] ??
+          data['deadlines'] ??
+          data['projectDeadlines'] ??
+          data['upcomingProjectDeadlines'];
+      if (legacy is List && legacy.isNotEmpty) {
+        rawDeadlines = legacy;
+      }
+    }
     if (rawDeadlines is List && rawDeadlines.isNotEmpty) {
       final parsed = <DeadlineItem>[];
       for (final item in rawDeadlines) {
@@ -597,7 +636,10 @@ class DashboardController extends GetxController {
       final parsed = <DeadlineItem>[];
       for (final item in (data['activeSites'] as List)) {
         if (item is Map) {
-          final d = item['deadline'] ?? item['endDate'] ?? item['targetDate'] ?? item['dueDate'];
+          final d = item['deadline'] ??
+              item['endDate'] ??
+              item['targetDate'] ??
+              item['dueDate'];
           if (d != null && d.toString().isNotEmpty && d.toString() != '—') {
             parsed.add(DeadlineItem.fromJson(Map<String, dynamic>.from(item)));
           }
@@ -608,6 +650,32 @@ class DashboardController extends GetxController {
       deadlines = [];
     }
     update([AppGetIds.upcomingDeadlines]);
+
+    // Print upcoming tasks/deadlines section for easy debugging
+    // ignore: avoid_print
+    print('---------------- [DASHBOARD TASKS DEBUG] ----------------');
+    // ignore: avoid_print
+    print(
+        '[DASHBOARD DEBUG -> stats]: ${data['stats'] ?? data['projectStats']}');
+    // ignore: avoid_print
+    print(
+        '[DASHBOARD DEBUG -> upcomingConstructionTasks]: ${data['upcomingConstructionTasks']}');
+    // ignore: avoid_print
+    print(
+        '[DASHBOARD DEBUG -> upcomingSchedule]: ${data['upcomingSchedule']}');
+    // ignore: avoid_print
+    print(
+        '[DASHBOARD DEBUG -> upcomingDeadlines]: ${data['upcomingDeadlines']}');
+    // ignore: avoid_print
+    print('[DASHBOARD DEBUG -> Total Deadlines Bound: ${deadlines.length}]');
+    for (int i = 0; i < deadlines.length; i++) {
+      final d = deadlines[i];
+      // ignore: avoid_print
+      print(
+          '  [$i] Title="${d.title}", Project="${d.project}", EndDate="${d.date}", DaysLeft="${d.daysLeft}", Badge="${d.badgeLabel}" (${d.badgeTone})');
+    }
+    // ignore: avoid_print
+    print('---------------------------------------------------------');
 
     // 5. activeSites
     if (data['activeSites'] is List) {
@@ -754,8 +822,14 @@ class DashboardController extends GetxController {
         ),
         [],
         ['Upcoming Project Deadlines'],
-        ['Project', 'Location', 'Deadline', 'Days Left'],
-        ...deadlines.map((d) => [d.project, d.location, d.date, d.daysLeft]),
+        ['Task', 'Project', 'Location', 'Deadline', 'Days Left / Status'],
+        ...deadlines.map((d) => [
+          d.title.isNotEmpty ? d.title : d.project,
+          d.project,
+          d.location,
+          d.date,
+          d.daysLeft,
+        ]),
         [],
         ['Project Timeline'],
         ['Stage', 'Date', 'Status'],
@@ -820,7 +894,6 @@ class DashboardController extends GetxController {
 
   @override
   void onClose() {
-    searchController.dispose();
     super.onClose();
   }
 }

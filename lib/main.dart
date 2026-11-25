@@ -10,6 +10,9 @@ import 'app/services/api_client.dart';
 import 'app/services/construction_socket_service.dart';
 import 'app/shell/app_shell_controller.dart';
 import 'app/theme/app_colors.dart';
+import 'app/walkthrough/controllers/walkthrough_controller.dart';
+import 'app/walkthrough/services/walkthrough_progress_service.dart';
+import 'app/walkthrough/services/walkthrough_voice_service.dart';
 import 'features/auth/services/auth_service.dart';
 
 Future<void> main() async {
@@ -42,6 +45,9 @@ Future<void> main() async {
 
   final authService = Get.put(AuthService(), permanent: true);
   Get.put(AppShellController(), permanent: true);
+  Get.put(WalkthroughVoiceService(), permanent: true);
+  Get.put(WalkthroughController(), permanent: true);
+  await WalkthroughProgressService.instance.init();
 
   final initialRoute =
       authService.isLoggedIn ? AppRoutes.dashboard : AppRoutes.login;

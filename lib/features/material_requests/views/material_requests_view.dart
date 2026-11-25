@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../controllers/material_requests_controller.dart';
 import '../widgets/add_material_request_dialog.dart';
 import '../widgets/material_request_filters_row.dart';
@@ -101,6 +102,7 @@ class MaterialRequestsView extends GetView<MaterialRequestsController> {
                 ),
                 SizedBox(width: size.width * 0.008),
                 ElevatedButton.icon(
+                  key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.materialRequestsAddBtn),
                   onPressed: () async {
                     await showDialog<bool>(
                       context: context,
@@ -134,9 +136,15 @@ class MaterialRequestsView extends GetView<MaterialRequestsController> {
             SizedBox(height: gap),
             const MaterialRequestFiltersRow(),
             SizedBox(height: gap),
-            const MaterialRequestSummaryCards(),
+            KeyedSubtree(
+              key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.materialRequestsSummary),
+              child: const MaterialRequestSummaryCards(),
+            ),
             SizedBox(height: gap),
-            const MaterialRequestTable(),
+            KeyedSubtree(
+              key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.materialRequestsTable),
+              child: const MaterialRequestTable(),
+            ),
           ],
         ),
       ),

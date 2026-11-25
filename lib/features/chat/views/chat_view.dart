@@ -4,6 +4,7 @@ import 'package:get/get.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../controllers/chat_controller.dart';
 import '../models/chat_models.dart';
 
@@ -36,24 +37,30 @@ class ChatView extends GetView<ChatController> {
             // ─── Left Sidebar (Width ~300) ───────────────────────────────────
             SizedBox(
               width: (size.width * 0.24).clamp(260.0, 320.0),
-              child: _LeftSidebar(controller: controller),
+              child: KeyedSubtree(
+                key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.chatSidebar),
+                child: _LeftSidebar(controller: controller),
+              ),
             ),
             const VerticalDivider(width: 1, color: AppColors.cardBorder),
 
             // ─── Center Chat Thread / Main Panel ─────────────────────────────
             Expanded(
-              child: Obx(() {
-                final dept = controller.activeDepartment;
-                final contact = controller.activeContact;
-                if (dept == null && contact == null) {
-                  return const _EmptyChatState();
-                }
-                return _CenterChatPanel(
-                  controller: controller,
-                  dept: dept,
-                  contact: contact,
-                );
-              }),
+              child: KeyedSubtree(
+                key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.chatMessageThread),
+                child: Obx(() {
+                  final dept = controller.activeDepartment;
+                  final contact = controller.activeContact;
+                  if (dept == null && contact == null) {
+                    return const _EmptyChatState();
+                  }
+                  return _CenterChatPanel(
+                    controller: controller,
+                    dept: dept,
+                    contact: contact,
+                  );
+                }),
+              ),
             ),
 
             // ─── Right Info Panel (Drawer) ─────────────────────────────────

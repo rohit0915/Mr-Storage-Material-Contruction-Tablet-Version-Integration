@@ -9,6 +9,7 @@ import '../../../app/widgets/app_shimmer.dart';
 import '../../delivery_tracking/controllers/delivery_details_controller.dart';
 import '../../delivery_tracking/models/delivery_tracking_models.dart';
 import '../../delivery_tracking/widgets/delivery_dialogs.dart';
+import '../../dispatch_verification/controllers/dispatch_verification_controller.dart';
 
 class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
   const DeliveryDetailsView({super.key});
@@ -25,11 +26,8 @@ class DeliveryDetailsView extends GetView<DeliveryDetailsController> {
     return AppScaffold(
       menuTitle: 'Projects & Calendar',
       body: Obx(() {
-        if (ctrl.isLoading.value && ctrl.delivery.isEmpty) {
-          return const Padding(
-            padding: EdgeInsets.all(24.0),
-            child: AppShimmerTable(rowCount: 6),
-          );
+        if (ctrl.isLoading.value) {
+          return const _DeliveryDetailsShimmer();
         }
 
         if (ctrl.fromProject && ctrl.delivery.isEmpty) {
@@ -1608,13 +1606,21 @@ Future<void> _confirmReceived(BuildContext context, DeliveryDetailsController c)
 
 Future<void> _partialReceived(BuildContext context, DeliveryDetailsController c) async {
   final item = DeliveryItem.fromJson(c.delivery);
-  await MarkPartialDialog.show(
-    context,
-    item,
-    (notes, items) async {
-      await c.markPartial(notes, items: items);
-    },
-  );
+  final leadId = item.leadId.isNotEmpty ? item.leadId : item.projectMongoId;
+  final args = {
+    'leadId': leadId,
+    'projectId': item.jobId,
+    'projectName': item.project,
+    'location': item.location,
+    'deliveryId': item.id,
+    'deliveryMongoId': item.realMongoId,
+    'initialStep': 2,
+    'fromDeliveryTracking': true,
+  };
+  if (Get.isRegistered<DispatchVerificationController>()) {
+    Get.find<DispatchVerificationController>().applyNavigationArguments(args);
+  }
+  Get.toNamed(AppRoutes.dispatchVerification, arguments: args);
 }
 
 Future<void> _updateContact(BuildContext context, DeliveryDetailsController c) async {
@@ -1681,4 +1687,135 @@ String _formatTitle(String raw) {
       .where((e) => e.isNotEmpty)
       .map((e) => '${e[0].toUpperCase()}${e.substring(1)}')
       .join(' ');
+}
+
+class _DeliveryDetailsShimmer extends StatelessWidget {
+  const _DeliveryDetailsShimmer();
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.sizeOf(context);
+    final padH = (size.width * 0.02).clamp(16.0, 24.0);
+
+    return SingleChildScrollView(
+      padding: EdgeInsets.symmetric(horizontal: padH, vertical: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Header Shimmer
+          Row(
+            children: const [
+              AppShimmer(width: 80, height: 36, borderRadius: 8),
+              SizedBox(width: 14),
+              AppShimmer(width: 160, height: 26, borderRadius: 6),
+              SizedBox(width: 10),
+              AppShimmer(width: 90, height: 22, borderRadius: 12),
+              Spacer(),
+              AppShimmer(width: 120, height: 36, borderRadius: 8),
+              SizedBox(width: 10),
+              AppShimmer(width: 120, height: 36, borderRadius: 8),
+            ],
+          ),
+          const SizedBox(height: 20),
+
+          // 2-Column Responsive Layout
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isWide = constraints.maxWidth >= 960;
+
+              const left = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DeliveryCardSkeleton(height: 100),
+                  SizedBox(height: 16),
+                  _DeliveryCardSkeleton(height: 220),
+                  SizedBox(height: 16),
+                  _DeliveryCardSkeleton(height: 180),
+                  SizedBox(height: 16),
+                  _DeliveryCardSkeleton(height: 190),
+                ],
+              );
+
+              const right = Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _DeliveryCardSkeleton(height: 110),
+                  SizedBox(height: 16),
+                  _DeliveryCardSkeleton(height: 140),
+                  SizedBox(height: 16),
+                  _DeliveryCardSkeleton(height: 150),
+                  SizedBox(height: 16),
+                  _DeliveryCardSkeleton(height: 120),
+                ],
+              );
+
+              if (!isWide) {
+                return const Column(
+                  children: [
+                    left,
+                    SizedBox(height: 16),
+                    right,
+                  ],
+                );
+              }
+
+              return const Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(flex: 68, child: left),
+                  SizedBox(width: 16),
+                  Expanded(flex: 32, child: right),
+                ],
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DeliveryCardSkeleton extends StatelessWidget {
+  const _DeliveryCardSkeleton({required this.height});
+
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: height,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.cardBorder),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              AppShimmer(width: 110, height: 14, borderRadius: 4),
+              Spacer(),
+              AppShimmer(width: 60, height: 16, borderRadius: 6),
+            ],
+          ),
+          SizedBox(height: 16),
+          Expanded(
+            child: AppShimmer(
+              width: double.infinity,
+              borderRadius: 8,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }

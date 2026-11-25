@@ -6,6 +6,7 @@ class DispatchVerificationBinding extends Bindings {
   void dependencies() {
     Get.lazyPut<DispatchVerificationController>(
       () => DispatchVerificationController(),
+      fenix: true,
     );
   }
 }

@@ -17,7 +17,15 @@ class LabelPrintingController extends GetxController {
     : _service = service ?? LabelPrintingService();
 
   final LabelPrintingService _service;
-  final searchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
   final isLoading = false.obs;
 
   final bundles = <LabelBundleItem>[].obs;
@@ -322,7 +330,6 @@ class LabelPrintingController extends GetxController {
 
   @override
   void onClose() {
-    searchController.dispose();
     super.onClose();
   }
 }

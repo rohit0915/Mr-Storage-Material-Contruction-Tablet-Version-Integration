@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../dispatch_verification/controllers/dispatch_verification_controller.dart';
 import '../controllers/delivery_tracking_controller.dart';
 import '../models/delivery_tracking_models.dart';
 import 'delivery_dialogs.dart';
@@ -480,15 +482,27 @@ class _DeliveryCard extends GetView<DeliveryTrackingController> {
                       icon: Icons.download_outlined,
                       color: const Color(0xFF1D51A4),
                       fontSize: btnSize,
-                      onTap: () => MarkPartialDialog.show(
-                        context,
-                        item,
-                        (notes, items) => controller.markPartialReceived(
-                          item.id,
-                          notes,
-                          items: items,
-                        ),
-                      ),
+                      onTap: () {
+                        final leadId = item.leadId.isNotEmpty
+                            ? item.leadId
+                            : item.projectMongoId;
+                        final args = {
+                          'leadId': leadId,
+                          'projectId': item.jobId,
+                          'projectName': item.project,
+                          'location': item.location,
+                          'deliveryId': item.id,
+                          'deliveryMongoId': item.realMongoId,
+                          'initialStep': 2,
+                          'fromDeliveryTracking': true,
+                        };
+                        if (Get.isRegistered<DispatchVerificationController>()) {
+                          Get.find<DispatchVerificationController>()
+                              .applyNavigationArguments(args);
+                        }
+                        Get.toNamed(AppRoutes.dispatchVerification,
+                            arguments: args);
+                      },
                     ),
                   ),
                 ],

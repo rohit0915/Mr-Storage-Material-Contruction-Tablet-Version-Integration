@@ -26,7 +26,16 @@ class DeliveryTrackingController extends GetxController {
   String scopedJobId = '';
   bool isProjectScoped = false;
 
-  final searchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
+
   final searchQuery = ''.obs;
   final selectedStatus = 'All Statuses'.obs;
 
@@ -36,7 +45,16 @@ class DeliveryTrackingController extends GetxController {
   final isAdvancedFiltersVisible = false.obs;
   final selectedSort = 'Latest'.obs;
   final selectedProject = 'All Projects'.obs;
-  final materialTypeController = TextEditingController();
+  TextEditingController _materialTypeController = TextEditingController();
+  TextEditingController get materialTypeController {
+    try {
+      final _ = _materialTypeController.text;
+    } catch (_) {
+      _materialTypeController =
+          TextEditingController(text: materialTypeQuery.value);
+    }
+    return _materialTypeController;
+  }
   final materialTypeQuery = ''.obs;
   final selectedDestination = 'All Destinations'.obs;
   final selectedTransporter = 'All Transporters'.obs;
@@ -881,8 +899,6 @@ class DeliveryTrackingController extends GetxController {
   void onClose() {
     _searchDebounce?.cancel();
     _materialDebounce?.cancel();
-    searchController.dispose();
-    materialTypeController.dispose();
     super.onClose();
   }
 }

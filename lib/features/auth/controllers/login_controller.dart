@@ -23,6 +23,7 @@ class LoginController extends GetxController {
   final RxBool rememberMe = true.obs;
   final RxBool obscurePassword = true.obs;
   final RxBool isLoading = false.obs;
+  final RxBool isForgotLoading = false.obs;
   final RxBool inForgotFlow = false.obs;
   final Rx<ForgotPasswordStep> forgotStep = ForgotPasswordStep.email.obs;
 
@@ -31,9 +32,13 @@ class LoginController extends GetxController {
   final TextEditingController otp2Controller = TextEditingController();
   final TextEditingController otp3Controller = TextEditingController();
   final TextEditingController otp4Controller = TextEditingController();
+  final TextEditingController otp5Controller = TextEditingController();
+  final TextEditingController otp6Controller = TextEditingController();
   final TextEditingController newPasswordController = TextEditingController();
   final TextEditingController retypePasswordController =
       TextEditingController();
+
+  String? _resetToken;
 
   @override
   void onInit() {
@@ -114,7 +119,7 @@ class LoginController extends GetxController {
           title: 'Login Successful',
           description: 'Welcome back!',
         );
-        Get.offAllNamed(AppRoutes.dashboard);
+        Get.offAllNamed(AppRoutes.dashboard, arguments: {'fromLogin': true});
       } else {
         AppToast.showError(title: 'Login Failed', description: errorMsg);
       }
@@ -133,7 +138,7 @@ class LoginController extends GetxController {
     inForgotFlow.value = false;
   }
 
-  void continueForgotEmail() {
+  Future<void> continueForgotEmail() async {
     final email = forgotEmailController.text.trim();
     if (email.isEmpty || !GetUtils.isEmail(email)) {
       AppToast.showError(
@@ -142,32 +147,92 @@ class LoginController extends GetxController {
       );
       return;
     }
-    forgotStep.value = ForgotPasswordStep.otp;
+
+    isForgotLoading.value = true;
+    try {
+      final err = await _authService.forgotPassword(email);
+      if (err == null) {
+        AppToast.showSuccess(
+          title: 'OTP Sent',
+          description: 'A 6-digit verification code has been sent to $email.',
+        );
+        forgotStep.value = ForgotPasswordStep.otp;
+      } else {
+        AppToast.showError(
+          title: 'Request Failed',
+          description: err,
+        );
+      }
+    } finally {
+      isForgotLoading.value = false;
+    }
   }
 
-  void continueOtp() {
-    final otp =
-        otp1Controller.text +
-        otp2Controller.text +
-        otp3Controller.text +
-        otp4Controller.text;
-    if (otp.length != 4) {
+  Future<void> resendForgotOtp() async {
+    final email = forgotEmailController.text.trim();
+    if (email.isEmpty) return;
+
+    isForgotLoading.value = true;
+    try {
+      final err = await _authService.forgotPassword(email);
+      if (err == null) {
+        AppToast.showSuccess(
+          title: 'OTP Resent',
+          description: 'A new 6-digit verification code has been sent.',
+        );
+      } else {
+        AppToast.showError(title: 'Resend Failed', description: err);
+      }
+    } finally {
+      isForgotLoading.value = false;
+    }
+  }
+
+  Future<void> continueOtp() async {
+    final otp = otp1Controller.text.trim() +
+        otp2Controller.text.trim() +
+        otp3Controller.text.trim() +
+        otp4Controller.text.trim() +
+        otp5Controller.text.trim() +
+        otp6Controller.text.trim();
+
+    if (otp.length != 6) {
       AppToast.showError(
         title: 'Invalid OTP',
-        description: 'Please enter 4 digit OTP.',
+        description: 'Please enter the complete 6-digit OTP.',
       );
       return;
     }
-    forgotStep.value = ForgotPasswordStep.newPassword;
+
+    final email = forgotEmailController.text.trim();
+    isForgotLoading.value = true;
+    try {
+      final result = await _authService.verifyOtp(email: email, otp: otp);
+      if (result.error == null) {
+        _resetToken = result.resetToken;
+        AppToast.showSuccess(
+          title: 'OTP Verified',
+          description: 'Please enter your new password.',
+        );
+        forgotStep.value = ForgotPasswordStep.newPassword;
+      } else {
+        AppToast.showError(
+          title: 'Verification Failed',
+          description: result.error!,
+        );
+      }
+    } finally {
+      isForgotLoading.value = false;
+    }
   }
 
-  void continueNewPassword() {
+  Future<void> continueNewPassword() async {
     final pass = newPasswordController.text;
     final retype = retypePasswordController.text;
-    if (pass.length < 4) {
+    if (pass.length < 6) {
       AppToast.showError(
         title: 'Weak Password',
-        description: 'Password must be at least 4 characters.',
+        description: 'Password must be at least 6 characters.',
       );
       return;
     }
@@ -178,12 +243,39 @@ class LoginController extends GetxController {
       );
       return;
     }
-    forgotStep.value = ForgotPasswordStep.success;
+
+    if (_resetToken == null || _resetToken!.isEmpty) {
+      AppToast.showError(
+        title: 'Session Expired',
+        description: 'Verification session expired. Please verify OTP again.',
+      );
+      forgotStep.value = ForgotPasswordStep.otp;
+      return;
+    }
+
+    isForgotLoading.value = true;
+    try {
+      final err = await _authService.resetPassword(
+        resetToken: _resetToken!,
+        newPassword: pass,
+      );
+      if (err == null) {
+        forgotStep.value = ForgotPasswordStep.success;
+      } else {
+        AppToast.showError(
+          title: 'Reset Failed',
+          description: err,
+        );
+      }
+    } finally {
+      isForgotLoading.value = false;
+    }
   }
 
   void finishForgotFlow() {
     inForgotFlow.value = false;
     forgotStep.value = ForgotPasswordStep.email;
+    _resetToken = null;
     passwordController.clear();
     newPasswordController.clear();
     retypePasswordController.clear();
@@ -191,19 +283,12 @@ class LoginController extends GetxController {
     otp2Controller.clear();
     otp3Controller.clear();
     otp4Controller.clear();
+    otp5Controller.clear();
+    otp6Controller.clear();
   }
 
   @override
   void onClose() {
-    emailController.dispose();
-    passwordController.dispose();
-    forgotEmailController.dispose();
-    otp1Controller.dispose();
-    otp2Controller.dispose();
-    otp3Controller.dispose();
-    otp4Controller.dispose();
-    newPasswordController.dispose();
-    retypePasswordController.dispose();
     super.onClose();
   }
 }

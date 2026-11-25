@@ -29,6 +29,9 @@ class ProjectDetailsController extends GetxController {
   final lifecycleStatus = ''.obs;
   final customerName = ''.obs;
   final customerEmail = ''.obs;
+  final noOfBuildings = ''.obs;
+  final createdOn = ''.obs;
+  final priority = ''.obs;
 
   final deliveries = <DeliveryItem>[].obs;
   final tasks = <Map<String, dynamic>>[].obs;
@@ -400,6 +403,13 @@ class ProjectDetailsController extends GetxController {
     if (jobIdArg.isNotEmpty) projectId.value = jobIdArg;
     if (statusArg.isNotEmpty) lifecycleStatus.value = statusArg;
 
+    final noOfBArg = (args['noOfBuildings'] ?? args['buildingCount'] ?? '').toString();
+    final createdOnArg = (args['createdAt'] ?? args['createdOn'] ?? '').toString();
+    final priorityArg = (args['priority'] ?? '').toString();
+    if (noOfBArg.isNotEmpty) noOfBuildings.value = noOfBArg;
+    if (createdOnArg.isNotEmpty) createdOn.value = createdOnArg;
+    if (priorityArg.isNotEmpty) priority.value = priorityArg;
+
     leadId.value = idArg;
     if (leadId.value.isNotEmpty) {
       fetchDetails(leadId.value);
@@ -548,6 +558,37 @@ class ProjectDetailsController extends GetxController {
           buildingType.value = 'Commercial Steel';
         }
 
+        final rawNoOfB = pMap['numberOfBuildings'] ??
+            pMap['noOfBuildings'] ??
+            pMap['buildingCount'] ??
+            pMap['totalBuildings'] ??
+            (pMap['buildings'] is List
+                ? (pMap['buildings'] as List).length.toString()
+                : null);
+        if (rawNoOfB != null && rawNoOfB.toString().isNotEmpty) {
+          noOfBuildings.value = rawNoOfB.toString();
+        }
+
+        final rawCreated =
+            pMap['createdAt'] ?? pMap['created_at'] ?? pMap['createdOn'];
+        if (rawCreated != null && rawCreated.toString().isNotEmpty) {
+          try {
+            final dt = DateTime.parse(rawCreated.toString());
+            const months = [
+              'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+              'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+            ];
+            createdOn.value = '${dt.day} ${months[dt.month - 1]} ${dt.year}';
+          } catch (_) {
+            createdOn.value = rawCreated.toString();
+          }
+        }
+
+        final rawPriority = pMap['priority'] ?? pMap['projectPriority'];
+        if (rawPriority != null && rawPriority.toString().isNotEmpty) {
+          priority.value = rawPriority.toString();
+        }
+
         lifecycleStatus.value =
             pMap['lifecycleStatus']?.toString() ??
             pMap['status']?.toString() ??
@@ -570,15 +611,37 @@ class ProjectDetailsController extends GetxController {
           }
         }
 
-        if (res['deliveries'] is List) {
-          final list = res['deliveries'] as List;
+        dynamic rawDeliveriesList = res['deliveries'] ??
+            res['materialDeliveries'] ??
+            res['upcomingDeliveries'];
+
+        if (rawDeliveriesList is! List || rawDeliveriesList.isEmpty) {
+          try {
+            final matDeliveriesRes =
+                await _calendarService.getProjectMaterialDeliveries(id);
+            if (matDeliveriesRes is List) {
+              rawDeliveriesList = matDeliveriesRes;
+            } else if (matDeliveriesRes is Map &&
+                matDeliveriesRes['deliveries'] is List) {
+              rawDeliveriesList = matDeliveriesRes['deliveries'] as List;
+            } else if (matDeliveriesRes is Map &&
+                matDeliveriesRes['data'] is List) {
+              rawDeliveriesList = matDeliveriesRes['data'] as List;
+            }
+          } catch (_) {}
+        }
+
+        if (rawDeliveriesList is List) {
+          final list = rawDeliveriesList;
           final parsed = <DeliveryItem>[];
           for (int i = 0; i < list.length; i++) {
             final item = list[i];
             if (item is Map) {
               final mItem = Map<String, dynamic>.from(item);
               if (mItem['createdAt'] == null && mItem['created_at'] == null) {
-                mItem['createdAt'] = DateTime.fromMillisecondsSinceEpoch(1600000000000 + i * 1000).toIso8601String();
+                mItem['createdAt'] = DateTime.fromMillisecondsSinceEpoch(
+                  1600000000000 + i * 1000,
+                ).toIso8601String();
               }
               parsed.add(DeliveryItem.fromJson(mItem));
             }
@@ -590,6 +653,8 @@ class ProjectDetailsController extends GetxController {
             return b.id.compareTo(a.id);
           });
           deliveries.assignAll(parsed);
+        } else {
+          deliveries.clear();
         }
 
         if (res['tasks'] is List) {

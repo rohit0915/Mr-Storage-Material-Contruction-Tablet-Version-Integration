@@ -365,19 +365,35 @@ class _SecuritySettingsCard extends StatelessWidget {
           SizedBox(
             width: double.infinity,
             height: 44,
-            child: ElevatedButton(
-              onPressed: controller.updatePassword,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primaryBlue,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            child: Obx(
+              () => ElevatedButton(
+                onPressed: controller.isUpdatingPassword.value
+                    ? null
+                    : controller.updatePassword,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryBlue,
+                  foregroundColor: Colors.white,
+                  elevation: 0,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
-              ),
-              child: const Text(
-                'Update Password',
-                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 14),
+                child: controller.isUpdatingPassword.value
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          color: Colors.white,
+                        ),
+                      )
+                    : const Text(
+                        'Update Password',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 14,
+                        ),
+                      ),
               ),
             ),
           ),

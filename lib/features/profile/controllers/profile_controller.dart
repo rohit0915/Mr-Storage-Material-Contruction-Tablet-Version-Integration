@@ -27,6 +27,7 @@ class ProfileController extends GetxController {
   final RxBool isSavingSettings = false.obs;
   final RxBool isLoadingProfile = false.obs;
   final RxBool isSavingProfile = false.obs;
+  final RxBool isUpdatingPassword = false.obs;
 
   // 7 Settings Toggle Switches matching Image 4 & 5
   final twoFactor = true.obs;
@@ -216,26 +217,67 @@ class ProfileController extends GetxController {
     }
   }
 
-  void updatePassword() {
-    if (newPasswordController.text.isEmpty) {
+  Future<void> updatePassword() async {
+    final current = currentPasswordController.text.trim();
+    final newPass = newPasswordController.text;
+    final confirm = confirmPasswordController.text;
+
+    if (current.isEmpty) {
       AppToast.showError(
-        title: 'Error',
-        description: 'Please enter new password',
+        title: 'Current Password Required',
+        description: 'Please enter your current password.',
       );
       return;
     }
-    if (newPasswordController.text != confirmPasswordController.text) {
-      AppToast.showError(title: 'Error', description: 'Passwords do not match');
+    if (newPass.isEmpty) {
+      AppToast.showError(
+        title: 'New Password Required',
+        description: 'Please enter new password.',
+      );
+      return;
+    }
+    if (newPass.length < 6) {
+      AppToast.showError(
+        title: 'Weak Password',
+        description: 'New password must be at least 6 characters.',
+      );
+      return;
+    }
+    if (newPass != confirm) {
+      AppToast.showError(
+        title: 'Password Mismatch',
+        description: 'New password and confirm password do not match.',
+      );
       return;
     }
 
-    AppToast.showSuccess(
-      title: 'Password Updated',
-      description: 'Your password has been changed successfully.',
-    );
-    currentPasswordController.clear();
-    newPasswordController.clear();
-    confirmPasswordController.clear();
+    isUpdatingPassword.value = true;
+    try {
+      final authService = Get.isRegistered<AuthService>()
+          ? Get.find<AuthService>()
+          : AuthService();
+      final err = await authService.changePassword(
+        currentPassword: current,
+        newPassword: newPass,
+      );
+
+      if (err == null) {
+        AppToast.showSuccess(
+          title: 'Password Updated',
+          description: 'Your password has been changed successfully.',
+        );
+        currentPasswordController.clear();
+        newPasswordController.clear();
+        confirmPasswordController.clear();
+      } else {
+        AppToast.showError(
+          title: 'Update Failed',
+          description: err,
+        );
+      }
+    } finally {
+      isUpdatingPassword.value = false;
+    }
   }
 
   void logout() {
@@ -250,13 +292,6 @@ class ProfileController extends GetxController {
 
   @override
   void onClose() {
-    fullNameController.dispose();
-    emailController.dispose();
-    phoneController.dispose();
-    roleController.dispose();
-    currentPasswordController.dispose();
-    newPasswordController.dispose();
-    confirmPasswordController.dispose();
     super.onClose();
   }
 }

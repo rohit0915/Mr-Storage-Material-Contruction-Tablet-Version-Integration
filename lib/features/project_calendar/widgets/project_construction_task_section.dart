@@ -3,6 +3,7 @@ import 'package:get/get.dart';
 
 import '../../../app/theme/app_colors.dart';
 import '../../../app/utils/app_toast.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/project_details_controller.dart';
 import '../models/project_calendar_models.dart';
 import 'add_task_dialog.dart';
@@ -79,15 +80,46 @@ class ProjectConstructionTaskSection extends StatelessWidget {
 
             // Horizontal Scrollable Cards List
             if (isLoading && tasks.isEmpty)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32),
-                child: Center(
-                  child: SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(
-                      strokeWidth: 2,
-                      color: Colors.blue.shade600,
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                physics: const NeverScrollableScrollPhysics(),
+                child: Row(
+                  children: List.generate(
+                    3,
+                    (index) => Container(
+                      width: 280,
+                      height: 150,
+                      margin: EdgeInsets.only(right: index < 2 ? 14 : 0),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: AppColors.cardBorder),
+                      ),
+                      child: const Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              AppShimmer(width: 130, height: 16, borderRadius: 4),
+                              AppShimmer(width: 60, height: 18, borderRadius: 8),
+                            ],
+                          ),
+                          SizedBox(height: 12),
+                          AppShimmer(width: 100, height: 12, borderRadius: 4),
+                          Spacer(),
+                          AppShimmer(width: double.infinity, height: 6, borderRadius: 3),
+                          SizedBox(height: 10),
+                          Row(
+                            children: [
+                              AppShimmer(width: 18, height: 18, shape: BoxShape.circle),
+                              SizedBox(width: 6),
+                              AppShimmer(width: 70, height: 12, borderRadius: 4),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

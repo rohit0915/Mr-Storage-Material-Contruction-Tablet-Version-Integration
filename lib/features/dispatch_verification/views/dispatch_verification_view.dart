@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/utils/app_toast.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../../bundle_scan/models/bundle_scan_models.dart';
 import '../../bundle_scan/services/bundle_scan_service.dart';
 import '../../bundle_scan/widgets/bundle_mismatch_dialog.dart';
 import '../../bundle_scan/widgets/scanner_dialog.dart';
+import '../../label_printing/models/label_printing_models.dart';
+import '../../label_printing/widgets/label_preview_dialog.dart';
 import '../controllers/dispatch_verification_controller.dart';
 import '../models/dispatch_verification_models.dart';
 import '../widgets/dispatch_verification_dialogs.dart';
@@ -20,24 +24,39 @@ class DispatchVerificationView extends GetView<DispatchVerificationController> {
 
   @override
   Widget build(BuildContext context) {
-    return AppScaffold(
-      menuTitle: 'Dispatch Verification',
-      body: Obx(() {
-        final step = controller.currentStep.value;
-        switch (step) {
-          case 1:
-            return _Step1ProjectListView(controller: controller);
-          case 2:
-            return _Step2PackingListView(controller: controller);
-          case 3:
-            return _Step3BundleListView(controller: controller);
-          case 4:
-            return _Step4BundleDetailView(controller: controller);
-          default:
-            return _Step1ProjectListView(controller: controller);
-        }
-      }),
-    );
+    return Obx(() {
+      final canPopDirectly = controller.currentStep.value == 1 ||
+          (controller.currentStep.value == 2 &&
+              controller.fromDeliveryTracking.value);
+      return PopScope(
+        canPop: canPopDirectly,
+        onPopInvokedWithResult: (didPop, _) {
+          if (didPop) return;
+          controller.goBack();
+        },
+        child: AppScaffold(
+          menuTitle: 'Dispatch Verification',
+          body: KeyedSubtree(
+            key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.dispatchVerificationSteps),
+            child: Obx(() {
+              final step = controller.currentStep.value;
+              switch (step) {
+                case 1:
+                  return _Step1ProjectListView(controller: controller);
+                case 2:
+                  return _Step2PackingListView(controller: controller);
+                case 3:
+                  return _Step3BundleListView(controller: controller);
+                case 4:
+                  return _Step4BundleDetailView(controller: controller);
+                default:
+                  return _Step1ProjectListView(controller: controller);
+              }
+            }),
+          ),
+        ),
+      );
+    });
   }
 }
 
@@ -808,14 +827,19 @@ class _Step2PackingListView extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Packing List - $projectName',
-                      style: TextStyle(
-                        fontSize: titleSize,
-                        fontWeight: FontWeight.w800,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
+                    Obx(() {
+                      final pName =
+                          controller.selectedProject.value?.projectName ??
+                          projectName;
+                      return Text(
+                        'Packing List - $pName',
+                        style: TextStyle(
+                          fontSize: titleSize,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.textPrimary,
+                        ),
+                      );
+                    }),
                     SizedBox(height: size.height * 0.004),
                     Text(
                       'Verify bundles and truckload details before confirming dispatch from the plant.',
@@ -839,29 +863,35 @@ class _Step2PackingListView extends StatelessWidget {
 
           // 4 Stat Cards
           Obx(() {
+            final loading =
+                controller.isLoading.value || controller.isStep2Loading.value;
             final card1 = _StatCard(
               label: 'Total Packing list',
               value: '${controller.step2TotalPackingList}',
               bgColor: const Color(0xFF7C3AED),
               icon: Icons.assignment_outlined,
+              isLoading: loading,
             );
             final card2 = _StatCard(
               label: 'Loads Ready For Dispatch',
               value: '${controller.step2LoadsReady}',
               bgColor: const Color(0xFF16A34A),
               icon: Icons.check_circle_outline_rounded,
+              isLoading: loading,
             );
             final card3 = _StatCard(
               label: 'Bundles Assigned',
               value: '${controller.step2BundlesAssigned}',
               bgColor: const Color(0xFFEAB308),
               icon: Icons.all_inbox_rounded,
+              isLoading: loading,
             );
             final card4 = _StatCard(
               label: 'Loads Dispatch Today',
               value: '${controller.step2LoadsDispatched}',
               bgColor: const Color(0xFFEF4444),
               icon: Icons.local_shipping_outlined,
+              isLoading: loading,
             );
 
             return LayoutBuilder(
@@ -1044,7 +1074,8 @@ class _Step2PackingListView extends StatelessWidget {
 
           // Packing List Table
           Obx(() {
-            if (controller.isLoading.value) {
+            if (controller.isLoading.value ||
+                controller.isStep2Loading.value) {
               return const AppShimmerTable(rowCount: 6);
             }
             final items = controller.pageItems;
@@ -1347,36 +1378,42 @@ class _Step3BundleListView extends StatelessWidget {
 
           // 3 Stat Cards
           Obx(
-            () => Row(
-              children: [
-                Expanded(
-                  child: _StatCard(
-                    label: 'Bundles Scanned',
-                    value: '${controller.step3BundlesScanned}',
-                    bgColor: const Color(0xFF0284C7),
-                    icon: Icons.qr_code_2_rounded,
+            () {
+              final loading = controller.isStep3Loading.value;
+              return Row(
+                children: [
+                  Expanded(
+                    child: _StatCard(
+                      label: 'Bundles Scanned',
+                      value: '${controller.step3BundlesScanned}',
+                      bgColor: const Color(0xFF0284C7),
+                      icon: Icons.qr_code_2_rounded,
+                      isLoading: loading,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Bundles Remaining',
-                    value: '${controller.step3BundlesRemaining}',
-                    bgColor: const Color(0xFFF97316),
-                    icon: Icons.hourglass_bottom_rounded,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatCard(
+                      label: 'Bundles Remaining',
+                      value: '${controller.step3BundlesRemaining}',
+                      bgColor: const Color(0xFFF97316),
+                      icon: Icons.hourglass_bottom_rounded,
+                      isLoading: loading,
+                    ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: _StatCard(
-                    label: 'Bundles Loaded',
-                    value: '${controller.step3BundlesLoaded}',
-                    bgColor: const Color(0xFF16A34A),
-                    icon: Icons.check_circle_rounded,
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _StatCard(
+                      label: 'Bundles Loaded',
+                      value: '${controller.step3BundlesLoaded}',
+                      bgColor: const Color(0xFF16A34A),
+                      icon: Icons.check_circle_rounded,
+                      isLoading: loading,
+                    ),
                   ),
-                ),
-              ],
-            ),
+                ],
+              );
+            },
           ),
           SizedBox(height: gap * 1.2),
 
@@ -1501,6 +1538,9 @@ class _Step3BundleListView extends StatelessWidget {
                 const Divider(height: 1, color: AppColors.cardBorder),
 
                 Obx(() {
+                  if (controller.isStep3Loading.value) {
+                    return const AppShimmerTable(rowCount: 6);
+                  }
                   final bundles = controller.pageBundles;
                   if (bundles.isEmpty && controller.currentLoadBundles.isEmpty) {
                     return Padding(
@@ -1726,6 +1766,39 @@ class _Step4BundleDetailViewState extends State<_Step4BundleDetailView> {
   final BundleScanService _bundleService = BundleScanService();
   bool _isActionRunning = false;
 
+  String _getBundleTargetId(BundleScanItem? item, String fallback) {
+    if (item == null) return fallback;
+    if (item.realMongoId.isNotEmpty &&
+        BundleScanItem.isMongoHexId(item.realMongoId)) {
+      return item.realMongoId;
+    }
+    if (item.id.isNotEmpty && BundleScanItem.isMongoHexId(item.id)) {
+      return item.id;
+    }
+    return item.realMongoId.isNotEmpty
+        ? item.realMongoId
+        : (item.id.isNotEmpty ? item.id : fallback);
+  }
+
+  void _updateBundleInCurrentLoad(BundleScanItem updated) {
+    final currentLoad = widget.controller.selectedLoad.value;
+    if (currentLoad != null && currentLoad.bundleList.isNotEmpty) {
+      final updatedList = currentLoad.bundleList.map((b) {
+        if (b.bundleId == updated.bundleId ||
+            (b.realMongoId.isNotEmpty &&
+                b.realMongoId == updated.realMongoId)) {
+          return b.copyWith(
+            isVerified: updated.isVerified,
+            statusText: updated.statusText,
+          );
+        }
+        return b;
+      }).toList();
+      widget.controller.selectedLoad.value =
+          currentLoad.copyWith(bundleList: updatedList);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
@@ -1734,218 +1807,518 @@ class _Step4BundleDetailViewState extends State<_Step4BundleDetailView> {
     final titleSize = (size.width * 0.018).clamp(20.0, 26.0);
     final subSize = (size.width * 0.010).clamp(11.0, 13.0);
 
-    final item = widget.controller.selectedBundle.value;
-    final load = widget.controller.selectedLoad.value;
-    final project = widget.controller.selectedProject.value;
+    return Obx(() {
+      final item = widget.controller.selectedBundle.value;
+      final load = widget.controller.selectedLoad.value;
+      final project = widget.controller.selectedProject.value;
 
-    final bundleId = item?.bundleId ?? 'BND-001';
-    final projName = project?.projectName ?? (item?.project ?? 'Downtown Office Complex');
-    final loadId = load?.displayLoadId ?? (item?.loadId ?? 'LOAD-101');
-    final truck = load?.truck ?? (item?.truck ?? 'TRK-01 (Flatbed 48ft)');
-    final destination = load?.destination ?? (item?.site ?? 'Site A - Austin, TX');
-    final weight = item?.totalWeight ?? '18,500 LBS';
-    final parts = item?.parts ?? 'STL-B12';
+      final bundleId = item?.bundleId ?? 'BND-001';
+      final projName = project?.projectName ??
+          (item?.project ?? 'Downtown Office Complex');
+      final loadId = load?.displayLoadId ?? (item?.loadId ?? 'LOAD-101');
+      final truck = load?.truck ?? (item?.truck ?? 'TRK-01 (Flatbed 48ft)');
+      final destination =
+          load?.destination ?? (item?.site ?? 'Site A - Austin, TX');
+      final weight = item?.totalWeight ?? '18,500 LBS';
+      final parts = item?.parts ?? 'STL-B12';
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.fromLTRB(padH, gap, padH, size.height * 0.02),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header Row with Back Button & Actions
-          LayoutBuilder(
-            builder: (context, constraints) {
-              final isNarrow = constraints.maxWidth < 1000;
+      return SingleChildScrollView(
+        padding: EdgeInsets.fromLTRB(padH, gap, padH, size.height * 0.02),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Header Row with Back Button & Actions
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final isNarrow = constraints.maxWidth < 1000;
 
-              final backAndTitle = Row(
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  InkWell(
-                    onTap: widget.controller.goBack,
-                    borderRadius: BorderRadius.circular(8),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      margin: const EdgeInsets.only(right: 12),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF7C3AED),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.arrow_back,
-                        color: Colors.white,
-                        size: 18,
-                      ),
-                    ),
-                  ),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'Bundle Information & Verification',
-                          style: TextStyle(
-                            fontSize: titleSize,
-                            fontWeight: FontWeight.w800,
-                            color: AppColors.textPrimary,
-                          ),
+                final backAndTitle = Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    InkWell(
+                      onTap: widget.controller.goBack,
+                      borderRadius: BorderRadius.circular(8),
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        margin: const EdgeInsets.only(right: 12),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF7C3AED),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        SizedBox(height: size.height * 0.004),
-                        Text(
-                          '$projName / $loadId / $bundleId',
-                          style: TextStyle(
-                            fontSize: subSize,
-                            color: AppColors.textSecondary,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        child: const Icon(
+                          Icons.arrow_back,
+                          color: Colors.white,
+                          size: 18,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                ],
-              );
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Bundle Information & Verification',
+                            style: TextStyle(
+                              fontSize: titleSize,
+                              fontWeight: FontWeight.w800,
+                              color: AppColors.textPrimary,
+                            ),
+                          ),
+                          SizedBox(height: size.height * 0.004),
+                          Text(
+                            '$projName / $loadId / $bundleId',
+                            style: TextStyle(
+                              fontSize: subSize,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
 
-              final actionButtons = Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                crossAxisAlignment: WrapCrossAlignment.center,
-                children: [
-                  // Download
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      AppToast.showSuccess(
-                        title: 'Downloaded',
-                        description: 'Bundle label downloaded.',
-                      );
-                    },
-                    icon: const Icon(Icons.download_rounded, size: 14),
-                    label: const Text('Download', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: AppColors.cardBorder),
+                final actionButtons = Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  children: [
+                    // 1. Download
+                    OutlinedButton.icon(
+                      onPressed: _isActionRunning
+                          ? null
+                          : () async {
+                              setState(() => _isActionRunning = true);
+                              try {
+                                final targetId =
+                                    _getBundleTargetId(item, bundleId);
+                                final downloadUrl = await _bundleService
+                                    .exportBundleScan(
+                                  bundleId: targetId,
+                                );
+                                if (downloadUrl != null &&
+                                    downloadUrl.isNotEmpty) {
+                                  final uri = Uri.tryParse(downloadUrl);
+                                  if (uri != null) {
+                                    try {
+                                      await launchUrl(uri,
+                                          mode: LaunchMode.externalApplication);
+                                    } catch (_) {}
+                                  }
+                                  AppToast.showSuccess(
+                                    title: 'Download Started',
+                                    description:
+                                        'Bundle $bundleId documentation exported.',
+                                  );
+                                } else {
+                                  AppToast.showSuccess(
+                                    title: 'Downloaded',
+                                    description:
+                                        'Bundle $bundleId documentation exported.',
+                                  );
+                                }
+                              } catch (e) {
+                                AppToast.showError(
+                                  title: 'Download Failed',
+                                  description: e
+                                      .toString()
+                                      .replaceAll('ApiException: ', ''),
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isActionRunning = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.download_rounded, size: 14),
+                      label:
+                          const Text('Download', style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.cardBorder),
+                      ),
                     ),
-                  ),
 
-                  // Reprint Label
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      AppToast.showInfo(
-                        title: 'Print Label',
-                        description: 'Printing label for $bundleId...',
-                      );
-                    },
-                    icon: const Icon(Icons.print_outlined, size: 14),
-                    label: const Text('Reprint Label', style: TextStyle(fontSize: 12)),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppColors.textPrimary,
-                      backgroundColor: Colors.white,
-                      side: const BorderSide(color: AppColors.cardBorder),
-                    ),
-                  ),
+                    // 2. Reprint Label
+                    OutlinedButton.icon(
+                      onPressed: _isActionRunning
+                          ? null
+                          : () async {
+                              setState(() => _isActionRunning = true);
+                              try {
+                                final targetId =
+                                    _getBundleTargetId(item, bundleId);
+                                await _bundleService.reprintLabel(
+                                  targetId,
+                                  bundleCode: item?.bundleId ?? bundleId,
+                                );
 
-                  // Report Mismatch
-                  OutlinedButton.icon(
-                    onPressed: () {
-                      if (item != null) {
-                        BundleMismatchDialog.show(
-                          context,
-                          item: item,
-                          onSubmit: (notes, mismatchItems) async {
-                            AppToast.showSuccess(
-                              title: 'Mismatch Reported',
-                              description:
-                                  'Mismatch report submitted to Plant manager.',
-                            );
-                          },
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.warning_amber_rounded, size: 14),
-                    label: const Text(
-                      'Report Mismatch',
-                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: const Color(0xFFDC2626),
-                      backgroundColor: const Color(0xFFFEF2F2),
-                      side: const BorderSide(color: Color(0xFFFECACA)),
-                    ),
-                  ),
+                                final labelItem = LabelBundleItem(
+                                  id: item?.bundleId.isNotEmpty == true
+                                      ? item!.bundleId
+                                      : targetId,
+                                  realMongoId: item?.realMongoId ?? '',
+                                  loadId: load?.displayLoadId ?? '-',
+                                  part: item?.parts ?? parts,
+                                  totalWeightLbs: double.tryParse(
+                                        (item?.totalWeight ?? '')
+                                            .replaceAll(RegExp(r'[^0-9.]'), ''),
+                                      ) ??
+                                      0.0,
+                                  lengthFt: double.tryParse(
+                                        (item?.length ?? '')
+                                            .replaceAll(RegExp(r'[^0-9.]'), ''),
+                                      ) ??
+                                      0.0,
+                                  status: LabelPrintStatus.printed,
+                                  statusText: 'Printed',
+                                  project: projName,
+                                  shipper: item?.shipper ?? 'SHP-1044',
+                                );
 
-                  // Verify Bundle
-                  ElevatedButton.icon(
-                    onPressed: _isActionRunning
-                        ? null
-                        : () async {
-                            setState(() => _isActionRunning = true);
-                            try {
-                              await _bundleService.verifyBundle(bundleId);
-                              AppToast.showSuccess(
-                                title: 'Bundle Verified',
-                                description: 'Bundle $bundleId marked as Verified ✓',
-                              );
-                            } finally {
-                              if (mounted) setState(() => _isActionRunning = false);
-                            }
-                          },
-                    icon: const Icon(Icons.check_circle_outline_rounded, size: 14),
-                    label: const Text('Verify Bundle', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF7C3AED),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
+                                if (context.mounted) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => LabelPreviewDialog(
+                                      item: labelItem,
+                                      onPrint: () {
+                                        AppToast.showSuccess(
+                                          title: 'Label Printed',
+                                          description:
+                                              'Label printed successfully for $bundleId',
+                                        );
+                                      },
+                                    ),
+                                  );
+                                }
+                                AppToast.showSuccess(
+                                  title: 'Label Ready',
+                                  description:
+                                      'Reprint preview ready for bundle $bundleId',
+                                );
+                              } catch (e) {
+                                AppToast.showError(
+                                  title: 'Reprint Failed',
+                                  description: e
+                                      .toString()
+                                      .replaceAll('ApiException: ', ''),
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isActionRunning = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.print_outlined, size: 14),
+                      label: const Text('Reprint Label',
+                          style: TextStyle(fontSize: 12)),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        backgroundColor: Colors.white,
+                        side: const BorderSide(color: AppColors.cardBorder),
+                      ),
                     ),
-                  ),
 
-                  // Mark Loaded
-                  ElevatedButton.icon(
-                    onPressed: _isActionRunning
-                        ? null
-                        : () async {
-                            setState(() => _isActionRunning = true);
-                            try {
-                              await _bundleService.markLoaded(bundleId);
-                              AppToast.showSuccess(
-                                title: 'Marked Loaded',
-                                description: 'Bundle $bundleId is marked Loaded on truck.',
-                              );
-                            } finally {
-                              if (mounted) setState(() => _isActionRunning = false);
-                            }
-                          },
-                    icon: const Icon(Icons.local_shipping_outlined, size: 14),
-                    label: const Text('Mark Loaded', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF16A34A),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
-                    ),
-                  ),
+                    // 3. Report Mismatch
+                    OutlinedButton.icon(
+                      onPressed: _isActionRunning
+                          ? null
+                          : () {
+                              if (item != null) {
+                                BundleMismatchDialog.show(
+                                  context,
+                                  item: item,
+                                  onSubmit: (notes, mismatchItems) async {
+                                    setState(() => _isActionRunning = true);
+                                    try {
+                                      final targetId =
+                                          _getBundleTargetId(item, bundleId);
+                                      final projId = (item.projectId.isNotEmpty &&
+                                              BundleScanItem.isMongoHexId(
+                                                  item.projectId))
+                                          ? item.projectId
+                                          : (widget.controller.selectedProject
+                                                  .value?.leadId ??
+                                              '');
 
-                  // Mark Staged
-                  ElevatedButton.icon(
-                    onPressed: _isActionRunning
-                        ? null
-                        : () async {
-                            setState(() => _isActionRunning = true);
-                            try {
-                              await _bundleService.markStaged(bundleId);
-                              AppToast.showSuccess(
-                                title: 'Marked Staged',
-                                description: 'Bundle $bundleId marked Staged in plant.',
-                              );
-                            } finally {
-                              if (mounted) setState(() => _isActionRunning = false);
-                            }
-                          },
-                    icon: const Icon(Icons.layers_outlined, size: 14),
-                    label: const Text('Mark Staged', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700)),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFFD97706),
-                      foregroundColor: Colors.white,
-                      elevation: 0,
+                                      final res =
+                                          await _bundleService.reportMismatch(
+                                        targetId,
+                                        notes,
+                                        items: mismatchItems,
+                                        projectId: BundleScanItem.isMongoHexId(
+                                                projId)
+                                            ? projId
+                                            : null,
+                                      );
+
+                                      final now = DateTime.now();
+                                      final timeStr =
+                                          '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+
+                                      final mismatchInfo = BundleMismatchInfo(
+                                        reportedAt: timeStr,
+                                        notes: notes.isNotEmpty
+                                            ? notes
+                                            : 'qty_short',
+                                        affectedItems: mismatchItems
+                                            .map((m) =>
+                                                BundleMismatchItem.fromJson(m))
+                                            .toList(),
+                                      );
+
+                                      final updated = item.copyWith(
+                                        status: BundleScanStatus.pending,
+                                        statusText: 'Mismatch',
+                                        mismatchInfo: mismatchInfo,
+                                      );
+                                      widget.controller.selectedBundle.value =
+                                          updated;
+                                      _updateBundleInCurrentLoad(updated);
+
+                                      final mismatchOrder =
+                                          res?['mismatchOrder'] is Map
+                                              ? res!['mismatchOrder'] as Map
+                                              : null;
+                                      final orderId = mismatchOrder?[
+                                              'mismatchOrderId']
+                                          ?.toString();
+                                      final desc = (orderId != null &&
+                                              orderId.isNotEmpty)
+                                          ? 'Plant Mismatch Order $orderId created successfully.'
+                                          : 'Mismatch report submitted for bundle $bundleId.';
+
+                                      AppToast.showSuccess(
+                                        title: 'Mismatch Reported',
+                                        description: desc,
+                                      );
+                                    } catch (e) {
+                                      AppToast.showError(
+                                        title: 'Report Failed',
+                                        description: e
+                                            .toString()
+                                            .replaceAll('ApiException: ', ''),
+                                      );
+                                    } finally {
+                                      if (mounted) {
+                                        setState(
+                                            () => _isActionRunning = false);
+                                      }
+                                    }
+                                  },
+                                );
+                              }
+                            },
+                      icon: const Icon(Icons.warning_amber_rounded, size: 14),
+                      label: const Text(
+                        'Report Mismatch',
+                        style: TextStyle(
+                            fontSize: 12, fontWeight: FontWeight.w700),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: const Color(0xFFDC2626),
+                        backgroundColor: const Color(0xFFFEF2F2),
+                        side: const BorderSide(color: Color(0xFFFECACA)),
+                      ),
                     ),
-                  ),
+
+                    // 4. Verify Bundle
+                    ElevatedButton.icon(
+                      onPressed: _isActionRunning
+                          ? null
+                          : () async {
+                              setState(() => _isActionRunning = true);
+                              try {
+                                final targetId =
+                                    _getBundleTargetId(item, bundleId);
+                                final projId = (item?.projectId.isNotEmpty ==
+                                            true &&
+                                        BundleScanItem.isMongoHexId(
+                                            item!.projectId))
+                                    ? item!.projectId
+                                    : (widget.controller.selectedProject.value
+                                            ?.leadId ??
+                                        '');
+
+                                await _bundleService.verifyBundle(
+                                  targetId,
+                                  projectId: BundleScanItem.isMongoHexId(projId)
+                                      ? projId
+                                      : null,
+                                );
+
+                                if (item != null) {
+                                  final updated = item.copyWith(
+                                    isVerified: true,
+                                    status: BundleScanStatus.ready,
+                                    statusText: 'Ready',
+                                  );
+                                  widget.controller.selectedBundle.value =
+                                      updated;
+                                  _updateBundleInCurrentLoad(updated);
+                                }
+
+                                AppToast.showSuccess(
+                                  title: 'Bundle Verified',
+                                  description:
+                                      'Bundle $bundleId marked as Verified ✓',
+                                );
+                              } catch (e) {
+                                AppToast.showError(
+                                  title: 'Verification Failed',
+                                  description: e
+                                      .toString()
+                                      .replaceAll('ApiException: ', ''),
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isActionRunning = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.check_circle_outline_rounded,
+                          size: 14),
+                      label: const Text('Verify Bundle',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF7C3AED),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      ),
+                    ),
+
+                    // 5. Mark Loaded
+                    ElevatedButton.icon(
+                      onPressed: _isActionRunning
+                          ? null
+                          : () async {
+                              setState(() => _isActionRunning = true);
+                              try {
+                                final targetId =
+                                    _getBundleTargetId(item, bundleId);
+                                final projId = (item?.projectId.isNotEmpty ==
+                                            true &&
+                                        BundleScanItem.isMongoHexId(
+                                            item!.projectId))
+                                    ? item!.projectId
+                                    : (widget.controller.selectedProject.value
+                                            ?.leadId ??
+                                        '');
+
+                                await _bundleService.markLoaded(
+                                  targetId,
+                                  projectId: BundleScanItem.isMongoHexId(projId)
+                                      ? projId
+                                      : null,
+                                );
+
+                                if (item != null) {
+                                  final updated = item.copyWith(
+                                    status: BundleScanStatus.assigned,
+                                    statusText: 'Loaded',
+                                  );
+                                  widget.controller.selectedBundle.value =
+                                      updated;
+                                  _updateBundleInCurrentLoad(updated);
+                                }
+
+                                AppToast.showSuccess(
+                                  title: 'Marked Loaded',
+                                  description:
+                                      'Bundle $bundleId is marked Loaded on truck.',
+                                );
+                              } catch (e) {
+                                AppToast.showError(
+                                  title: 'Mark Loaded Failed',
+                                  description: e
+                                      .toString()
+                                      .replaceAll('ApiException: ', ''),
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isActionRunning = false);
+                                }
+                              }
+                            },
+                      icon:
+                          const Icon(Icons.local_shipping_outlined, size: 14),
+                      label: const Text('Mark Loaded',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF16A34A),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      ),
+                    ),
+
+                    // 6. Mark Staged
+                    ElevatedButton.icon(
+                      onPressed: _isActionRunning
+                          ? null
+                          : () async {
+                              setState(() => _isActionRunning = true);
+                              try {
+                                final targetId =
+                                    _getBundleTargetId(item, bundleId);
+                                final projId = (item?.projectId.isNotEmpty ==
+                                            true &&
+                                        BundleScanItem.isMongoHexId(
+                                            item!.projectId))
+                                    ? item!.projectId
+                                    : (widget.controller.selectedProject.value
+                                            ?.leadId ??
+                                        '');
+
+                                await _bundleService.markStaged(
+                                  targetId,
+                                  projectId: BundleScanItem.isMongoHexId(projId)
+                                      ? projId
+                                      : null,
+                                );
+
+                                if (item != null) {
+                                  final updated = item.copyWith(
+                                    status: BundleScanStatus.staging,
+                                    statusText: 'Staging',
+                                  );
+                                  widget.controller.selectedBundle.value =
+                                      updated;
+                                  _updateBundleInCurrentLoad(updated);
+                                }
+
+                                AppToast.showSuccess(
+                                  title: 'Marked Staged',
+                                  description:
+                                      'Bundle $bundleId marked Staged in plant.',
+                                );
+                              } catch (e) {
+                                AppToast.showError(
+                                  title: 'Mark Staged Failed',
+                                  description: e
+                                      .toString()
+                                      .replaceAll('ApiException: ', ''),
+                                );
+                              } finally {
+                                if (mounted) {
+                                  setState(() => _isActionRunning = false);
+                                }
+                              }
+                            },
+                      icon: const Icon(Icons.layers_outlined, size: 14),
+                      label: const Text('Mark Staged',
+                          style: TextStyle(
+                              fontSize: 12, fontWeight: FontWeight.w700)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFD97706),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                      ),
+                    ),
                 ],
               );
 
@@ -2093,24 +2466,32 @@ class _Step4BundleDetailViewState extends State<_Step4BundleDetailView> {
                           ),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         flex: 3,
                         child: Text(
-                          '10:32 AM',
-                          style: TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                          item?.time.isNotEmpty == true
+                              ? item!.time
+                              : '10:32 AM',
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF475569)),
                         ),
                       ),
                       Expanded(
                         flex: 3,
                         child: Text(
                           weight,
-                          style: const TextStyle(fontSize: 12, color: Color(0xFF475569)),
+                          style: const TextStyle(
+                              fontSize: 12, color: Color(0xFF475569)),
                         ),
                       ),
-                      const Expanded(
+                      Expanded(
                         flex: 2,
                         child: Center(
-                          child: _BundleStatusBadge(status: 'Ready'),
+                          child: _BundleStatusBadge(
+                            status: item?.statusText.isNotEmpty == true
+                                ? item!.statusText
+                                : 'Ready',
+                          ),
                         ),
                       ),
                     ],
@@ -2122,6 +2503,7 @@ class _Step4BundleDetailViewState extends State<_Step4BundleDetailView> {
         ],
       ),
     );
+    });
   }
 
   Widget _th(String label, {required int flex, Alignment alignment = Alignment.centerLeft}) {
@@ -2266,7 +2648,13 @@ class _Step4BundleDetailViewState extends State<_Step4BundleDetailView> {
           _infoRow('Total Products', totalProducts),
           _infoRow('Shipment Weight', weight),
           _infoRow('Staging Area', 'Bay 4 — South Plant'),
-          _infoRow('Status', 'Ready for Loading', isHighlight: true),
+          _infoRow(
+            'Status',
+            item?.statusText.isNotEmpty == true
+                ? item!.statusText
+                : 'Ready for Loading',
+            isHighlight: true,
+          ),
         ],
       ),
     );
@@ -2315,12 +2703,14 @@ class _StatCard extends StatelessWidget {
     required this.value,
     required this.bgColor,
     required this.icon,
+    this.isLoading = false,
   });
 
   final String label;
   final String value;
   final Color bgColor;
   final IconData icon;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
@@ -2366,14 +2756,17 @@ class _StatCard extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: Color(0xFF0F172A),
+                if (isLoading)
+                  const AppShimmer(width: 40, height: 18, borderRadius: 4)
+                else
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Color(0xFF0F172A),
+                    ),
                   ),
-                ),
               ],
             ),
           ),

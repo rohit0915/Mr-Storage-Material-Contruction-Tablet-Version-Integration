@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/drawings_controller.dart';
 import '../models/drawing_models.dart';
@@ -87,6 +88,7 @@ class DrawingsView extends GetView<DrawingsController> {
                       ),
                     ),
                     ElevatedButton.icon(
+                      key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.drawingsUploadBtn),
                       onPressed: () => controller.openUpload(context),
                       icon: const Icon(Icons.add, size: 16),
                       label: const Text(

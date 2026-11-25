@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../app/constants/get_builder_ids.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../controllers/dashboard_controller.dart';
 
 import '../../../app/theme/app_colors.dart';
@@ -43,6 +44,7 @@ class DashboardOverviewTitle extends StatelessWidget {
         GetBuilder<DashboardController>(
           id: AppGetIds.dashboardMetrics,
           builder: (controller) => ElevatedButton.icon(
+            key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.dashboardExportBtn),
             onPressed:
                 controller.isLoading ||
                     controller.isExporting ||

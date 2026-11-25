@@ -11,7 +11,10 @@ class DeliveryTrackingBinding extends Bindings {
       () => DeliveryTrackingService(),
       fenix: true,
     );
-    Get.lazyPut<DeliveryTrackingController>(() => DeliveryTrackingController());
+    Get.lazyPut<DeliveryTrackingController>(
+      () => DeliveryTrackingController(),
+      fenix: true,
+    );
   }
 }
 
@@ -22,6 +25,9 @@ class DeliveryDetailsBinding extends Bindings {
       () => DeliveryTrackingService(),
       fenix: true,
     );
-    Get.lazyPut<DeliveryDetailsController>(() => DeliveryDetailsController());
+    Get.lazyPut<DeliveryDetailsController>(
+      () => DeliveryDetailsController(),
+      fenix: true,
+    );
   }
 }

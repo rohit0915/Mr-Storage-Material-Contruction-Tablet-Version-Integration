@@ -107,9 +107,7 @@ class DeliveryDetailsController extends GetxController {
 
 
   Future<void> fetchDetails() async {
-    if (delivery.isEmpty) {
-      isLoading.value = true;
-    }
+    isLoading.value = true;
     try {
       Map<String, dynamic>? detail;
 
@@ -173,6 +171,38 @@ class DeliveryDetailsController extends GetxController {
             }
           }
         }
+      }
+
+      // 2b. If still null, search general deliveries list (/construction/deliveries)
+      if (detail == null || detail.isEmpty) {
+        try {
+          final allDeliveries = await _service.getDeliveries();
+          List list = [];
+          if (allDeliveries is Map && allDeliveries['deliveries'] is List) {
+            list = allDeliveries['deliveries'] as List;
+          } else if (allDeliveries is List) {
+            list = allDeliveries;
+          }
+          if (list.isNotEmpty && deliveryId.isNotEmpty) {
+            final matched = list.firstWhere(
+              (d) =>
+                  d is Map &&
+                  ((d['_id'] ?? '').toString() == deliveryId ||
+                      (d['deliveryId'] ?? '').toString() == deliveryId ||
+                      (d['deliveryNumber'] ?? '').toString() == deliveryId ||
+                      (d['code'] ?? '').toString() == deliveryId),
+              orElse: () => null,
+            );
+            if (matched is Map) {
+              _seedFromItem(matched);
+              final foundId =
+                  (matched['_id'] ?? matched['id'] ?? '').toString();
+              if (foundId.isNotEmpty && foundId != deliveryId) {
+                detail = await _service.getDeliveryDetail(foundId);
+              }
+            }
+          }
+        } catch (_) {}
       }
 
       // 5. Merge API response

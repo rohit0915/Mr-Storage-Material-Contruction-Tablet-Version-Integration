@@ -4,6 +4,9 @@ import 'package:get/get.dart';
 import '../../features/auth/services/auth_service.dart';
 import '../routes/app_routes.dart';
 import '../theme/app_colors.dart';
+import '../walkthrough/controllers/walkthrough_controller.dart';
+import '../walkthrough/sequences/app_walkthrough_catalog.dart';
+import '../walkthrough/services/walkthrough_registry.dart';
 import 'app_shell_controller.dart';
 
 /// Common fixed app bar used on all main screens.
@@ -26,90 +29,88 @@ class CommonAppBar extends GetView<AppShellController> {
       ),
       child: Row(
         children: [
-          InkWell(
-            onTap: () => Scaffold.of(context).openDrawer(),
-            borderRadius: BorderRadius.circular(10),
-            child: Container(
-              width: iconBox,
-              height: iconBox,
-              decoration: BoxDecoration(
-                color: AppColors.primaryBlue,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Icon(
-                Icons.menu,
-                color: Colors.white,
-                size: iconBox * 0.5,
+          KeyedSubtree(
+            key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.appBarMenu),
+            child: InkWell(
+              onTap: () => Scaffold.of(context).openDrawer(),
+              borderRadius: BorderRadius.circular(10),
+              child: Container(
+                width: iconBox,
+                height: iconBox,
+                decoration: BoxDecoration(
+                  color: AppColors.primaryBlue,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(
+                  Icons.menu,
+                  color: Colors.white,
+                  size: iconBox * 0.5,
+                ),
               ),
             ),
           ),
           SizedBox(width: gap),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Welcome, ${Get.isRegistered<AuthService>() ? AuthService.to.userName : 'User'}!',
-                style: TextStyle(
-                  fontSize: nameSize,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              Text(
-                Get.isRegistered<AuthService>() ? AuthService.to.userEmail : '',
-                style: TextStyle(
-                  fontSize: emailSize,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(width: size.width * 0.03),
-          Expanded(
-            child: Container(
-              height: iconBox,
-              padding: EdgeInsets.symmetric(horizontal: size.width * 0.012),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(color: AppColors.cardBorder),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller.searchController,
-                      decoration: InputDecoration(
-                        hintText: 'Search...',
-                        hintStyle: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: emailSize + 1,
-                        ),
-                        border: InputBorder.none,
-                        isDense: true,
-                      ),
-                    ),
+          KeyedSubtree(
+            key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.appBarGreeting),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Welcome, ${Get.isRegistered<AuthService>() ? AuthService.to.userName : 'User'}!',
+                  style: TextStyle(
+                    fontSize: nameSize,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
                   ),
-                  Icon(Icons.search, color: AppColors.textSecondary, size: 20),
-                ],
-              ),
+                ),
+                Text(
+                  Get.isRegistered<AuthService>() ? AuthService.to.userEmail : '',
+                  style: TextStyle(
+                    fontSize: emailSize,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
             ),
           ),
-          SizedBox(width: gap),
+          const Spacer(),
+          // Guided Tour button
           InkWell(
-            onTap: () => Get.toNamed(AppRoutes.notifications),
+            onTap: () {
+              if (Get.isRegistered<WalkthroughController>()) {
+                WalkthroughController.to.showWelcomeModal(context);
+              }
+            },
             borderRadius: BorderRadius.circular(20),
-            child: _CircleAction(
-              icon: Icons.notifications_none_rounded,
-              size: iconBox,
-              showBadge: true,
+            child: Tooltip(
+              message: 'Interactive Guided Tour',
+              child: _CircleAction(
+                icon: Icons.tour_rounded,
+                size: iconBox,
+              ),
             ),
           ),
           SizedBox(width: size.width * 0.006),
-          InkWell(
-            onTap: () => Get.toNamed(AppRoutes.profile),
-            borderRadius: BorderRadius.circular(20),
-            child: _CircleAction(icon: Icons.person_outline, size: iconBox),
+          KeyedSubtree(
+            key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.appBarNotifications),
+            child: InkWell(
+              onTap: () => Get.toNamed(AppRoutes.notifications),
+              borderRadius: BorderRadius.circular(20),
+              child: _CircleAction(
+                icon: Icons.notifications_none_rounded,
+                size: iconBox,
+                showBadge: true,
+              ),
+            ),
+          ),
+          SizedBox(width: size.width * 0.006),
+          KeyedSubtree(
+            key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.appBarProfile),
+            child: InkWell(
+              onTap: () => Get.toNamed(AppRoutes.profile),
+              borderRadius: BorderRadius.circular(20),
+              child: _CircleAction(icon: Icons.person_outline, size: iconBox),
+            ),
           ),
         ],
       ),

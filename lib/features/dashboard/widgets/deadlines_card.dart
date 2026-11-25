@@ -61,7 +61,7 @@ class DeadlinesCard extends StatelessWidget {
                 if (list.isEmpty) {
                   return Center(
                     child: Text(
-                      'No upcoming deadlines',
+                      'No upcoming project deadlines',
                       style: TextStyle(
                         fontSize: itemSize,
                         color: AppColors.textSecondary,
@@ -70,74 +70,171 @@ class DeadlinesCard extends StatelessWidget {
                   );
                 }
 
-                return SingleChildScrollView(
-                  child: Column(
-                    children: list.map((item) {
-                      return Padding(
-                        padding: EdgeInsets.only(bottom: gap),
-                        child: Row(
+                return ListView.separated(
+                  physics: const BouncingScrollPhysics(),
+                  itemCount: list.length,
+                  separatorBuilder: (context, index) => Divider(
+                    height: gap * 1.4,
+                    thickness: 1,
+                    color: AppColors.cardBorder.withValues(alpha: 0.5),
+                  ),
+                  itemBuilder: (context, index) {
+                    final item = list[index];
+                    return InkWell(
+                      onTap: () {
+                        if (item.leadId.isNotEmpty) {
+                          Get.toNamed(
+                            AppRoutes.projectDetails,
+                            arguments: {
+                              'id': item.leadId,
+                              'title': item.project,
+                              'location': item.location,
+                              'jobId': item.jobId,
+                              'status': item.status,
+                              'fromProject': true,
+                            },
+                          );
+                        } else {
+                          Get.toNamed(AppRoutes.projectCalendar);
+                        }
+                      },
+                      borderRadius: BorderRadius.circular(8),
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 3),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    item.project,
+                            // Top Row: Task Title + Badge Pill
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.title.isNotEmpty
+                                        ? item.title
+                                        : item.project,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
                                     style: TextStyle(
                                       fontSize: itemSize,
                                       fontWeight: FontWeight.w700,
                                       color: AppColors.textPrimary,
                                     ),
                                   ),
-                                  SizedBox(height: size.height * 0.003),
-                                  Row(
+                                ),
+                                const SizedBox(width: 8),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 7,
+                                    vertical: 2.5,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: item.badgeBgColor,
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Container(
-                                        width: 7,
-                                        height: 7,
-                                        decoration: const BoxDecoration(
-                                          color: AppColors.orange,
+                                        width: 5,
+                                        height: 5,
+                                        decoration: BoxDecoration(
+                                          color: item.badgeDotColor,
                                           shape: BoxShape.circle,
                                         ),
                                       ),
-                                      SizedBox(width: size.width * 0.005),
+                                      const SizedBox(width: 5),
                                       Text(
-                                        item.location,
+                                        item.badgeLabel,
                                         style: TextStyle(
-                                          fontSize: itemSize - 1,
-                                          color: AppColors.textSecondary,
+                                          fontSize: (itemSize - 2)
+                                              .clamp(10.0, 12.0),
+                                          fontWeight: FontWeight.w700,
+                                          color: item.badgeTextColor,
                                         ),
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
                             ),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
+                            SizedBox(height: size.height * 0.004),
+
+                            // Subtitle: Project Name • JobId • Location
+                            Row(
                               children: [
-                                Text(
-                                  item.date,
-                                  style: TextStyle(
-                                    fontSize: itemSize,
-                                    fontWeight: FontWeight.w700,
-                                    color: AppColors.danger,
+                                Container(
+                                  width: 6,
+                                  height: 6,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.orange,
+                                    shape: BoxShape.circle,
                                   ),
                                 ),
+                                const SizedBox(width: 6),
+                                Expanded(
+                                  child: Text(
+                                    [
+                                      item.project,
+                                      if (item.jobId.isNotEmpty) item.jobId,
+                                      if (item.location.isNotEmpty &&
+                                          item.location != '—')
+                                        item.location,
+                                    ].join(' • '),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: itemSize - 1,
+                                      color: AppColors.textSecondary,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: size.height * 0.005),
+
+                            // Bottom Row: Dates (Start / Est. End / Completed) & Days Left Status
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    item.completedDate != null
+                                        ? 'Start: ${item.startDate} • Est: ${item.date} • Done: ${item.completedDate}'
+                                        : (item.startDate != '—'
+                                            ? 'Start: ${item.startDate} • Est: ${item.date}'
+                                            : 'Est End: ${item.date}'),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: (itemSize - 1.5)
+                                          .clamp(10.0, 12.0),
+                                      color: const Color(0xFF64748B),
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
                                 Text(
                                   item.daysLeft,
                                   style: TextStyle(
-                                    fontSize: itemSize - 1,
-                                    color: AppColors.textPrimary,
+                                    fontSize: (itemSize - 1).clamp(10.0, 12.0),
+                                    fontWeight: FontWeight.w700,
+                                    color: (item.daysLeftNumber != null &&
+                                                item.daysLeftNumber! < 0) ||
+                                            item.badgeTone == 'danger'
+                                        ? AppColors.danger
+                                        : AppColors.textPrimary,
                                   ),
                                 ),
                               ],
                             ),
                           ],
                         ),
-                      );
-                    }).toList(),
-                  ),
+                      ),
+                    );
+                  },
                 );
               },
             ),

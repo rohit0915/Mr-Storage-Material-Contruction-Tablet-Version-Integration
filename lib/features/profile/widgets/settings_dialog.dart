@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../app/theme/app_colors.dart';
 import '../../../app/utils/app_log_dialog.dart';
+import '../../../app/walkthrough/controllers/walkthrough_controller.dart';
+import '../../../app/walkthrough/sequences/app_walkthrough_catalog.dart';
 import '../controllers/profile_controller.dart';
 
 class SettingsDialog extends GetView<ProfileController> {
@@ -93,6 +95,25 @@ class SettingsDialog extends GetView<ProfileController> {
                       title: 'Login Alerts via Mail',
                       subtitle: 'Get notified when new Login Register',
                       value: controller.loginAlerts,
+                    ),
+                    const SizedBox(height: 14),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        Get.back();
+                        if (Get.isRegistered<WalkthroughController>()) {
+                          WalkthroughController.to.startTour(AppWalkthroughCatalog.mainTourId);
+                        }
+                      },
+                      icon: const Icon(Icons.explore_outlined, size: 18),
+                      label: const Text('Start Interactive App Walkthrough'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 44),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
                     ),
                     const SizedBox(height: 10),
                     OutlinedButton.icon(

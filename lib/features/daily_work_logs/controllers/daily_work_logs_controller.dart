@@ -23,7 +23,15 @@ class DailyWorkLogsController extends GetxController {
   final projects = <Map<String, String>>[].obs;
   final tasks = <Map<String, String>>[].obs;
 
-  final searchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
   final searchQuery = ''.obs;
   final selectedProject = 'All Projects'.obs;
 
@@ -62,7 +70,6 @@ class DailyWorkLogsController extends GetxController {
 
   @override
   void onClose() {
-    searchController.dispose();
     super.onClose();
   }
 
@@ -247,7 +254,9 @@ class DailyWorkLogsController extends GetxController {
     }
 
     totalResults.value = filtered.length;
-    totalPages.value = (filtered.length / pageSize.value).ceil().clamp(1, 999);
+    totalPages.value = (filtered.length <= 0)
+        ? 1
+        : (filtered.length / pageSize.value).ceil().clamp(1, 999);
 
     if (currentPage.value > totalPages.value) {
       currentPage.value = 1;
@@ -263,8 +272,25 @@ class DailyWorkLogsController extends GetxController {
     }
   }
 
+  bool get canGoPrev => currentPage.value > 1 && totalPages.value > 1;
+  bool get canGoNext => currentPage.value < totalPages.value && totalPages.value > 1;
+
+  void previousPage() {
+    if (canGoPrev) {
+      changePage(currentPage.value - 1);
+    }
+  }
+
+  void nextPage() {
+    if (canGoNext) {
+      changePage(currentPage.value + 1);
+    }
+  }
+
   void changePage(int newPage) {
+    if (totalPages.value <= 1) return;
     if (newPage < 1 || newPage > totalPages.value) return;
+    if (newPage == currentPage.value) return;
     currentPage.value = newPage;
     applyLocalFilters();
   }

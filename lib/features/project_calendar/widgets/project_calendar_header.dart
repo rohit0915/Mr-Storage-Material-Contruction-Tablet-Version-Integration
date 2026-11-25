@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
 import '../../../app/theme/app_colors.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../controllers/project_calendar_controller.dart';
 import '../models/project_calendar_models.dart';
 import 'project_dropdown.dart';
@@ -48,6 +49,7 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
                 ),
               ),
               Container(
+                key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.projectCalendarTabs),
                 padding: const EdgeInsets.all(4),
                 decoration: BoxDecoration(
                   color: Colors.white,
@@ -90,6 +92,7 @@ class ProjectCalendarHeader extends GetView<ProjectCalendarController> {
               const Spacer(),
               if (tab == ProjectCalendarTab.calendar)
                 ElevatedButton.icon(
+                  key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.projectCalendarAddDeliveryBtn),
                   onPressed: () => controller.openAddDelivery(context),
                   icon: const Icon(Icons.add, size: 18),
                   label: Text(

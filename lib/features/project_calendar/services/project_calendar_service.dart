@@ -167,6 +167,29 @@ class ProjectCalendarService extends GetxService {
     }
   }
 
+  /// Get material deliveries for a project: GET /api/construction/projects/:leadId/material-deliveries
+  Future<dynamic> getProjectMaterialDeliveries(String leadId) async {
+    try {
+      final response = await _apiClient.get(
+        ApiConstants.projectMaterialDeliveries(leadId),
+      );
+      AppLogger.i(
+        'Project Material Deliveries API Response ($leadId): $response',
+        tag: 'PROJECTS',
+      );
+      if (response is Map && response.containsKey('data')) {
+        return response['data'];
+      }
+      return response;
+    } catch (e) {
+      AppLogger.w(
+        'getProjectMaterialDeliveries not available for $leadId: $e',
+        tag: 'PROJECTS',
+      );
+      return null;
+    }
+  }
+
   /// Get BOM files for a project: GET /api/construction/projects/:leadId/bom-files
   Future<dynamic> getBOMFiles(String leadId) async {
     try {

@@ -120,8 +120,19 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
     setState(() => _isSubmitting = true);
 
     final notes = _notesCtrl.text.trim();
+    final effectiveNotes = notes.isNotEmpty ? notes : 'qty_short';
+
     final itemsPayload = _rows.map((r) {
-      final recQty = int.tryParse(r.receivedCtrl.text.trim()) ?? r.expectedQuantity;
+      final recQty =
+          int.tryParse(r.receivedCtrl.text.trim()) ?? r.expectedQuantity;
+      String st = r.status;
+      if (st == 'Received' || st.isEmpty) {
+        if (recQty == 0) {
+          st = 'Not Received';
+        } else if (recQty < r.expectedQuantity) {
+          st = 'Partially Received';
+        }
+      }
       return <String, dynamic>{
         if (r.itemId.isNotEmpty) 'itemId': r.itemId,
         'itemCode': r.itemCode,
@@ -132,13 +143,14 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
         'expectedQty': r.expectedQuantity,
         'receivedQuantity': recQty,
         'receivedQty': recQty,
-        'status': r.status,
+        'difference': recQty - r.expectedQuantity,
+        'status': st,
       };
     }).toList();
 
     try {
       await widget.onSubmit(
-        notes.isNotEmpty ? notes : 'Discrepancy logged for bundle ${widget.item.bundleId}',
+        effectiveNotes,
         itemsPayload,
       );
       if (mounted) {
@@ -155,10 +167,15 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
     switch (status.toLowerCase()) {
       case 'received':
         return const Color(0xFF059669);
+      case 'not received':
       case 'missing':
+        return const Color(0xFFDC2626);
+      case 'partially received':
         return const Color(0xFFD97706);
       case 'damaged':
         return const Color(0xFFDC2626);
+      case 'excess':
+        return const Color(0xFF2563EB);
       case 'mismatch':
       default:
         return const Color(0xFF7C3AED);
@@ -513,6 +530,22 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
                                     child: TextField(
                                       controller: row.receivedCtrl,
                                       keyboardType: TextInputType.number,
+                                      onChanged: (val) {
+                                        final rec = int.tryParse(val.trim());
+                                        if (rec != null) {
+                                          setState(() {
+                                            if (rec == 0) {
+                                              row.status = 'Not Received';
+                                            } else if (rec < row.expectedQuantity) {
+                                              row.status = 'Partially Received';
+                                            } else if (rec > row.expectedQuantity) {
+                                              row.status = 'Excess';
+                                            } else {
+                                              row.status = 'Received';
+                                            }
+                                          });
+                                        }
+                                      },
                                       inputFormatters: [
                                         FilteringTextInputFormatter.digitsOnly,
                                       ],
@@ -575,12 +608,24 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
                                           child: Text('Received'),
                                         ),
                                         const PopupMenuItem(
+                                          value: 'Partially Received',
+                                          child: Text('Partially Received'),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'Not Received',
+                                          child: Text('Not Received'),
+                                        ),
+                                        const PopupMenuItem(
                                           value: 'Missing',
                                           child: Text('Missing'),
                                         ),
                                         const PopupMenuItem(
                                           value: 'Damaged',
                                           child: Text('Damaged'),
+                                        ),
+                                        const PopupMenuItem(
+                                          value: 'Excess',
+                                          child: Text('Excess'),
                                         ),
                                         const PopupMenuItem(
                                           value: 'Mismatch',
@@ -631,12 +676,60 @@ class _BundleMismatchDialogState extends State<BundleMismatchDialog> {
 
                 // Section 3: Mismatch Notes
                 const Text(
-                  'Mismatch Notes',
+                  'Mismatch Notes / Reason',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w800,
                     color: Color(0xFF0F172A),
                   ),
+                ),
+                const SizedBox(height: 8),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 6,
+                  children: [
+                    'qty_short',
+                    'wrong_item',
+                    'damaged_item',
+                    'missing_part',
+                  ].map((chip) {
+                    final isSelected = _notesCtrl.text == chip;
+                    return InkWell(
+                      onTap: () {
+                        setState(() {
+                          _notesCtrl.text = chip;
+                        });
+                      },
+                      borderRadius: BorderRadius.circular(16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 4,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? const Color(0xFF7C3AED)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: isSelected
+                                ? const Color(0xFF7C3AED)
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Text(
+                          chip,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: isSelected
+                                ? Colors.white
+                                : const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    );
+                  }).toList(),
                 ),
                 const SizedBox(height: 10),
                 TextField(

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/shell/app_scaffold.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/walkthrough/services/walkthrough_registry.dart';
 import '../../../app/widgets/app_shimmer.dart';
 import '../controllers/tasks_controller.dart';
 import '../models/task_models.dart';
@@ -35,11 +36,15 @@ class TasksView extends GetView<TasksController> {
               ),
             ),
             SizedBox(height: gap),
-            const _SummaryRow(),
+            KeyedSubtree(
+              key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.tasksSummaryRow),
+              child: const _SummaryRow(),
+            ),
             SizedBox(height: gap),
 
             // Task Board Card Container
             Container(
+              key: WalkthroughRegistry.instance.getKey(WalkthroughRegistry.tasksBoard),
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
                 color: Colors.white,

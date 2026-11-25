@@ -269,6 +269,16 @@ class DispatchVerificationService {
       } else if (res is List) {
         rawList = res;
       }
+      if (rawList.isEmpty) {
+        try {
+          final pklRes = await _apiClient.get(ApiConstants.packingListsProjectLoads(leadId));
+          if (pklRes is Map && pklRes['data'] is List) {
+            rawList = pklRes['data'] as List;
+          } else if (pklRes is List) {
+            rawList = pklRes;
+          }
+        } catch (_) {}
+      }
       return rawList
           .whereType<Map>()
           .map((m) => DispatchItem.fromJson(Map<String, dynamic>.from(m)))

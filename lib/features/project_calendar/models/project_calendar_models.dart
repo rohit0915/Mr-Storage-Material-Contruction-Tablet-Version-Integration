@@ -110,6 +110,11 @@ class DeliveryItem {
     this.description = '',
     this.title = '',
     this.createdAt,
+    this.quantity = '',
+    this.stagingArea = '',
+    this.arrivalDate = '',
+    this.departureDate = '',
+    this.warehouse = '',
   });
 
   final String id;
@@ -122,6 +127,11 @@ class DeliveryItem {
   final String description;
   final String title;
   final DateTime? createdAt;
+  final String quantity;
+  final String stagingArea;
+  final String arrivalDate;
+  final String departureDate;
+  final String warehouse;
 
   factory DeliveryItem.fromJson(Map<String, dynamic> json) {
     final deliveryCode =
@@ -253,6 +263,44 @@ class DeliveryItem {
       }
     }
 
+    final qtyStr = (json['quantity'] ??
+            json['weight'] ??
+            json['totalWeight'] ??
+            json['weightLbs'] ??
+            json['qty'] ??
+            '')
+        .toString();
+
+    final stagingStr = (json['stagingArea'] ??
+            json['staging'] ??
+            json['yard'] ??
+            json['destination'] ??
+            json['area'] ??
+            '')
+        .toString();
+
+    final arrivalStr = (json['arrivalAtPlant'] ??
+            json['arrivalDate'] ??
+            scheduleMap['arrivalDate'] ??
+            scheduleMap['arrivalAtPlant'] ??
+            deliveryDate)
+        .toString();
+
+    final departureStr = (json['departureFromPlant'] ??
+            json['departureDate'] ??
+            scheduleMap['departureDate'] ??
+            scheduleMap['departureFromPlant'] ??
+            '')
+        .toString();
+
+    final whStr = (json['warehouse'] ??
+            json['carrier'] ??
+            json['supplier'] ??
+            json['origin'] ??
+            json['facility'] ??
+            pName)
+        .toString();
+
     return DeliveryItem(
       id: json['_id'] ?? json['id'] ?? deliveryCode.toString(),
       code: deliveryCode.toString(),
@@ -264,6 +312,11 @@ class DeliveryItem {
       statusColor: sColor,
       description: descStr,
       createdAt: created,
+      quantity: qtyStr,
+      stagingArea: stagingStr,
+      arrivalDate: arrivalStr,
+      departureDate: departureStr,
+      warehouse: whStr,
     );
   }
 }
@@ -280,6 +333,7 @@ class ProjectCardItem {
     required this.priorityColor,
     required this.imageAsset,
     this.buildingType = '',
+    this.projectDate,
   });
 
   final String title;
@@ -292,6 +346,7 @@ class ProjectCardItem {
   final Color priorityColor;
   final String imageAsset;
   final String buildingType;
+  final DateTime? projectDate;
 
   factory ProjectCardItem.fromJson(Map<String, dynamic> json) {
     final titleStr =
@@ -306,7 +361,12 @@ class ProjectCardItem {
 
     final mongoId = (json['_id'] ?? json['leadId'] ?? json['id'] ?? '')
         .toString();
-    final displayCode = (json['jobId'] ?? json['code'] ?? mongoId).toString();
+    final displayCode = (json['jobId'] ??
+            json['leadNumber'] ??
+            json['projectId'] ??
+            json['code'] ??
+            mongoId)
+        .toString();
 
     final statusStr =
         (json['lifecycleStatus'] ?? json['status'] ?? 'initial_contact')
@@ -365,6 +425,43 @@ class ProjectCardItem {
       pColor = AppColors.chartYellow;
     }
 
+    // Extract project date / delivery date / deadline
+    final sched = json['schedule'] is Map ? json['schedule'] as Map : {};
+    final rawDateStr = (sched['deliveryDate'] ??
+            sched['arrivalDate'] ??
+            sched['pickupDate'] ??
+            json['deliveryDate'] ??
+            json['expectedDeliveryDate'] ??
+            json['delivery_date'] ??
+            json['targetDate'] ??
+            json['target_date'] ??
+            json['deadline'] ??
+            json['projectDate'] ??
+            json['project_date'] ??
+            json['startDate'] ??
+            json['start_date'] ??
+            json['scheduledDate'] ??
+            json['date'] ??
+            json['createdAt'] ??
+            json['created_at'])?.toString();
+    DateTime? pDate;
+    if (rawDateStr != null &&
+        rawDateStr.isNotEmpty &&
+        rawDateStr.toLowerCase() != 'null') {
+      pDate = DateTime.tryParse(rawDateStr)?.toLocal();
+      if (pDate == null && rawDateStr.contains('-')) {
+        final clean = rawDateStr.split(' ')[0].split('T')[0];
+        final parts = clean.split('-');
+        if (parts.length == 3) {
+          pDate = DateTime(
+            int.parse(parts[0]),
+            int.parse(parts[1]),
+            int.parse(parts[2]),
+          );
+        }
+      }
+    }
+
     return ProjectCardItem(
       title: titleStr,
       location: locationStr,
@@ -376,6 +473,7 @@ class ProjectCardItem {
       priorityColor: pColor,
       imageAsset: AppAssets.project1,
       buildingType: bType,
+      projectDate: pDate,
     );
   }
 }

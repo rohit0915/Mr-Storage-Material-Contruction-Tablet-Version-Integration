@@ -33,13 +33,39 @@ class ProjectCalendarController extends GetxController {
     if (projects.isEmpty) return null;
     final sel = selectedProjectId.value.trim().toLowerCase();
     if (sel.isEmpty) return projects.first;
-    return projects.firstWhere(
+
+    final match = projects.firstWhereOrNull(
       (p) =>
           (p.id.isNotEmpty && p.id.toLowerCase() == sel) ||
           (p.code.isNotEmpty && p.code.toLowerCase() == sel) ||
           (p.name.isNotEmpty && p.name.toLowerCase() == sel),
-      orElse: () => projects.first,
     );
+    if (match != null) return match;
+
+    final cardMatch = projectCards.firstWhereOrNull(
+      (c) =>
+          (c.realLeadId.isNotEmpty && c.realLeadId.toLowerCase() == sel) ||
+          (c.projectId.isNotEmpty && c.projectId.toLowerCase() == sel) ||
+          (c.title.isNotEmpty && c.title.toLowerCase() == sel),
+    );
+    if (cardMatch != null) {
+      final opt = CalendarProjectOption(
+        id: cardMatch.realLeadId.isNotEmpty
+            ? cardMatch.realLeadId
+            : cardMatch.projectId,
+        name: cardMatch.title,
+        code: cardMatch.projectId,
+        imageAsset: cardMatch.imageAsset,
+      );
+      if (!projects.any(
+        (p) => p.id == opt.id || (p.code.isNotEmpty && p.code == opt.code),
+      )) {
+        projects.add(opt);
+      }
+      return opt;
+    }
+
+    return projects.first;
   }
 
   List<CalendarDayEvent> get selectedDayEvents {
@@ -107,6 +133,15 @@ class ProjectCalendarController extends GetxController {
       }
 
       if (optionsMap.length > 1) {
+        if (selectedProjectId.value.isNotEmpty &&
+            !optionsMap.containsKey(selectedProjectId.value)) {
+          final existing = projects.firstWhereOrNull(
+            (p) => p.id == selectedProjectId.value,
+          );
+          if (existing != null) {
+            optionsMap[existing.id] = existing;
+          }
+        }
         projects = optionsMap.values.toList();
         update([AppGetIds.projectDropdown]);
       }
@@ -195,6 +230,16 @@ class ProjectCalendarController extends GetxController {
               currentOptions[opt.id] = opt;
             }
             parsedCards.add(ProjectCardItem.fromJson(mapItem));
+          }
+        }
+
+        if (selectedProjectId.value.isNotEmpty &&
+            !currentOptions.containsKey(selectedProjectId.value)) {
+          final existing = projects.firstWhereOrNull(
+            (p) => p.id == selectedProjectId.value,
+          );
+          if (existing != null) {
+            currentOptions[existing.id] = existing;
           }
         }
 
@@ -398,10 +443,22 @@ class ProjectCalendarController extends GetxController {
   void setTab(ProjectCalendarTab tab) {
     selectedTab.value = tab;
     dropdownOpen.value = false;
+    // When returning to Project tab, reset to 'All Projects' so full project list is shown
+    if (tab == ProjectCalendarTab.project) {
+      selectedProjectId.value = '';
+    } else if (tab == ProjectCalendarTab.calendar) {
+      // If switching to Calendar tab with All Projects, ensure current date is selected
+      if (selectedProjectId.value.isEmpty) {
+        final now = DateTime.now();
+        focusedMonth.value = DateTime(now.year, now.month, 1);
+        selectedDay.value = now.day;
+      }
+    }
     update([
       AppGetIds.projectCalendarTab,
       AppGetIds.projectCards,
       AppGetIds.projectDropdown,
+      AppGetIds.calendarEvents,
     ]);
   }
 
@@ -435,7 +492,7 @@ class ProjectCalendarController extends GetxController {
     fetchCalendarData();
   }
 
-  void selectProject(String id) {
+  Future<void> selectProject(String id) async {
     String targetId = id;
     if (id.isNotEmpty) {
       for (final p in projects) {
@@ -449,30 +506,74 @@ class ProjectCalendarController extends GetxController {
     }
     selectedProjectId.value = targetId;
     dropdownOpen.value = false;
+
+    // 1. If All Projects selected, select current date (today)
+    if (targetId.isEmpty) {
+      final now = DateTime.now();
+      focusedMonth.value = DateTime(now.year, now.month, 1);
+      selectedDay.value = now.day;
+    } else {
+      // 2. If specific project selected, check if card has a project/delivery date
+      final cardMatch = projectCards.firstWhereOrNull(
+        (c) =>
+            (c.realLeadId.isNotEmpty &&
+                c.realLeadId.toLowerCase() == targetId.toLowerCase()) ||
+            (c.projectId.isNotEmpty &&
+                c.projectId.toLowerCase() == targetId.toLowerCase()) ||
+            (c.title.isNotEmpty &&
+                c.title.toLowerCase() == targetId.toLowerCase()),
+      );
+
+      if (cardMatch != null && cardMatch.projectDate != null) {
+        final pDate = cardMatch.projectDate!;
+        focusedMonth.value = DateTime(pDate.year, pDate.month, 1);
+        selectedDay.value = pDate.day;
+      }
+    }
+
     update([
       AppGetIds.projectDropdown,
       AppGetIds.projectCards,
       AppGetIds.calendarEvents,
     ]);
-    fetchCalendarData();
-  }
 
-  void selectProjectAndOpenCalendar(ProjectCardItem item) {
-    CalendarProjectOption? match;
-    for (final p in projects) {
-      if (p.id.isNotEmpty && (p.id == item.realLeadId || p.id == item.projectId)) {
-        match = p;
-        break;
-      }
-      if (p.code.isNotEmpty && (p.code == item.projectId || p.code == item.realLeadId)) {
-        match = p;
-        break;
-      }
-      if (p.name.isNotEmpty && p.name.toLowerCase() == item.title.toLowerCase()) {
-        match = p;
-        break;
+    await fetchCalendarData();
+
+    // 3. For project selection, if current selected day has no events,
+    // auto-select the first day of the month that has events/deliveries for this project
+    if (targetId.isNotEmpty) {
+      final hasEventsOnCurrentDay =
+          (dayDeliveriesMap[selectedDay.value]?.isNotEmpty ?? false) ||
+          (monthEvents[selectedDay.value]?.isNotEmpty ?? false);
+
+      if (!hasEventsOnCurrentDay) {
+        final activeDays = <int>{
+          ...monthEvents.keys.where((d) => (monthEvents[d]?.isNotEmpty ?? false)),
+          ...dayDeliveriesMap.keys.where(
+            (d) => (dayDeliveriesMap[d]?.isNotEmpty ?? false),
+          ),
+        }.toList()..sort();
+
+        if (activeDays.isNotEmpty) {
+          selectedDay.value = activeDays.first;
+          update([AppGetIds.calendarEvents]);
+        }
       }
     }
+  }
+
+  Future<void> selectProjectAndOpenCalendar(ProjectCardItem item) async {
+    CalendarProjectOption? match = projects.firstWhereOrNull(
+      (p) =>
+          (p.id.isNotEmpty &&
+              (p.id.toLowerCase() == item.realLeadId.toLowerCase() ||
+                  p.id.toLowerCase() == item.projectId.toLowerCase())) ||
+          (p.code.isNotEmpty &&
+              (p.code.toLowerCase() == item.projectId.toLowerCase() ||
+                  p.code.toLowerCase() == item.realLeadId.toLowerCase())) ||
+          (p.name.isNotEmpty &&
+              p.name.toLowerCase() == item.title.toLowerCase()),
+    );
 
     if (match == null && item.title.isNotEmpty) {
       final newOption = CalendarProjectOption(
@@ -493,6 +594,13 @@ class ProjectCalendarController extends GetxController {
     dropdownOpen.value = false;
     selectedTab.value = ProjectCalendarTab.calendar;
 
+    // If item has a project/delivery date, set focused month and select that date
+    if (item.projectDate != null) {
+      final pDate = item.projectDate!;
+      focusedMonth.value = DateTime(pDate.year, pDate.month, 1);
+      selectedDay.value = pDate.day;
+    }
+
     update([
       AppGetIds.projectCalendarTab,
       AppGetIds.projectDropdown,
@@ -500,7 +608,27 @@ class ProjectCalendarController extends GetxController {
       AppGetIds.calendarEvents,
     ]);
 
-    fetchCalendarData();
+    await fetchCalendarData();
+
+    // After calendar data returns, if currently selected day has no deliveries/events,
+    // auto-select the first day of the month that has deliveries/events for this project
+    final hasEventsOnCurrentDay =
+        (dayDeliveriesMap[selectedDay.value]?.isNotEmpty ?? false) ||
+        (monthEvents[selectedDay.value]?.isNotEmpty ?? false);
+
+    if (!hasEventsOnCurrentDay) {
+      final activeDays = <int>{
+        ...monthEvents.keys.where((d) => (monthEvents[d]?.isNotEmpty ?? false)),
+        ...dayDeliveriesMap.keys.where(
+          (d) => (dayDeliveriesMap[d]?.isNotEmpty ?? false),
+        ),
+      }.toList()..sort();
+
+      if (activeDays.isNotEmpty) {
+        selectedDay.value = activeDays.first;
+        update([AppGetIds.calendarEvents]);
+      }
+    }
   }
 
   void toggleDropdown() {

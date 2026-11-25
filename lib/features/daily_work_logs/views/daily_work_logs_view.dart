@@ -722,38 +722,36 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
             ],
           );
 
+          final canGoPrev = ctrl.canGoPrev;
+          final canGoNext = ctrl.canGoNext;
+
           final pagesWidget = Row(
             mainAxisSize: MainAxisSize.min,
             children: [
               // Prev Button <
-              InkWell(
-                onTap: ctrl.currentPage.value > 1
-                    ? () => ctrl.changePage(ctrl.currentPage.value - 1)
-                    : null,
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    borderRadius: BorderRadius.circular(6),
-                    color: ctrl.currentPage.value > 1 ? Colors.white : const Color(0xFFF8FAFC),
-                  ),
-                  child: Icon(
-                    Icons.chevron_left,
-                    size: 18,
-                    color: ctrl.currentPage.value > 1 ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
-                  ),
-                ),
+              _PaginationArrowBtn(
+                icon: Icons.chevron_left,
+                enabled: canGoPrev,
+                onTap: ctrl.previousPage,
               ),
               const SizedBox(width: 8),
 
               // Page numbers (e.g. 1, 2...)
               for (int p = 1; p <= ctrl.totalPages.value; p++) ...[
                 InkWell(
-                  onTap: () => ctrl.changePage(p),
+                  onTap: ctrl.totalPages.value > 1 && ctrl.currentPage.value != p
+                      ? () => ctrl.changePage(p)
+                      : null,
+                  mouseCursor: ctrl.totalPages.value > 1 && ctrl.currentPage.value != p
+                      ? SystemMouseCursors.click
+                      : SystemMouseCursors.basic,
                   borderRadius: BorderRadius.circular(6),
+                  splashColor: ctrl.totalPages.value > 1 && ctrl.currentPage.value != p
+                      ? null
+                      : Colors.transparent,
+                  highlightColor: ctrl.totalPages.value > 1 && ctrl.currentPage.value != p
+                      ? null
+                      : Colors.transparent,
                   child: Container(
                     width: 32,
                     height: 32,
@@ -777,28 +775,10 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
               ],
 
               // Next Button >
-              InkWell(
-                onTap: ctrl.currentPage.value < ctrl.totalPages.value
-                    ? () => ctrl.changePage(ctrl.currentPage.value + 1)
-                    : null,
-                borderRadius: BorderRadius.circular(6),
-                child: Container(
-                  width: 32,
-                  height: 32,
-                  alignment: Alignment.center,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: const Color(0xFFE2E8F0)),
-                    borderRadius: BorderRadius.circular(6),
-                    color: ctrl.currentPage.value < ctrl.totalPages.value ? Colors.white : const Color(0xFFF8FAFC),
-                  ),
-                  child: Icon(
-                    Icons.chevron_right,
-                    size: 18,
-                    color: ctrl.currentPage.value < ctrl.totalPages.value
-                        ? const Color(0xFF1E293B)
-                        : const Color(0xFFCBD5E1),
-                  ),
-                ),
+              _PaginationArrowBtn(
+                icon: Icons.chevron_right,
+                enabled: canGoNext,
+                onTap: ctrl.nextPage,
               ),
             ],
           );
@@ -822,6 +802,46 @@ class DailyWorkLogsView extends GetView<DailyWorkLogsController> {
             ],
           );
         },
+      ),
+    );
+  }
+}
+
+class _PaginationArrowBtn extends StatelessWidget {
+  const _PaginationArrowBtn({
+    required this.icon,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final IconData icon;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      mouseCursor: enabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      borderRadius: BorderRadius.circular(6),
+      splashColor: enabled ? null : Colors.transparent,
+      highlightColor: enabled ? null : Colors.transparent,
+      hoverColor: enabled ? null : Colors.transparent,
+      child: Container(
+        width: 32,
+        height: 32,
+        alignment: Alignment.center,
+        decoration: BoxDecoration(
+          border: Border.all(
+            color: enabled ? const Color(0xFFCBD5E1) : const Color(0xFFE2E8F0)),
+          borderRadius: BorderRadius.circular(6),
+          color: enabled ? Colors.white : const Color(0xFFF8FAFC),
+        ),
+        child: Icon(
+          icon,
+          size: 18,
+          color: enabled ? const Color(0xFF1E293B) : const Color(0xFFCBD5E1),
+        ),
       ),
     );
   }

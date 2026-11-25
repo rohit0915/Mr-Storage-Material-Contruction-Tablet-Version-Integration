@@ -253,22 +253,35 @@ class _ForgotEmailStep extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           height: buttonHeight,
-          child: ElevatedButton(
-            onPressed: controller.continueForgotEmail,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.loginButton,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          child: Obx(
+            () => ElevatedButton(
+              onPressed: controller.isForgotLoading.value
+                  ? null
+                  : controller.continueForgotEmail,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.loginButton,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            child: Text(
-              'Send Code',
-              style: TextStyle(
-                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
-                fontWeight: FontWeight.w700,
-              ),
+              child: controller.isForgotLoading.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'Send Code',
+                      style: TextStyle(
+                        fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ),
         ),
@@ -349,7 +362,7 @@ class _OtpStep extends StatelessWidget {
         ),
         SizedBox(height: size.height * 0.008),
         Text(
-          'We sent a 4-digit verification code to\n${controller.forgotEmailController.text.trim()}',
+          'We sent a 6-digit verification code to\n${controller.forgotEmailController.text.trim()}',
           textAlign: TextAlign.center,
           style: TextStyle(
             fontSize: descSize,
@@ -366,44 +379,100 @@ class _OtpStep extends StatelessWidget {
                 onFilled: () => FocusScope.of(context).nextFocus(),
               ),
             ),
-            const SizedBox(width: gap),
+            const SizedBox(width: 8),
             Expanded(
               child: otpBox(
                 controller.otp2Controller,
                 onFilled: () => FocusScope.of(context).nextFocus(),
               ),
             ),
-            const SizedBox(width: gap),
+            const SizedBox(width: 8),
             Expanded(
               child: otpBox(
                 controller.otp3Controller,
                 onFilled: () => FocusScope.of(context).nextFocus(),
               ),
             ),
-            const SizedBox(width: gap),
-            Expanded(child: otpBox(controller.otp4Controller)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: otpBox(
+                controller.otp4Controller,
+                onFilled: () => FocusScope.of(context).nextFocus(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: otpBox(
+                controller.otp5Controller,
+                onFilled: () => FocusScope.of(context).nextFocus(),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: otpBox(
+                controller.otp6Controller,
+                onFilled: () => FocusScope.of(context).unfocus(),
+              ),
+            ),
+          ],
+        ),
+        SizedBox(height: size.height * 0.012),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              "Didn't receive code? ",
+              style: TextStyle(
+                fontSize: descSize,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            InkWell(
+              onTap: controller.resendForgotOtp,
+              child: Text(
+                'Resend',
+                style: TextStyle(
+                  fontSize: descSize,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primaryBlue,
+                ),
+              ),
+            ),
           ],
         ),
         SizedBox(height: size.height * 0.02),
         SizedBox(
           width: double.infinity,
           height: buttonHeight,
-          child: ElevatedButton(
-            onPressed: controller.continueOtp,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.loginButton,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          child: Obx(
+            () => ElevatedButton(
+              onPressed: controller.isForgotLoading.value
+                  ? null
+                  : controller.continueOtp,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.loginButton,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            child: Text(
-              'Verify Code',
-              style: TextStyle(
-                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
-                fontWeight: FontWeight.w700,
-              ),
+              child: controller.isForgotLoading.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'Verify Code',
+                      style: TextStyle(
+                        fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ),
         ),
@@ -467,22 +536,35 @@ class _NewPasswordStep extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           height: buttonHeight,
-          child: ElevatedButton(
-            onPressed: controller.continueNewPassword,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.loginButton,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(10),
+          child: Obx(
+            () => ElevatedButton(
+              onPressed: controller.isForgotLoading.value
+                  ? null
+                  : controller.continueNewPassword,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.loginButton,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
               ),
-            ),
-            child: Text(
-              'Reset Password',
-              style: TextStyle(
-                fontSize: (size.width * 0.012).clamp(14.0, 16.0),
-                fontWeight: FontWeight.w700,
-              ),
+              child: controller.isForgotLoading.value
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : Text(
+                      'Reset Password',
+                      style: TextStyle(
+                        fontSize: (size.width * 0.012).clamp(14.0, 16.0),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
             ),
           ),
         ),

@@ -226,18 +226,32 @@ class BundleScanService {
     }
   }
 
-  Future<bool> markStaged(String bundleId) async {
-    if (!BundleScanItem.isMongoHexId(bundleId)) {
-      AppLogger.i('Bundle $bundleId marked as staged locally', tag: 'BUNDLE_SCAN');
-      return true;
+  Future<bool> markStaged(String bundleId, {String? projectId}) async {
+    String effectiveId = bundleId;
+    if (!BundleScanItem.isMongoHexId(effectiveId)) {
+      try {
+        final searchResults = await searchBundles(effectiveId);
+        final match = searchResults.firstWhereOrNull(
+          (b) =>
+              b.realMongoId.isNotEmpty &&
+              (b.bundleId.toLowerCase() == effectiveId.toLowerCase() ||
+                  b.id.toLowerCase() == effectiveId.toLowerCase()),
+        );
+        if (match != null && match.realMongoId.isNotEmpty) {
+          effectiveId = match.realMongoId;
+        }
+      } catch (_) {}
     }
     try {
       final res = await _apiClient.post(
-        ApiConstants.bundleStaged(bundleId),
-        body: {},
+        ApiConstants.bundleStaged(effectiveId),
+        body: {
+          'bundleId': bundleId,
+          if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
+        },
       );
       AppLogger.i('Mark staged response: $res', tag: 'BUNDLE_SCAN');
-      return true;
+      return res != null;
     } catch (e, st) {
       AppLogger.e(
         'Error marking staged',
@@ -249,18 +263,32 @@ class BundleScanService {
     }
   }
 
-  Future<bool> markLoaded(String bundleId) async {
-    if (!BundleScanItem.isMongoHexId(bundleId)) {
-      AppLogger.i('Bundle $bundleId marked as loaded locally', tag: 'BUNDLE_SCAN');
-      return true;
+  Future<bool> markLoaded(String bundleId, {String? projectId}) async {
+    String effectiveId = bundleId;
+    if (!BundleScanItem.isMongoHexId(effectiveId)) {
+      try {
+        final searchResults = await searchBundles(effectiveId);
+        final match = searchResults.firstWhereOrNull(
+          (b) =>
+              b.realMongoId.isNotEmpty &&
+              (b.bundleId.toLowerCase() == effectiveId.toLowerCase() ||
+                  b.id.toLowerCase() == effectiveId.toLowerCase()),
+        );
+        if (match != null && match.realMongoId.isNotEmpty) {
+          effectiveId = match.realMongoId;
+        }
+      } catch (_) {}
     }
     try {
       final res = await _apiClient.post(
-        ApiConstants.bundleLoaded(bundleId),
-        body: {},
+        ApiConstants.bundleLoaded(effectiveId),
+        body: {
+          'bundleId': bundleId,
+          if (projectId != null && projectId.isNotEmpty) 'projectId': projectId,
+        },
       );
       AppLogger.i('Mark loaded response: $res', tag: 'BUNDLE_SCAN');
-      return true;
+      return res != null;
     } catch (e, st) {
       AppLogger.e(
         'Error marking loaded',

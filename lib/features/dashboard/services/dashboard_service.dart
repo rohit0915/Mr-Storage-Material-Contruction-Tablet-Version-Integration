@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 
 import '../../../app/constants/api_constants.dart';
@@ -13,9 +15,14 @@ class DashboardService extends GetxService {
   Future<Map<String, dynamic>?> getDashboardData({
     String? projectId,
     String? buildingId,
+    String? buildingLabel,
     String? status,
     String? fromDate,
     String? toDate,
+    String? startDate,
+    String? endDate,
+    int? taskDeadlineDays,
+    int? taskLimit,
   }) async {
     try {
       final queryParams = <String, String>{};
@@ -25,22 +32,67 @@ class DashboardService extends GetxService {
       if (buildingId != null && buildingId.isNotEmpty) {
         queryParams['buildingId'] = buildingId;
       }
+      if (buildingLabel != null && buildingLabel.isNotEmpty) {
+        queryParams['buildingLabel'] = buildingLabel;
+      }
       if (status != null && status.isNotEmpty) {
         queryParams['status'] = status;
       }
-      if (fromDate != null && fromDate.isNotEmpty) {
-        queryParams['fromDate'] = fromDate;
+      final sDate = startDate ?? fromDate;
+      if (sDate != null && sDate.isNotEmpty) {
+        queryParams['startDate'] = sDate;
+        queryParams['fromDate'] = sDate;
       }
-      if (toDate != null && toDate.isNotEmpty) {
-        queryParams['toDate'] = toDate;
+      final eDate = endDate ?? toDate;
+      if (eDate != null && eDate.isNotEmpty) {
+        queryParams['endDate'] = eDate;
+        queryParams['toDate'] = eDate;
+      }
+      if (taskDeadlineDays != null && taskDeadlineDays > 0) {
+        queryParams['taskDeadlineDays'] = taskDeadlineDays.toString();
+      }
+      if (taskLimit != null && taskLimit > 0) {
+        queryParams['taskLimit'] = taskLimit.toString();
       }
 
-      final response = await _apiClient.get(
-        ApiConstants.dashboard,
-        queryParams: queryParams.isNotEmpty ? queryParams : null,
-      );
+      dynamic response;
+      try {
+        response = await _apiClient.get(
+          ApiConstants.adminOverview,
+          queryParams: queryParams.isNotEmpty ? queryParams : null,
+        );
+      } catch (err) {
+        AppLogger.w(
+          'adminOverview request failed ($err), falling back to ApiConstants.dashboard',
+          tag: 'DASHBOARD',
+        );
+        response = await _apiClient.get(
+          ApiConstants.dashboard,
+          queryParams: queryParams.isNotEmpty ? queryParams : null,
+        );
+      }
 
       if (response is Map) {
+        // Print the full response from API for debugging
+        try {
+          final prettyJson =
+              const JsonEncoder.withIndent('  ').convert(response);
+          debugPrint('================ [DASHBOARD API RESPONSE] ================');
+          for (final line in prettyJson.split('\n')) {
+            // ignore: avoid_print
+            print(line);
+          }
+          debugPrint('==========================================================');
+          AppLogger.i(
+            'Dashboard API Response received with keys: ${(response as Map).keys.toList()}',
+            tag: 'DASHBOARD',
+          );
+        } catch (_) {
+          // ignore: avoid_print
+          print('[DASHBOARD API RESPONSE RAW]: $response');
+          AppLogger.i('Dashboard API Response: $response', tag: 'DASHBOARD');
+        }
+
         if (response['success'] == false) {
           throw const FormatException('Dashboard API returned a failure');
         }

@@ -10,7 +10,15 @@ class BundleScanController extends GetxController {
     : _service = service ?? BundleScanService();
 
   final BundleScanService _service;
-  final searchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
   final searchQuery = ''.obs;
   final isLoading = false.obs;
 
@@ -290,7 +298,6 @@ class BundleScanController extends GetxController {
 
   @override
   void onClose() {
-    searchController.dispose();
     super.onClose();
   }
 }

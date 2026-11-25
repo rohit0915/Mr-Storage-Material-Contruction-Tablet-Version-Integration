@@ -11,10 +11,40 @@ class DispatchVerificationController extends GetxController {
     : _service = service ?? DispatchVerificationService();
 
   final DispatchVerificationService _service;
-  final searchController = TextEditingController();
-  final projectSearchController = TextEditingController();
-  final bundleSearchController = TextEditingController();
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
+
+  TextEditingController _projectSearchController = TextEditingController();
+  TextEditingController get projectSearchController {
+    try {
+      final _ = _projectSearchController.text;
+    } catch (_) {
+      _projectSearchController =
+          TextEditingController(text: projectSearchQuery.value);
+    }
+    return _projectSearchController;
+  }
+
+  TextEditingController _bundleSearchController = TextEditingController();
+  TextEditingController get bundleSearchController {
+    try {
+      final _ = _bundleSearchController.text;
+    } catch (_) {
+      _bundleSearchController =
+          TextEditingController(text: bundleSearchQuery.value);
+    }
+    return _bundleSearchController;
+  }
   final isLoading = false.obs;
+  final isStep2Loading = false.obs;
+  final isStep3Loading = false.obs;
 
   /// Current Step:
   /// 1 = Project List (Image 1)
@@ -22,6 +52,67 @@ class DispatchVerificationController extends GetxController {
   /// 3 = Bundle List for Load (Image 3)
   /// 4 = Bundle Detail & Verification (Image 4)
   final currentStep = 1.obs;
+  final fromDeliveryTracking = false.obs;
+
+  void resetToStep1() {
+    currentStep.value = 1;
+    selectedProject.value = null;
+    selectedLoad.value = null;
+    selectedBundle.value = null;
+    fromDeliveryTracking.value = false;
+    isStep2Loading.value = false;
+    isStep3Loading.value = false;
+  }
+
+  void applyNavigationArguments(dynamic args) {
+    if (args is! Map) {
+      fromDeliveryTracking.value = false;
+      return;
+    }
+
+    if (args['fromDeliveryTracking'] == true) {
+      fromDeliveryTracking.value = true;
+    } else {
+      fromDeliveryTracking.value = false;
+    }
+
+    final step = args['initialStep'];
+    final leadId = (args['leadId'] ?? '').toString();
+    final projectId = (args['projectId'] ?? '').toString();
+    final projectName = (args['projectName'] ?? '').toString();
+    final location = (args['location'] ?? '').toString();
+
+    if (projectName.isNotEmpty || leadId.isNotEmpty || projectId.isNotEmpty) {
+      final existing = projects.firstWhereOrNull((p) =>
+          (leadId.isNotEmpty && p.leadId == leadId) ||
+          (projectId.isNotEmpty &&
+              p.projectId.toLowerCase() == projectId.toLowerCase()) ||
+          (projectName.isNotEmpty &&
+              p.projectName.toLowerCase() == projectName.toLowerCase()));
+
+      final proj = existing ??
+          DispatchProjectItem(
+            leadId: leadId,
+            projectId: projectId.isNotEmpty ? projectId : 'PRJ',
+            projectName: projectName.isNotEmpty ? projectName : 'Project',
+            siteLocation: location,
+            totalPackingLists: 0,
+            totalBundles: 0,
+            loads: [],
+          );
+
+      selectedProject.value = proj;
+      if (step == 2 || step == null) {
+        currentStep.value = 2;
+        pageIndex.value = 0;
+        searchQuery.value = '';
+        searchController.clear();
+        fetchLoadsForProject(proj);
+      }
+    } else if (step is int) {
+      currentStep.value = step;
+    }
+  }
 
   // Selected Entities
   final projects = <DispatchProjectItem>[].obs;
@@ -82,6 +173,9 @@ class DispatchVerificationController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    if (Get.arguments != null) {
+      applyNavigationArguments(Get.arguments);
+    }
     fetchDispatchesFromApi();
   }
 
@@ -104,6 +198,29 @@ class DispatchVerificationController extends GetxController {
             (st['bundlesMissing'] as num?)?.toInt() ?? 0;
         dispatchedTodayCount.value =
             (st['dispatchedToday'] as num?)?.toInt() ?? 0;
+      }
+
+      if (selectedProject.value != null) {
+        final currentLeadId = selectedProject.value!.leadId;
+        final currentProjId = selectedProject.value!.projectId.toLowerCase();
+        final currentName = selectedProject.value!.projectName.toLowerCase();
+        final match = pList.firstWhereOrNull((p) =>
+            (currentLeadId.isNotEmpty && p.leadId == currentLeadId) ||
+            (currentProjId.isNotEmpty &&
+                p.projectId.toLowerCase() == currentProjId) ||
+            (currentName.isNotEmpty &&
+                p.projectName.toLowerCase() == currentName));
+        if (match != null) {
+          final mergedLoads = match.loads.isNotEmpty
+              ? match.loads
+              : selectedProject.value!.loads;
+          selectedProject.value = match.copyWith(loads: mergedLoads);
+          if (mergedLoads.isEmpty) {
+            fetchLoadsForProject(selectedProject.value!);
+          }
+        } else if (selectedProject.value!.loads.isEmpty) {
+          fetchLoadsForProject(selectedProject.value!);
+        }
       }
     } finally {
       isLoading.value = false;
@@ -217,9 +334,22 @@ class DispatchVerificationController extends GetxController {
   }
 
   Future<void> fetchLoadsForProject(DispatchProjectItem proj) async {
-    if (proj.leadId.isEmpty) return;
+    isStep2Loading.value = true;
     try {
-      final loads = await _service.fetchProjectLoads(proj.leadId);
+      List<DispatchItem> loads = [];
+      if (proj.leadId.isNotEmpty) {
+        try {
+          loads = await _service.fetchProjectLoads(proj.leadId);
+        } catch (_) {}
+      }
+      if (loads.isEmpty && allItems.isNotEmpty) {
+        final pName = proj.projectName.toLowerCase();
+        final pId = proj.projectId.toLowerCase();
+        loads = allItems.where((i) {
+          return (pName.isNotEmpty && i.project.toLowerCase() == pName) ||
+              (pId.isNotEmpty && i.jobId.toLowerCase() == pId);
+        }).toList();
+      }
       final candidateLoads = loads.isNotEmpty ? loads : proj.loads;
       if (candidateLoads.isNotEmpty) {
         final seen = <String>{};
@@ -232,7 +362,9 @@ class DispatchVerificationController extends GetxController {
         }
         final updatedProj = proj.copyWith(loads: uniqueLoads);
         selectedProject.value = updatedProj;
-        final idx = projects.indexWhere((p) => p.leadId == proj.leadId);
+        final idx = projects.indexWhere((p) =>
+            (proj.leadId.isNotEmpty && p.leadId == proj.leadId) ||
+            (proj.projectId.isNotEmpty && p.projectId == proj.projectId));
         if (idx >= 0) projects[idx] = updatedProj;
 
         // Populate bundles count for each load if bundles == 0
@@ -271,16 +403,20 @@ class DispatchVerificationController extends GetxController {
           }
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      isStep2Loading.value = false;
+    }
   }
 
   void selectLoad(DispatchItem load) {
     selectedLoad.value = load;
-    fetchLoadDetail(load);
+    isStep3Loading.value = true;
     currentStep.value = 3;
     bundleSearchQuery.value = '';
     bundleSearchController.clear();
     bundlePageIndex.value = 0;
+    fetchLoadDetail(load);
   }
 
   void selectBundle(BundleScanItem bundle) {
@@ -294,7 +430,11 @@ class DispatchVerificationController extends GetxController {
     } else if (currentStep.value == 3) {
       currentStep.value = 2;
     } else if (currentStep.value == 2) {
-      currentStep.value = 1;
+      if (fromDeliveryTracking.value) {
+        Get.back();
+      } else {
+        currentStep.value = 1;
+      }
     } else {
       Get.back();
     }
@@ -360,13 +500,14 @@ class DispatchVerificationController extends GetxController {
         final rawBundleId = b.bundleId;
         final bool isHex = rawBundleId.length == 24 && RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(rawBundleId);
         final displayId = isHex ? 'BND-${(i + 1).toString().padLeft(3, '0')}' : rawBundleId;
-        final mongoId = b.realMongoId.isNotEmpty ? b.realMongoId : rawBundleId;
+        final mongoId = b.realMongoId.isNotEmpty ? b.realMongoId : (isHex ? rawBundleId : '');
 
         result.add(
           BundleScanItem(
-            id: displayId,
+            id: mongoId.isNotEmpty ? mongoId : displayId,
             realMongoId: mongoId,
             bundleId: displayId,
+            projectId: selectedProject.value?.leadId ?? '',
             project: load.project.isNotEmpty
                 ? load.project
                 : (selectedProject.value?.projectName ?? 'Project'),
@@ -500,6 +641,7 @@ class DispatchVerificationController extends GetxController {
 
   Future<void> fetchLoadDetail(DispatchItem item) async {
     selectedItem.value = item;
+    isStep3Loading.value = true;
     try {
       final res = await _service.getDispatchLoadDetail(
         item.mongoId.isNotEmpty ? item.mongoId : item.loadId,
@@ -544,7 +686,10 @@ class DispatchVerificationController extends GetxController {
           if (idx >= 0) allItems[idx] = updated;
         }
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      isStep3Loading.value = false;
+    }
   }
 
   DispatchItem? findLoadById(String query) {
@@ -655,9 +800,6 @@ class DispatchVerificationController extends GetxController {
 
   @override
   void onClose() {
-    searchController.dispose();
-    projectSearchController.dispose();
-    bundleSearchController.dispose();
     super.onClose();
   }
 }

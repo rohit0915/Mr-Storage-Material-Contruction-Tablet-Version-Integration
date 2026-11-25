@@ -1,7 +1,15 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show rootBundle;
+import 'package:get/get.dart';
+import 'package:http/http.dart' as http;
+import 'package:printing/printing.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../app/constants/api_constants.dart';
+import '../../../app/services/api_client.dart';
 import '../../../app/theme/app_colors.dart';
 import '../models/drawing_models.dart';
 
@@ -16,6 +24,7 @@ class DrawingPreviewDialog extends StatelessWidget {
         : (file.previewAssets.isNotEmpty ? file.previewAssets.first : '');
     final trimmed = raw.trim();
     if (trimmed.isEmpty) return '';
+    if (trimmed.startsWith('assets/')) return trimmed;
     if (!trimmed.startsWith('http://') && !trimmed.startsWith('https://')) {
       if (trimmed.startsWith('/')) {
         return '${ApiConstants.serverOrigin}$trimmed';
@@ -181,7 +190,7 @@ class DrawingPreviewDialog extends StatelessWidget {
               Expanded(
                 child: Container(
                   color: const Color(0xFFF8FAFC),
-                  padding: const EdgeInsets.all(20),
+                  padding: _isPdf ? const EdgeInsets.all(6) : const EdgeInsets.all(20),
                   child: _buildPreviewBody(context),
                 ),
               ),
@@ -228,91 +237,9 @@ class DrawingPreviewDialog extends StatelessWidget {
     final url = _fileUrl;
 
     if (_isPdf) {
-      return Center(
-        child: Container(
-          width: double.infinity,
-          constraints: const BoxConstraints(maxWidth: 480),
-          padding: const EdgeInsets.all(28),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: AppColors.cardBorder),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.04),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 68,
-                height: 68,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFEF2F2),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.picture_as_pdf_rounded,
-                  size: 38,
-                  color: Color(0xFFEF4444),
-                ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                file.name,
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                file.versionLabel.isNotEmpty ? file.versionLabel : 'PDF Document',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'PDF Document Preview. Tap below to open and view the high-resolution architectural / structural sheets.',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton.icon(
-                onPressed: () => _openExternal(context),
-                icon: const Icon(Icons.open_in_new, size: 16),
-                label: const Text('Open / View PDF'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryBlue,
-                  foregroundColor: Colors.white,
-                  elevation: 0,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 24,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
+      return _InlinePdfViewer(
+        url: url,
+        fileName: file.name,
       );
     }
 
@@ -575,6 +502,355 @@ class _MetaCol extends StatelessWidget {
           ),
         ),
       ],
+    );
+  }
+}
+
+class _InlinePdfViewer extends StatefulWidget {
+  const _InlinePdfViewer({
+    required this.url,
+    required this.fileName,
+  });
+
+  final String url;
+  final String fileName;
+
+  @override
+  State<_InlinePdfViewer> createState() => _InlinePdfViewerState();
+}
+
+class _InlinePdfViewerState extends State<_InlinePdfViewer> {
+  late Future<Uint8List> _pdfFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _pdfFuture = _fetchPdfBytes(widget.url);
+  }
+
+  @override
+  void didUpdateWidget(covariant _InlinePdfViewer oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.url != widget.url) {
+      _pdfFuture = _fetchPdfBytes(widget.url);
+    }
+  }
+
+  Future<Uint8List> _fetchPdfBytes(String rawUrl) async {
+    final clean = rawUrl.trim();
+    if (clean.isEmpty) {
+      throw Exception('PDF document URL is empty or unavailable.');
+    }
+
+    // 1. Asset file
+    if (clean.startsWith('assets/')) {
+      final byteData = await rootBundle.load(clean);
+      return byteData.buffer.asUint8List();
+    }
+
+    // 2. Local device file (non-web only)
+    if (!kIsWeb && clean.startsWith('file://')) {
+      final file = File(clean.replaceFirst('file://', ''));
+      if (await file.exists()) {
+        return await file.readAsBytes();
+      }
+    }
+
+    // 3. Network URL
+    String targetUrl = clean;
+    if (!targetUrl.startsWith('http://') && !targetUrl.startsWith('https://')) {
+      if (targetUrl.startsWith('/')) {
+        targetUrl = '${ApiConstants.serverOrigin}$targetUrl';
+      } else {
+        targetUrl = '${ApiConstants.serverOrigin}/$targetUrl';
+      }
+    }
+
+    Uri uri;
+    try {
+      uri = Uri.parse(targetUrl);
+    } catch (_) {
+      uri = Uri.parse(Uri.encodeFull(targetUrl));
+    }
+
+    // Check if target is backend host or external storage (e.g. AWS S3, Cloudinary)
+    final serverHost =
+        Uri.tryParse(ApiConstants.serverOrigin)?.host.toLowerCase() ?? '';
+    final uriHost = uri.host.toLowerCase();
+    final isInternalBackend = uriHost.isEmpty ||
+        uriHost == serverHost ||
+        uriHost.contains('onrender.com') ||
+        uriHost.contains('flyweis');
+
+    // Only attach Authorization header if target is within our backend domain.
+    // Sending Bearer token to AWS S3 pre-signed URLs triggers HTTP 400 Bad Request
+    // ("Only one auth mechanism allowed").
+    final headers = <String, String>{};
+    if (isInternalBackend && Get.isRegistered<ApiClient>()) {
+      final token = Get.find<ApiClient>().token;
+      if (token != null && token.isNotEmpty) {
+        headers['Authorization'] = 'Bearer $token';
+      }
+    }
+
+    http.Response? response;
+    Object? lastError;
+
+    // First attempt: with target headers
+    try {
+      response = await http
+          .get(uri, headers: headers)
+          .timeout(const Duration(seconds: 25));
+    } catch (e) {
+      lastError = e;
+    }
+
+    // If request failed with 400 and headers were present, retry without Authorization header
+    if (response != null && response.statusCode == 400 && headers.isNotEmpty) {
+      try {
+        response = await http.get(uri).timeout(const Duration(seconds: 25));
+      } catch (e) {
+        lastError = e;
+      }
+    }
+
+    // If request failed with 401/403 and headers were empty, retry with Authorization header
+    if (response != null &&
+        (response.statusCode == 401 || response.statusCode == 403) &&
+        headers.isEmpty) {
+      if (Get.isRegistered<ApiClient>()) {
+        final token = Get.find<ApiClient>().token;
+        if (token != null && token.isNotEmpty) {
+          try {
+            response = await http
+                .get(uri, headers: {'Authorization': 'Bearer $token'})
+                .timeout(const Duration(seconds: 25));
+          } catch (e) {
+            lastError = e;
+          }
+        }
+      }
+    }
+
+    // In web browser: if direct fetch failed with CORS / ClientException ("Failed to fetch"),
+    // attempt proxy fallback so external test files can be loaded and viewed in-app
+    if ((response == null ||
+            response.statusCode < 200 ||
+            response.statusCode >= 300) &&
+        kIsWeb) {
+      final isCorsOrFetchErr = lastError != null &&
+          lastError.toString().toLowerCase().contains('failed to fetch');
+      if (isCorsOrFetchErr || response?.statusCode == 403) {
+        try {
+          final proxyUri = Uri.parse(
+            'https://api.allorigins.win/raw?url=${Uri.encodeComponent(targetUrl)}',
+          );
+          final proxyRes =
+              await http.get(proxyUri).timeout(const Duration(seconds: 25));
+          if (proxyRes.statusCode >= 200 &&
+              proxyRes.statusCode < 300 &&
+              proxyRes.bodyBytes.isNotEmpty) {
+            return proxyRes.bodyBytes;
+          }
+        } catch (_) {
+          // Ignore proxy error and throw informative error below
+        }
+      }
+    }
+
+    if (response != null) {
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        if (response.bodyBytes.isEmpty) {
+          throw Exception('The returned PDF file is empty (0 bytes).');
+        }
+        return response.bodyBytes;
+      }
+      throw Exception(
+        'Server returned status code ${response.statusCode} while loading PDF.\nURL: $targetUrl',
+      );
+    }
+
+    if (lastError != null) {
+      final errStr = lastError.toString();
+      if (errStr.contains('Failed to fetch')) {
+        throw Exception(
+          'Failed to fetch PDF due to browser cross-origin policy (CORS).\nURL: $targetUrl',
+        );
+      }
+      throw Exception(
+        'Failed to connect to PDF server: $errStr\nURL: $targetUrl',
+      );
+    }
+
+    throw Exception('Unable to load PDF document.\nURL: $targetUrl');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<Uint8List>(
+      future: _pdfFuture,
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SizedBox(
+                  width: 36,
+                  height: 36,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 3,
+                    color: AppColors.primaryBlue,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Text(
+                  'Loading PDF Document...',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textPrimary,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Rendering sheets in-app...',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+          final rawErr =
+              snapshot.error?.toString() ?? 'Could not render PDF document.';
+          final cleanErr = rawErr.startsWith('Exception: ')
+              ? rawErr.substring('Exception: '.length)
+              : rawErr;
+
+          return Center(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 480),
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFFF1F5F9)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.04),
+                      blurRadius: 16,
+                      offset: const Offset(0, 6),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 64,
+                      height: 64,
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFEF2F2),
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      child: const Icon(
+                        Icons.picture_as_pdf_rounded,
+                        size: 36,
+                        color: Color(0xFFEF4444),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      widget.fileName,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: AppColors.textPrimary,
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 12,
+                      ),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFFF1F2),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(color: const Color(0xFFFECDD3)),
+                      ),
+                      child: SelectableText(
+                        cleanErr,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12.5,
+                          height: 1.45,
+                          color: Color(0xFFBE123C),
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton.icon(
+                      onPressed: () {
+                        setState(() {
+                          _pdfFuture = _fetchPdfBytes(widget.url);
+                        });
+                      },
+                      icon: const Icon(Icons.refresh_rounded, size: 18),
+                      label: const Text('Retry'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primaryBlue,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 28,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        }
+
+        final bytes = snapshot.data!;
+        return ClipRRect(
+          borderRadius: BorderRadius.circular(12),
+          child: Container(
+            color: const Color(0xFF525659),
+            child: PdfPreview(
+              build: (format) async => bytes,
+              canChangeOrientation: false,
+              canChangePageFormat: false,
+              canDebug: false,
+              allowPrinting: true,
+              allowSharing: true,
+              pdfFileName: widget.fileName,
+              previewPageMargin: const EdgeInsets.symmetric(
+                horizontal: 16,
+                vertical: 12,
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 }

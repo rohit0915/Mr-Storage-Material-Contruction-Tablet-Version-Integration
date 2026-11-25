@@ -408,12 +408,55 @@ class BundleScanDetailController extends GetxController {
           ? 'Plant Mismatch Order $orderId created successfully.'
           : 'Discrepancy logged for bundle ${item.value?.bundleId ?? ""}';
 
+      final now = DateTime.now();
+      final timeStr =
+          '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+
+      final mismatchInfo = BundleMismatchInfo(
+        reportedAt: timeStr,
+        notes: notes.isNotEmpty ? notes : (reason ?? 'qty_short'),
+        reason: reason ?? '',
+        affectedItems:
+            (items ?? []).map((m) => BundleMismatchItem.fromJson(m)).toList(),
+      );
+
+      if (curItem != null) {
+        item.value = curItem.copyWith(
+          status: BundleScanStatus.pending,
+          statusText: 'Mismatch',
+          mismatchInfo: mismatchInfo,
+        );
+        currentStatusText.value = 'Mismatch';
+      }
+
       AppToast.showSuccess(
         title: 'Mismatch Reported',
         description: desc,
       );
       return true;
     } catch (e) {
+      final curItem = item.value;
+      if (curItem != null) {
+        final now = DateTime.now();
+        final timeStr =
+            '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+
+        final mismatchInfo = BundleMismatchInfo(
+          reportedAt: timeStr,
+          notes: notes.isNotEmpty ? notes : (reason ?? 'qty_short'),
+          reason: reason ?? '',
+          affectedItems:
+              (items ?? []).map((m) => BundleMismatchItem.fromJson(m)).toList(),
+        );
+
+        item.value = curItem.copyWith(
+          status: BundleScanStatus.pending,
+          statusText: 'Mismatch',
+          mismatchInfo: mismatchInfo,
+        );
+        currentStatusText.value = 'Mismatch';
+      }
+
       AppToast.showSuccess(
         title: 'Mismatch Reported',
         description:

@@ -81,8 +81,25 @@ class ChatController extends GetxController {
     );
   }
 
-  final messageController = TextEditingController();
-  final searchController = TextEditingController();
+  TextEditingController _messageController = TextEditingController();
+  TextEditingController get messageController {
+    try {
+      final _ = _messageController.text;
+    } catch (_) {
+      _messageController = TextEditingController();
+    }
+    return _messageController;
+  }
+
+  TextEditingController _searchController = TextEditingController();
+  TextEditingController get searchController {
+    try {
+      final _ = _searchController.text;
+    } catch (_) {
+      _searchController = TextEditingController(text: searchQuery.value);
+    }
+    return _searchController;
+  }
 
   final isLoading = false.obs;
   final conversationError = ''.obs;
@@ -608,8 +625,6 @@ class ChatController extends GetxController {
     _leaveCurrentSocketChannel();
     _socketSubscription?.cancel();
     _typingTimer?.cancel();
-    messageController.dispose();
-    searchController.dispose();
     super.onClose();
   }
 }

@@ -111,54 +111,238 @@ class DeadlineItem {
     required this.location,
     required this.date,
     required this.daysLeft,
+    this.taskId = '',
+    this.leadId = '',
+    this.title = '',
+    this.jobId = '',
+    this.startDate = '—',
+    this.estimatedEndDate = '—',
+    this.completedDate,
+    this.badgeLabel = 'Pending',
+    this.badgeTone = 'warning',
+    this.timelineStatusLine,
+    this.onTimeStatus = '',
+    this.daysLeftNumber,
+    this.status = '',
+    this.priority = '',
+    this.assignedTo = '',
   });
 
   final String project;
   final String location;
   final String date;
   final String daysLeft;
+  final String taskId;
+  final String leadId;
+  final String title;
+  final String jobId;
+  final String startDate;
+  final String estimatedEndDate;
+  final String? completedDate;
+  final String badgeLabel;
+  final String badgeTone;
+  final String? timelineStatusLine;
+  final String onTimeStatus;
+  final int? daysLeftNumber;
+  final String status;
+  final String priority;
+  final String assignedTo;
+
+  Color get badgeTextColor {
+    final t = badgeTone.toLowerCase();
+    final l = badgeLabel.toLowerCase();
+    if (t == 'danger' || l.contains('delayed') || l.contains('overdue')) {
+      return const Color(0xFFB91C1C); // Red
+    }
+    if (t == 'success' ||
+        l.contains('completed') ||
+        l.contains('under timeline')) {
+      return const Color(0xFF15803D); // Green
+    }
+    if (t == 'info' || l.contains('progress')) {
+      return const Color(0xFF1D4ED8); // Blue
+    }
+    return const Color(0xFFD97706); // Amber
+  }
+
+  Color get badgeBgColor {
+    final t = badgeTone.toLowerCase();
+    final l = badgeLabel.toLowerCase();
+    if (t == 'danger' || l.contains('delayed') || l.contains('overdue')) {
+      return const Color(0xFFFEE2E2); // Light Red
+    }
+    if (t == 'success' ||
+        l.contains('completed') ||
+        l.contains('under timeline')) {
+      return const Color(0xFFDCFCE7); // Light Green
+    }
+    if (t == 'info' || l.contains('progress')) {
+      return const Color(0xFFDBEAFE); // Light Blue
+    }
+    return const Color(0xFFFEF3C7); // Light Amber
+  }
+
+  Color get badgeDotColor {
+    final t = badgeTone.toLowerCase();
+    final l = badgeLabel.toLowerCase();
+    if (t == 'danger' || l.contains('delayed') || l.contains('overdue')) {
+      return const Color(0xFFDC2626);
+    }
+    if (t == 'success' ||
+        l.contains('completed') ||
+        l.contains('under timeline')) {
+      return const Color(0xFF16A34A);
+    }
+    if (t == 'info' || l.contains('progress')) {
+      return const Color(0xFF2563EB);
+    }
+    return const Color(0xFFD97706);
+  }
 
   factory DeadlineItem.fromJson(Map<String, dynamic> json) {
-    final deadlineRaw = json['endDate'] ??
+    final projectMap = json['project'] is Map
+        ? Map<String, dynamic>.from(json['project'] as Map)
+        : null;
+
+    final taskId =
+        (json['taskId'] ?? json['_id'] ?? json['id'] ?? '').toString();
+    final leadId = (projectMap?['leadId'] ?? json['leadId'] ?? '').toString();
+    final jobId = (projectMap?['jobId'] ?? json['jobId'] ?? '').toString();
+
+    final projectName = (projectMap?['projectName'] ??
+            json['projectName'] ??
+            json['project'] ??
+            'Project')
+        .toString();
+
+    final taskTitle = (json['title'] ??
+            json['taskTitle'] ??
+            json['name'] ??
+            projectName)
+        .toString();
+
+    final loc = (projectMap?['location'] ??
+            json['location'] ??
+            json['site'] ??
+            json['siteLocation'] ??
+            json['locationName'] ??
+            '—')
+        .toString();
+
+    final deadlineRaw = json['estimatedEndDate'] ??
+        json['endDate'] ??
+        json['expectedCloseDate'] ??
         json['deadline'] ??
         json['date'] ??
         json['targetDate'] ??
         json['dueDate'];
 
-    final formattedDate = _formatDashboardDate(deadlineRaw);
+    final formattedEstEnd = _formatDashboardDate(deadlineRaw);
+    final formattedStart = _formatDashboardDate(
+      json['startDate'] ?? json['start_date'] ?? json['createdAt'],
+    );
+    final completedRaw = json['completedDate'] ?? json['completedAt'];
+    final formattedCompleted = completedRaw != null &&
+            completedRaw.toString().isNotEmpty &&
+            completedRaw.toString() != 'null'
+        ? _formatDashboardDate(completedRaw)
+        : null;
 
-    String daysLeftStr = 'Upcoming';
+    // Timeline badge
+    String badgeLabel = '';
+    String badgeTone = '';
+    if (json['timelineBadge'] is Map) {
+      final bMap = json['timelineBadge'] as Map;
+      badgeLabel = bMap['label']?.toString() ?? '';
+      badgeTone = bMap['tone']?.toString() ?? '';
+    }
+
+    final statusLine = json['timelineStatusLine']?.toString();
+
+    // Days left calculation / formatting
+    int? daysLeftNum;
     if (json['daysLeft'] != null) {
-      daysLeftStr = '${json['daysLeft']} Days Left';
+      if (json['daysLeft'] is num) {
+        daysLeftNum = (json['daysLeft'] as num).toInt();
+      } else {
+        daysLeftNum = int.tryParse(json['daysLeft'].toString());
+      }
+    }
+
+    String daysLeftStr;
+    if (statusLine != null && statusLine.trim().isNotEmpty) {
+      daysLeftStr = statusLine.trim();
+    } else if (daysLeftNum != null) {
+      if (daysLeftNum < 0) {
+        daysLeftStr = '${daysLeftNum.abs()} Days Overdue';
+      } else if (daysLeftNum == 0) {
+        daysLeftStr = 'Due Today';
+      } else {
+        daysLeftStr = '$daysLeftNum Days Left';
+      }
     } else if (deadlineRaw != null && deadlineRaw.toString().isNotEmpty) {
       final parsedDate = DateTime.tryParse(deadlineRaw.toString());
       if (parsedDate != null) {
         final now = DateUtils.dateOnly(DateTime.now());
         final target = DateUtils.dateOnly(parsedDate);
         final diff = target.difference(now).inDays;
-        if (diff > 0) {
-          daysLeftStr = '$diff Days Left';
+        daysLeftNum = diff;
+        if (diff < 0) {
+          daysLeftStr = '${diff.abs()} Days Overdue';
         } else if (diff == 0) {
           daysLeftStr = 'Due Today';
         } else {
-          daysLeftStr = '${diff.abs()} Days Overdue';
+          daysLeftStr = '$diff Days Left';
         }
+      } else {
+        daysLeftStr = 'Upcoming';
+      }
+    } else {
+      daysLeftStr = 'Upcoming';
+    }
+
+    if (badgeLabel.isEmpty) {
+      if (daysLeftNum != null && daysLeftNum < 0) {
+        badgeLabel = 'Delayed';
+        badgeTone = 'danger';
+      } else if (json['status'] == 'in_progress') {
+        badgeLabel = 'In Progress';
+        badgeTone = 'info';
+      } else {
+        badgeLabel = 'Pending';
+        badgeTone = 'warning';
       }
     }
 
+    String assignedToName = '';
+    if (json['assignedTo'] is Map) {
+      assignedToName =
+          (json['assignedTo']['name'] ?? json['assignedTo']['email'] ?? '')
+              .toString();
+    } else if (json['assignedTo'] != null) {
+      assignedToName = json['assignedTo'].toString();
+    }
+
     return DeadlineItem(
-      project: json['projectName'] ??
-          json['project'] ??
-          json['title'] ??
-          json['name'] ??
-          'Project',
-      location: json['site'] ??
-          json['location'] ??
-          json['siteLocation'] ??
-          json['locationName'] ??
-          '—',
-      date: formattedDate.isNotEmpty ? formattedDate : '—',
+      project: projectName,
+      location: loc,
+      date: formattedEstEnd.isNotEmpty ? formattedEstEnd : '—',
       daysLeft: daysLeftStr,
+      taskId: taskId,
+      leadId: leadId,
+      title: taskTitle,
+      jobId: jobId,
+      startDate: formattedStart.isNotEmpty ? formattedStart : '—',
+      estimatedEndDate: formattedEstEnd.isNotEmpty ? formattedEstEnd : '—',
+      completedDate: formattedCompleted,
+      badgeLabel: badgeLabel,
+      badgeTone: badgeTone,
+      timelineStatusLine: statusLine,
+      onTimeStatus: (json['onTimeStatus'] ?? '').toString(),
+      daysLeftNumber: daysLeftNum,
+      status: (json['status'] ?? '').toString(),
+      priority: (json['priority'] ?? '').toString(),
+      assignedTo: assignedToName,
     );
   }
 }

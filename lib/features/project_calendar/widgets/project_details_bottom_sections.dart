@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../app/routes/app_routes.dart';
 import '../../../app/theme/app_colors.dart';
+import '../../../app/widgets/app_shimmer.dart';
 import '../../drawings/widgets/upload_media_dialog.dart';
 import '../controllers/project_details_controller.dart';
 import '../models/project_calendar_models.dart';
@@ -53,7 +54,7 @@ class _UpcomingDeliverySection extends StatelessWidget {
 
     return Obx(() {
       final deliveries = controller.deliveries;
-      final count = deliveries.isNotEmpty ? deliveries.length : 2;
+      final count = deliveries.length;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,44 +68,96 @@ class _UpcomingDeliverySection extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 12),
-          if (deliveries.isEmpty) ...[
-            _DeliveryCardView(
-              code: 'DEL-2001',
-              title: 'Primary Frame Steel',
-              warehouse: 'ABC Logistics Warehouse',
-              quantity: '45,000 lbs',
-              stagingArea: 'Yard-A',
-              arrivalDate: 'Mar 24, 10:00 AM',
-              departureDate: 'Mar 24, 02:00 PM',
-              onTap: () => _goToDelivery(controller, 'DEL-2001', 'Primary Frame Steel'),
-            ),
-            const SizedBox(height: 12),
-            _DeliveryCardView(
-              code: 'DEL-2002',
-              title: 'Glass Panels',
-              warehouse: controller.title.value.isNotEmpty
-                  ? controller.title.value
-                  : 'Downtown Office Complex',
-              quantity: '45,000 lbs',
-              stagingArea: 'Yard-A',
-              arrivalDate: 'Mar 24, 10:00 AM',
-              departureDate: 'Mar 24, 02:00 PM',
-              onTap: () => _goToDelivery(controller, 'DEL-2002', 'Glass Panels'),
-            ),
-          ] else ...[
+          if (controller.isLoading.value && deliveries.isEmpty)
+            Container(
+              height: 150,
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: AppColors.cardBorder),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  AppShimmer(width: 140, height: 16, borderRadius: 4),
+                  SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(child: AppShimmer(height: 36, borderRadius: 6)),
+                      SizedBox(width: 12),
+                      Expanded(child: AppShimmer(height: 36, borderRadius: 6)),
+                    ],
+                  ),
+                  Spacer(),
+                  AppShimmer(width: double.infinity, height: 34, borderRadius: 8),
+                ],
+              ),
+            )
+          else if (deliveries.isEmpty)
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 36, horizontal: 16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: const Color(0xFFE2E8F0)),
+              ),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.local_shipping_outlined,
+                      size: 36,
+                      color: Colors.grey.shade400,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      'No upcoming material deliveries',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Deliveries scheduled for this project will appear here.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade400,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          else ...[
             for (final d in deliveries.take(3)) ...[
               _DeliveryCardView(
-                code: d.code.isNotEmpty ? d.code : 'DEL-2001',
-                title: d.description.isNotEmpty
-                    ? d.description
-                    : (d.title.isNotEmpty ? d.title : 'Material Delivery'),
-                warehouse: controller.title.value.isNotEmpty
-                    ? controller.title.value
-                    : 'ABC Logistics Warehouse',
-                quantity: '45,000 lbs',
-                stagingArea: 'Yard-A',
-                arrivalDate: d.date.isNotEmpty ? d.date : 'Mar 24, 10:00 AM',
-                departureDate: 'Mar 24, 02:00 PM',
+                code: d.code.isNotEmpty
+                    ? d.code
+                    : (d.id.isNotEmpty ? d.id : 'Delivery'),
+                title: d.title.isNotEmpty
+                    ? d.title
+                    : (d.description.isNotEmpty
+                        ? d.description
+                        : 'Material Delivery'),
+                warehouse: d.warehouse.isNotEmpty
+                    ? d.warehouse
+                    : (d.projectName.isNotEmpty
+                        ? d.projectName
+                        : (controller.title.value.isNotEmpty
+                            ? controller.title.value
+                            : '—')),
+                quantity: d.quantity.isNotEmpty ? d.quantity : '—',
+                stagingArea: d.stagingArea.isNotEmpty ? d.stagingArea : '—',
+                arrivalDate: d.arrivalDate.isNotEmpty
+                    ? d.arrivalDate
+                    : (d.date.isNotEmpty ? d.date : '—'),
+                departureDate:
+                    d.departureDate.isNotEmpty ? d.departureDate : '—',
                 onTap: () => _goToDeliveryItem(controller, d),
               ),
               const SizedBox(height: 12),
@@ -112,18 +165,6 @@ class _UpcomingDeliverySection extends StatelessWidget {
           ],
         ],
       );
-    });
-  }
-
-  void _goToDelivery(ProjectDetailsController controller, String code, String title) {
-    Get.toNamed(AppRoutes.deliveryDetails, arguments: {
-      'leadId': controller.leadId.value,
-      'deliveryNumber': code,
-      'project': controller.title.value,
-      'projectName': controller.title.value,
-      'jobId': controller.projectId.value,
-      'location': controller.location.value,
-      'fromProject': true,
     });
   }
 
@@ -140,13 +181,25 @@ class _UpcomingDeliverySection extends StatelessWidget {
       'item': {
         'deliveryNumber': item.code,
         'deliveryId': item.id,
-        'description': item.description,
+        'title': item.title,
+        'description': item.description.isNotEmpty ? item.description : item.title,
         'status': item.status,
         'deliveryDate': item.date,
+        'quantity': item.quantity,
+        'loadWeight': item.quantity,
+        'stagingArea': item.stagingArea,
+        'warehouse': item.warehouse,
+        'location': item.location,
+        'destination': item.location,
         'project': {
-          'projectName': controller.title.value,
+          'projectName': item.projectName.isNotEmpty ? item.projectName : controller.title.value,
           'jobId': controller.projectId.value,
-          'location': controller.location.value,
+          'location': item.location.isNotEmpty ? item.location : controller.location.value,
+        },
+        'schedule': {
+          'arrivalAtPlant': item.arrivalDate,
+          'departureFromPlant': item.departureDate,
+          'deliveryDate': item.date,
         },
       },
       'fromProject': true,
@@ -392,6 +445,18 @@ class _ProjectMediaLatestSection extends StatelessWidget {
             children: [
               Obx(() {
                 final mediaItems = controller.media;
+                if (controller.isLoading.value && mediaItems.isEmpty) {
+                  return const SizedBox(
+                    height: 140,
+                    child: Row(
+                      children: [
+                        Expanded(child: AppShimmer(height: double.infinity, borderRadius: 10)),
+                        SizedBox(width: 12),
+                        Expanded(child: AppShimmer(height: double.infinity, borderRadius: 10)),
+                      ],
+                    ),
+                  );
+                }
                 if (mediaItems.isEmpty) {
                   return Container(
                     width: double.infinity,

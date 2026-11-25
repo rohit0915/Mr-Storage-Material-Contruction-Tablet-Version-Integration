@@ -73,6 +73,139 @@ class BundleSubItem {
   }
 }
 
+class BundleMismatchItem {
+  final String partCode;
+  final String description;
+  final int expectedQty;
+  final int receivedQty;
+  final int difference;
+  final String status;
+
+  const BundleMismatchItem({
+    required this.partCode,
+    required this.description,
+    required this.expectedQty,
+    required this.receivedQty,
+    required this.difference,
+    required this.status,
+  });
+
+  factory BundleMismatchItem.fromJson(Map<String, dynamic> json) {
+    final exp = (json['expectedQty'] ?? json['quantity'] ?? json['qty'] ?? 1);
+    final expInt = exp is num ? exp.toInt() : (int.tryParse(exp.toString()) ?? 1);
+    final rec = (json['receivedQty'] ?? json['receivedQuantity'] ?? 0);
+    final recInt = rec is num ? rec.toInt() : (int.tryParse(rec.toString()) ?? 0);
+    final diff = json['difference'] != null
+        ? (json['difference'] is num
+            ? (json['difference'] as num).toInt()
+            : (int.tryParse(json['difference'].toString()) ?? (recInt - expInt)))
+        : (recInt - expInt);
+
+    String st = (json['status'] ?? '').toString();
+    if (st.isEmpty || st.toLowerCase() == 'received' || st.toLowerCase() == 'pending') {
+      if (recInt == 0) {
+        st = 'Not Received';
+      } else if (recInt < expInt) {
+        st = 'Partially Received';
+      } else if (recInt > expInt) {
+        st = 'Excess';
+      } else {
+        st = 'Received';
+      }
+    } else if (st.toLowerCase() == 'missing') {
+      st = 'Not Received';
+    }
+
+    return BundleMismatchItem(
+      partCode: (json['partCode'] ?? json['itemCode'] ?? json['code'] ?? 'ITEM-1').toString(),
+      description: (json['description'] ?? json['name'] ?? json['parts'] ?? '-').toString(),
+      expectedQty: expInt,
+      receivedQty: recInt,
+      difference: diff,
+      status: st,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'partCode': partCode,
+    'description': description,
+    'expectedQty': expectedQty,
+    'receivedQty': receivedQty,
+    'difference': difference,
+    'status': status,
+  };
+}
+
+class BundleMismatchInfo {
+  final String reportedAt;
+  final String notes;
+  final String reason;
+  final List<BundleMismatchItem> affectedItems;
+
+  const BundleMismatchInfo({
+    required this.reportedAt,
+    required this.notes,
+    this.reason = '',
+    this.affectedItems = const [],
+  });
+
+  factory BundleMismatchInfo.fromJson(Map<String, dynamic> json) {
+    final rawTime = json['reportedAt'] ??
+        json['createdAt'] ??
+        json['updatedAt'] ??
+        json['date'] ??
+        json['timestamp'];
+    String fmtTime = '';
+    if (rawTime != null) {
+      fmtTime = formatReportedAt(rawTime.toString());
+    }
+    if (fmtTime.isEmpty) {
+      final now = DateTime.now();
+      fmtTime = '${now.day.toString().padLeft(2, '0')}/${now.month.toString().padLeft(2, '0')}/${now.year}, ${now.hour.toString().padLeft(2, '0')}:${now.minute.toString().padLeft(2, '0')}:${now.second.toString().padLeft(2, '0')}';
+    }
+
+    final rawItems = json['affectedItems'] ??
+        json['items'] ??
+        json['mismatchItems'] ??
+        json['discrepancies'] ??
+        [];
+    List<BundleMismatchItem> items = [];
+    if (rawItems is List) {
+      items = rawItems
+          .whereType<Map>()
+          .map((m) => BundleMismatchItem.fromJson(Map<String, dynamic>.from(m)))
+          .toList();
+    }
+
+    final n = (json['notes'] ?? json['note'] ?? json['reason'] ?? '').toString();
+    final r = (json['reason'] ?? json['notes'] ?? '').toString();
+
+    return BundleMismatchInfo(
+      reportedAt: fmtTime,
+      notes: n.isNotEmpty ? n : (r.isNotEmpty ? r : 'qty_short'),
+      reason: r,
+      affectedItems: items,
+    );
+  }
+
+  static String formatReportedAt(String raw) {
+    if (raw.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(raw).toLocal();
+      return '${dt.day.toString().padLeft(2, '0')}/${dt.month.toString().padLeft(2, '0')}/${dt.year}, ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}:${dt.second.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return raw;
+    }
+  }
+
+  Map<String, dynamic> toJson() => {
+    'reportedAt': reportedAt,
+    'notes': notes,
+    'reason': reason,
+    'affectedItems': affectedItems.map((e) => e.toJson()).toList(),
+  };
+}
+
 class BundleScanItem {
   const BundleScanItem({
     required this.id,
@@ -100,6 +233,7 @@ class BundleScanItem {
     this.isVerified = false,
     this.qrUrl = '',
     this.subItems = const [],
+    this.mismatchInfo,
   });
 
   final String id;
@@ -127,6 +261,7 @@ class BundleScanItem {
   final bool isVerified;
   final String qrUrl;
   final List<BundleSubItem> subItems;
+  final BundleMismatchInfo? mismatchInfo;
 
   /// Helper to check if string is raw 24-character hexadecimal Mongo ObjectId
   static bool isMongoHexId(String? s) {
@@ -436,6 +571,27 @@ class BundleScanItem {
             'https://mr-storage-material-contruction.vercel.app/delivery-tracking/bundle-scan?bundleId=$foundBundleCode')
         .toString();
 
+    BundleMismatchInfo? parsedMismatch;
+    for (final candidate in [
+      json['mismatchDetails'],
+      json['mismatchInfo'],
+      json['mismatchReport'],
+      json['reportedMismatch'],
+      json['mismatchOrder'],
+      if (json['mismatch'] is Map) json['mismatch'],
+      rawInput['mismatchDetails'],
+      rawInput['mismatchInfo'],
+      rawInput['mismatchReport'],
+      rawInput['reportedMismatch'],
+      if (rawInput['mismatch'] is Map) rawInput['mismatch'],
+    ]) {
+      if (candidate is Map) {
+        parsedMismatch =
+            BundleMismatchInfo.fromJson(Map<String, dynamic>.from(candidate));
+        break;
+      }
+    }
+
     return BundleScanItem(
       id: realId.isNotEmpty ? realId : foundBundleCode,
       realMongoId: realId,
@@ -466,6 +622,7 @@ class BundleScanItem {
       isVerified: isVer,
       qrUrl: qrLink,
       subItems: parsedSubItems,
+      mismatchInfo: parsedMismatch,
     );
   }
 
@@ -532,6 +689,7 @@ class BundleScanItem {
     bool? isVerified,
     String? qrUrl,
     List<BundleSubItem>? subItems,
+    BundleMismatchInfo? mismatchInfo,
   }) =>
       BundleScanItem(
         id: id ?? this.id,
@@ -559,5 +717,6 @@ class BundleScanItem {
         isVerified: isVerified ?? this.isVerified,
         qrUrl: qrUrl ?? this.qrUrl,
         subItems: subItems ?? this.subItems,
+        mismatchInfo: mismatchInfo ?? this.mismatchInfo,
       );
 }
